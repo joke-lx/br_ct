@@ -1,184 +1,6 @@
 扫描根目录: D:\a_js\js_proj\br_controller\ext
-扫描时间: 2025-08-20 00:40:49
+扫描时间: 2025-08-20 00:51:23
 
-
-==================================================
-文件: auto_text_all.txt
-==================================================
-扫描根目录: D:\a_js\js_proj\br_controller\ext
-扫描时间: 2025-08-19 23:51:44
-
-
-==================================================
-文件: manifest.json
-==================================================
-{
-  "manifest_version": 3,
-  "name": "URL Jumper",
-  "version": "1.0",
-  "description": "一个简单的URL跳转插件",
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
-  "action": {
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    },
-    "default_popup": "popup/popup.html",
-    "default_title": "URL Jumper"
-  },
-  "permissions": [
-    "tabs",
-    "storage"
-  ],
-  "host_permissions": [
-    "*://*/*"
-  ]
-}
-
-==================================================
-文件: popup\popup.html
-==================================================
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>URL Jumper</title>
-  <style>
-    body {
-      width: 300px;
-      padding: 10px;
-      font-family: Arial, sans-serif;
-    }
-    h1 {
-      font-size: 16px;
-      margin-bottom: 10px;
-      color: #333;
-    }
-    .url-input {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
-    .jump-button {
-      width: 100%;
-      padding: 8px;
-      background-color: #0078d7;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .jump-button:hover {
-      background-color: #106ebe;
-    }
-    .directory {
-      margin-top: 15px;
-      border-top: 1px solid #eee;
-      padding-top: 10px;
-    }
-    .directory-item {
-      padding: 5px;
-      cursor: pointer;
-      border-radius: 3px;
-    }
-    .directory-item:hover {
-      background-color: #f5f5f5;
-    }
-  </style>
-</head>
-<body>
-  <h1>URL跳转工具</h1>
-  <input type="text" class="url-input" placeholder="输入URL地址 (如: https://example.com)">
-  <button class="jump-button">跳转</button>
-  
-  <div class="directory">
-    <h2>常用网站</h2>
-    <div class="directory-item" data-url="https://www.bing.com">Bing搜索</div>
-    <div class="directory-item" data-url="https://www.github.com">GitHub</div>
-    <div class="directory-item" data-url="https://stackoverflow.com">Stack Overflow</div>
-    <div class="directory-item" data-url="https://learn.microsoft.com">Microsoft Learn</div>
-  </div>
-
-  <script src="popup.js"></script>
-</body>
-</html>
-
-==================================================
-文件: popup\popup.js
-==================================================
-document.addEventListener('DOMContentLoaded', function() {
-  const urlInput = document.querySelector('.url-input');
-  const jumpButton = document.querySelector('.jump-button');
-  const directoryItems = document.querySelectorAll('.directory-item');
-  
-  // 从存储中加载上次使用的URL
-  chrome.storage.sync.get(['lastUrl'], function(result) {
-    if (result.lastUrl) {
-      urlInput.value = result.lastUrl;
-    }
-  });
-
-  // 跳转按钮点击事件
-  jumpButton.addEventListener('click', function() {
-    const url = urlInput.value.trim();
-    if (url) {
-      // 保存当前URL
-      chrome.storage.sync.set({ lastUrl: url });
-      
-      // 跳转到指定URL
-      navigateToUrl(url);
-    }
-  });
-
-  // 输入框回车事件
-  urlInput.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      const url = urlInput.value.trim();
-      if (url) {
-        chrome.storage.sync.set({ lastUrl: url });
-        navigateToUrl(url);
-      }
-    }
-  });
-
-  // 目录项点击事件
-  directoryItems.forEach(item => {
-    item.addEventListener('click', function() {
-      const url = this.getAttribute('data-url');
-      urlInput.value = url;
-      navigateToUrl(url);
-    });
-  });
-
-  // 跳转到URL的函数
-  function navigateToUrl(url) {
-    // 检查URL是否包含协议头，如果没有则添加https://
-    let finalUrl = url;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      finalUrl = 'https://' + url;
-    }
-    
-    // 使用chrome.tabs API创建或更新标签页
-    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-      if (tabs[0]) {
-        // 更新当前活动标签页
-        chrome.tabs.update(tabs[0].id, { url: finalUrl });
-      } else {
-        // 创建新标签页
-        chrome.tabs.create({ url: finalUrl });
-      }
-    });
-  }
-});
-
-共发现 3 个文本文件
 
 ==================================================
 文件: background.js
@@ -186,33 +8,38 @@ document.addEventListener('DOMContentLoaded', function() {
 // 监听标签页更新事件
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete') {
-    chrome.storage.local.get(['scriptAction'], (result) => {
-      const action = result.scriptAction;
+    chrome.storage.local.get(['aiAction'], (result) => {
+      const action = result.aiAction;
       if (action?.run) {
-        executeScriptBasedOnSite(tabId, tab.url, action);
+        executeScriptBasedOnPlatform(tabId, tab.url, action);
       }
     });
   }
 });
 
 // 执行脚本
-function executeScriptBasedOnSite(tabId, url, scriptAction) {
+function executeScriptBasedOnPlatform(tabId, url, action) {
   // 重置标志
-  chrome.storage.local.set({ scriptAction: { ...scriptAction, run: false } });
+  chrome.storage.local.set({ aiAction: { ...action, run: false } });
 
-  // 特定网站的脚本处理
-  if (scriptAction.name.includes('消息发送')) {
-    executeMessageSenderScript(tabId, scriptAction);
+  // 检查URL是否匹配目标平台
+  if (action.platform === 'yuanbao' && url.includes('yuanbao.tencent.com')) {
+    executeYuanbaoScript(tabId, action);
+  } 
+  else if (action.platform === 'gemini' && url.includes('gemini.google.com')) {
+    executeGeminiScript(tabId, action);
   }
-  // 其他脚本类型...
+  else {
+    console.warn(`当前页面不是${action.platform}平台`);
+  }
 }
 
-// 执行消息发送脚本
-function executeMessageSenderScript(tabId, action) {
+// 执行Yuanbao脚本
+function executeYuanbaoScript(tabId, action) {
   // 注入内容脚本
   chrome.scripting.executeScript({
     target: { tabId },
-    files: ['contentScripts/messageSender.js']
+    files: ['contentScripts/yuanbao.js']
   }, () => {
     // 发送消息请求
     chrome.tabs.sendMessage(tabId, {
@@ -220,9 +47,30 @@ function executeMessageSenderScript(tabId, action) {
       message: action.message || "这是一个自动发送的测试消息"
     }, (response) => {
       if (response?.status === 'success') {
-        console.log("消息发送成功");
+        console.log("Yuanbao消息发送成功");
       } else {
-        console.warn("消息发送可能失败");
+        console.warn("Yuanbao消息发送可能失败");
+      }
+    });
+  });
+}
+
+// 执行Gemini脚本
+function executeGeminiScript(tabId, action) {
+  // 注入内容脚本
+  chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['contentScripts/gemini.js']
+  }, () => {
+    // 发送消息请求
+    chrome.tabs.sendMessage(tabId, {
+      action: "sendMessage",
+      message: action.message || "这是一个自动发送的测试消息"
+    }, (response) => {
+      if (response?.status === 'success') {
+        console.log("Gemini消息发送成功");
+      } else {
+        console.warn("Gemini消息发送可能失败");
       }
     });
   });
@@ -233,9 +81,9 @@ function executeMessageSenderScript(tabId, action) {
 ==================================================
 {
   "manifest_version": 3,
-  "name": "URL Jumper & Auto Messenger",
-  "version": "1.0.2",
-  "description": "URL跳转工具，支持自动消息发送",
+  "name": "AI Assistant",
+  "version": "1.1.0",
+  "description": "多端AI调度工具，支持Yuanbao和Gemini",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -248,14 +96,15 @@ function executeMessageSenderScript(tabId, action) {
       "128": "icons/icon128.png"
     },
     "default_popup": "popup/popup.html",
-    "default_title": "URL Jumper"
+    "default_title": "AI Assistant"
   },
-  "permissions": [
-    "tabs",
-    "storage",
-    "scripting",
-    "activeTab"
-  ],
+"permissions": [
+  "tabs",
+  "storage",
+  "scripting",
+  "activeTab",
+  "notifications"
+],
   "host_permissions": [
     "*://*/*"
   ],
@@ -274,7 +123,7 @@ function executeMessageSenderScript(tabId, action) {
 ==================================================
 文件: contentScripts\gemini.js
 ==================================================
-// 通过 XPath 获取元素（复用函数）
+// 通过 XPath 获取元素
 function getElementByXpath(xpath) {
   const result = document.evaluate(
     xpath,
@@ -298,7 +147,7 @@ function triggerInputEvents(element) {
   });
 }
 
-// 更可靠的点击方法（支持完整鼠标事件序列）
+// 更可靠的点击方法
 function triggerClick(element) {
   if (!element) return false;
   
@@ -336,11 +185,10 @@ function sendChatMessage(message) {
     return false;
   }
   
-  // 2. 输入文本（支持contenteditable元素）
+  // 2. 输入文本
   try {
     if (inputElement.isContentEditable || inputElement.tagName === 'P') {
       inputElement.textContent = message;
-      // 富文本可能需要更复杂的处理
       document.execCommand('insertText', false, message);
     } else {
       inputElement.value = message;
@@ -360,11 +208,10 @@ function sendChatMessage(message) {
     return false;
   }
   
-  // 4. 执行点击（带延迟确保内容已处理）
+  // 4. 执行点击
   setTimeout(() => {
     if (!triggerClick(buttonElement)) {
       console.error("发送失败，尝试备用方案...");
-      // 备选方案：直接触发父级按钮点击
       const parentButton = buttonElement.closest('button');
       if (parentButton && parentButton !== buttonElement) {
         triggerClick(parentButton);
@@ -375,37 +222,18 @@ function sendChatMessage(message) {
   return true;
 }
 
-// 使用示例
-sendChatMessage("在浏览器控制台能否控制多个页面执行方法");
-
-// 可选：自动重试机制（针对动态加载的内容）
-function sendWithRetry(message, maxRetries = 3, interval = 500) {
-  let attempts = 0;
-  
-  const trySend = () => {
-    attempts++;
-    if (sendChatMessage(message)) {
-      console.log('消息发送成功');
-      return;
-    }
-    
-    if (attempts < maxRetries) {
-      console.log(`尝试 ${attempts}/${maxRetries}...`);
-      setTimeout(trySend, interval);
-    } else {
-      console.error('达到最大重试次数，发送失败');
-    }
-  };
-  
-  trySend();
-}
-
-
+// 监听插件消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "sendMessage") {
+    console.log(`收到消息发送请求: ${request.message}`);
+    sendChatMessage(request.message);
+    sendResponse({status: "success"});
+  }
+});
 
 ==================================================
-文件: contentScripts\messageSender.js
+文件: contentScripts\yuanbao.js
 ==================================================
-
 // 通过 XPath 获取目标输入框元素
 function getElementByXpath(xpath) {
   const result = document.evaluate(
@@ -433,11 +261,11 @@ function inputContentToDialog(content, callback) {
   if (inputElement.tagName === 'INPUT' || inputElement.tagName === 'TEXTAREA') {
     inputElement.value = content;
     triggerInputEvents(inputElement);
-    callback && setTimeout(callback, 50); // 加入短暂延迟
+    callback && setTimeout(callback, 50);
   } else if (inputElement.getAttribute('contenteditable') === 'true') {
     inputElement.innerHTML = '';
     document.execCommand('insertText', false, content);
-    callback && setTimeout(callback, 50); // 富文本框需要额外处理时间
+    callback && setTimeout(callback, 50);
   } else {
     console.error('无法识别的输入元素类型');
     callback && callback(false);
@@ -497,7 +325,7 @@ function sendMessage(content) {
         // 备选方案：在页面完全加载后重试
         document.addEventListener('DOMContentLoaded', () => clickSendButton());
       }
-    }, 100); // 增加100ms延迟确保内容已处理
+    }, 100);
   });
 }
 
@@ -517,55 +345,108 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>URL Jumper & Auto Messenger</title>
+  <title>AI Assistant</title>
   <style>
-    /* 原有样式保持不变 */
-    .script-form {
-      margin-top: 15px;
+    body {
+      width: 400px;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    .header h1 {
+      font-size: 20px;
+      color: #333;
+    }
+    .platform-selector {
+      margin-bottom: 20px;
+    }
+    .platform-option {
+      display: flex;
+      align-items: center;
       padding: 10px;
-      border: 1px solid #eaeaea;
+      margin-bottom: 10px;
+      background-color: white;
       border-radius: 4px;
-      background-color: #f9f9f9;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .platform-option:hover {
+      background-color: #f0f7ff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+    .platform-option.active {
+      background-color: #e6f2ff;
+      border-left: 4px solid #0078d7;
+    }
+    .platform-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      background-color: #ddd;
+      border-radius: 4px;
+    }
+    .platform-name {
+      font-weight: 500;
     }
     .message-input {
       width: 100%;
-      padding: 8px;
-      margin-bottom: 8px;
+      padding: 12px;
+      margin-bottom: 15px;
       border: 1px solid #ddd;
       border-radius: 4px;
+      font-size: 14px;
+      resize: vertical;
+      min-height: 100px;
     }
-    .script-send-btn {
+    .send-button {
       width: 100%;
-      padding: 8px;
-      background-color: #28a745;
+      padding: 12px;
+      background-color: #0078d7;
       color: white;
       border: none;
       border-radius: 4px;
+      font-size: 16px;
+      font-weight: 500;
       cursor: pointer;
+      transition: background-color 0.2s;
     }
-    .script-send-btn:hover {
-      background-color: #218838;
+    .send-button:hover {
+      background-color: #106ebe;
+    }
+    .send-button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
     }
   </style>
 </head>
 <body>
-  <h1>URL跳转工具</h1>
-  <input type="text" class="url-input" placeholder="输入URL地址 (如: https://example.com)">
-  <button class="jump-button">跳转</button>
+  <div class="header">
+    <h1>AI Assistant</h1>
+    <p>多端AI调度工具</p>
+  </div>
   
-
-
-  <div class="directory">
-    <!-- 新增消息发送面板 -->
-    <div class="script-form">
-      <h3>消息发送脚本</h3>
-      <input type="text" class="message-input" 
-             placeholder="输入要发送的消息" 
-             value="在浏览器控制台能否控制多个页面 执行方法">
-      <button class="script-send-btn">发送消息到当前页面</button>
+  <div class="platform-selector">
+    <div class="platform-option active" data-platform="yuanbao">
+      <div class="platform-icon"></div>
+      <div class="platform-name">腾讯元宝</div>
+    </div>
+    <div class="platform-option" data-platform="gemini">
+      <div class="platform-icon"></div>
+      <div class="platform-name">Google Gemini</div>
     </div>
   </div>
-
+  
+  <textarea class="message-input" placeholder="输入要发送的消息">在浏览器控制台能否控制多个页面执行方法</textarea>
+  
+  <button class="send-button">发送消息</button>
+  
   <script src="popup.js"></script>
 </body>
 </html>
@@ -574,104 +455,86 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 文件: popup\popup.js
 ==================================================
 document.addEventListener('DOMContentLoaded', function() {
-  const urlInput = document.querySelector('.url-input');
-  const jumpButton = document.querySelector('.jump-button');
+  const platformOptions = document.querySelectorAll('.platform-option');
   const messageInput = document.querySelector('.message-input');
-  const scriptSendBtn = document.querySelector('.script-send-btn');
+  const sendButton = document.querySelector('.send-button');
   
-  // 加载历史URL和消息
-  chrome.storage.sync.get(['lastUrl', 'lastMessage'], (result) => {
-    urlInput.value = result.lastUrl || '';
-    messageInput.value = result.lastMessage || '在浏览器控制台能否控制多个页面 执行方法';
+  // 当前选中的平台
+  let selectedPlatform = 'yuanbao';
+  
+  // 加载历史消息
+  chrome.storage.sync.get(['lastMessage'], (result) => {
+    if (result.lastMessage) {
+      messageInput.value = result.lastMessage;
+    }
   });
-
-  // 跳转功能
-  const navigateToUrl = (url) => {
-    let finalUrl = url;
-    if (!/^https?:\/\//i.test(url)) {
-      finalUrl = `https://${url}`;
+  
+  // 平台选择事件
+  platformOptions.forEach(option => {
+    option.addEventListener('click', function() {
+      // 更新UI状态
+      platformOptions.forEach(opt => opt.classList.remove('active'));
+      this.classList.add('active');
+      
+      // 更新选中的平台
+      selectedPlatform = this.dataset.platform;
+    });
+  });
+  
+  // 发送按钮事件
+  sendButton.addEventListener('click', function() {
+    const message = messageInput.value.trim();
+    if (!message) {
+      alert('请输入消息内容');
+      return;
     }
     
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      tabs[0] 
-        ? chrome.tabs.update(tabs[0].id, { url: finalUrl })
-        : chrome.tabs.create({ url: finalUrl });
-    });
-  };
-
-  // 跳转按钮
-  jumpButton.addEventListener('click', () => {
-    const url = urlInput.value.trim();
-    if (url) {
-      chrome.storage.sync.set({ lastUrl: url });
-      navigateToUrl(url);
+    // 保存消息
+    chrome.storage.sync.set({ lastMessage: message });
+    
+    // 禁用按钮防止重复点击
+    sendButton.disabled = true;
+    sendButton.textContent = '发送中...';
+    
+    // 准备执行脚本的数据
+    const aiAction = {
+      run: true,
+      platform: selectedPlatform,
+      message: message
+    };
+    
+    // 根据平台设置目标URL
+    let targetUrl;
+    if (selectedPlatform === 'yuanbao') {
+      targetUrl = 'https://yuanbao.tencent.com/chat/naQivTmsDa';
+    } else if (selectedPlatform === 'gemini') {
+      targetUrl = 'https://gemini.google.com/app?hl=zh-cn';
     }
-  });
-
-  // 回车跳转
-  urlInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && urlInput.value.trim()) {
-      jumpButton.click();
-    }
-  });
-
-  // 目录项点击
-  document.querySelectorAll('.directory-item').forEach(item => {
-    item.addEventListener('click', function() {
-      const url = this.dataset.url;
-      const isScriptAction = this.classList.contains('script-action');
-      
-      if (isScriptAction) {
-        chrome.storage.local.set({
-          scriptAction: {
-            run: true,
-            url: url,
-            name: this.textContent.trim()
-          }
-        });
-      }
-      
-      urlInput.value = url;
-      navigateToUrl(url);
-    });
-  });
-  
-  // 消息发送按钮
-  scriptSendBtn.addEventListener('click', () => {
-    const message = messageInput.value.trim();
-    if (message) {
-      // 保存消息
-      chrome.storage.sync.set({ lastMessage: message });
-      
+    
+    // 保存并执行脚本
+    chrome.storage.local.set({ aiAction }, () => {
       // 获取当前活动标签页
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) {
-          // 准备执行脚本的数据
-          const scriptData = {
-            run: true,
-            url: tabs[0].url,
-            name: "发送消息到页面",
-            message: message
-          };
-          
-          // 保存并执行脚本
-          chrome.storage.local.set({ scriptAction: scriptData }, () => {
-            // 在当前页面执行脚本
-            chrome.scripting.executeScript({
-              target: { tabId: tabs[0].id },
-              files: ['contentScripts/messageSender.js']
-            }, () => {
-              // 发送消息
-              chrome.tabs.sendMessage(tabs[0].id, {
-                action: "sendMessage",
-                message: message
-              });
-            });
-          });
+        if (tabs[0] && tabs[0].url.includes(targetUrl)) {
+          // 如果当前标签页已经是目标平台，直接执行脚本
+          chrome.tabs.reload(tabs[0].id);
+        } else {
+          // 否则创建新标签页或更新当前标签页
+          if (tabs[0]) {
+            chrome.tabs.update(tabs[0].id, { url: targetUrl });
+          } else {
+            chrome.tabs.create({ url: targetUrl });
+          }
         }
+        
+        // 恢复按钮状态
+        setTimeout(() => {
+          sendButton.disabled = false;
+          sendButton.textContent = '发送消息';
+        }, 3000);
       });
-    }
+    });
   });
 });
 
-共发现 7 个文本文件
+共发现 6 个文本文件
