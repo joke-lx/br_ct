@@ -1,100 +1,82 @@
 document.addEventListener('DOMContentLoaded', function() {
-  const urlInput = document.querySelector('.url-input');
-  const jumpButton = document.querySelector('.jump-button');
+  const platformOptions = document.querySelectorAll('.platform-option');
   const messageInput = document.querySelector('.message-input');
-  const scriptSendBtn = document.querySelector('.script-send-btn');
+  const sendButton = document.querySelector('.send-button');
   
-  // 加载历史URL和消息
-  chrome.storage.sync.get(['lastUrl', 'lastMessage'], (result) => {
-    urlInput.value = result.lastUrl || '';
-    messageInput.value = result.lastMessage || '在浏览器控制台能否控制多个页面 执行方法';
+  // 当前选中的平台
+  let selectedPlatform = 'yuanbao';
+  
+  // 加载历史消息
+  chrome.storage.sync.get(['lastMessage'], (result) => {
+    if (result.lastMessage) {
+      messageInput.value = result.lastMessage;
+    }
   });
-
-  // 跳转功能
-  const navigateToUrl = (url) => {
-    let finalUrl = url;
-    if (!/^https?:\/\//i.test(url)) {
-      finalUrl = `https://${url}`;
+  
+  // 平台选择事件
+  platformOptions.forEach(option => {
+    option.addEventListener('click', function() {
+      // 更新UI状态
+      platformOptions.forEach(opt => opt.classList.remove('active'));
+      this.classList.add('active');
+      
+      // 更新选中的平台
+      selectedPlatform = this.dataset.platform;
+    });
+  });
+  
+  // 发送按钮事件
+  sendButton.addEventListener('click', function() {
+    const message = messageInput.value.trim();
+    if (!message) {
+      alert('请输入消息内容');
+      return;
     }
     
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      tabs[0] 
-        ? chrome.tabs.update(tabs[0].id, { url: finalUrl })
-        : chrome.tabs.create({ url: finalUrl });
-    });
-  };
-
-  // 跳转按钮
-  jumpButton.addEventListener('click', () => {
-    const url = urlInput.value.trim();
-    if (url) {
-      chrome.storage.sync.set({ lastUrl: url });
-      navigateToUrl(url);
+    // 保存消息
+    chrome.storage.sync.set({ lastMessage: message });
+    
+    // 禁用按钮防止重复点击
+    sendButton.disabled = true;
+    sendButton.textContent = '发送中...';
+    
+    // 准备执行脚本的数据
+    const aiAction = {
+      run: true,
+      platform: selectedPlatform,
+      message: message
+    };
+    
+    // 根据平台设置目标URL
+    let targetUrl;
+    if (selectedPlatform === 'yuanbao') {
+      targetUrl = 'https://yuanbao.tencent.com/chat/naQivTmsDa';
+    } else if (selectedPlatform === 'gemini') {
+      targetUrl = 'https://gemini.google.com/app?hl=zh-cn';
     }
-  });
-
-  // 回车跳转
-  urlInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && urlInput.value.trim()) {
-      jumpButton.click();
-    }
-  });
-
-  // 目录项点击
-  document.querySelectorAll('.directory-item').forEach(item => {
-    item.addEventListener('click', function() {
-      const url = this.dataset.url;
-      const isScriptAction = this.classList.contains('script-action');
-      
-      if (isScriptAction) {
-        chrome.storage.local.set({
-          scriptAction: {
-            run: true,
-            url: url,
-            name: this.textContent.trim()
-          }
-        });
-      }
-      
-      urlInput.value = url;
-      navigateToUrl(url);
-    });
-  });
-  
-  // 消息发送按钮
-  scriptSendBtn.addEventListener('click', () => {
-    const message = messageInput.value.trim();
-    if (message) {
-      // 保存消息
-      chrome.storage.sync.set({ lastMessage: message });
-      
+    
+    // 保存并执行脚本
+    chrome.storage.local.set({ aiAction }, () => {
       // 获取当前活动标签页
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) {
-          // 准备执行脚本的数据
-          const scriptData = {
-            run: true,
-            url: tabs[0].url,
-            name: "发送消息到页面",
-            message: message
-          };
-          
-          // 保存并执行脚本
-          chrome.storage.local.set({ scriptAction: scriptData }, () => {
-            // 在当前页面执行脚本
-            chrome.scripting.executeScript({
-              target: { tabId: tabs[0].id },
-              files: ['contentScripts/messageSender.js']
-            }, () => {
-              // 发送消息
-              chrome.tabs.sendMessage(tabs[0].id, {
-                action: "sendMessage",
-                message: message
-              });
-            });
-          });
+        if (tabs[0] && tabs[0].url.includes(targetUrl)) {
+          // 如果当前标签页已经是目标平台，直接执行脚本
+          chrome.tabs.reload(tabs[0].id);
+        } else {
+          // 否则创建新标签页或更新当前标签页
+          if (tabs[0]) {
+            chrome.tabs.update(tabs[0].id, { url: targetUrl });
+          } else {
+            chrome.tabs.create({ url: targetUrl });
+          }
         }
+        
+        // 恢复按钮状态
+        setTimeout(() => {
+          sendButton.disabled = false;
+          sendButton.textContent = '发送消息';
+        }, 3000);
       });
-    }
+    });
   });
 });

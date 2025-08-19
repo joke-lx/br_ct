@@ -1,4 +1,4 @@
-// 通过 XPath 获取元素（复用函数）
+// 通过 XPath 获取元素
 function getElementByXpath(xpath) {
   const result = document.evaluate(
     xpath,
@@ -22,7 +22,7 @@ function triggerInputEvents(element) {
   });
 }
 
-// 更可靠的点击方法（支持完整鼠标事件序列）
+// 更可靠的点击方法
 function triggerClick(element) {
   if (!element) return false;
   
@@ -60,11 +60,10 @@ function sendChatMessage(message) {
     return false;
   }
   
-  // 2. 输入文本（支持contenteditable元素）
+  // 2. 输入文本
   try {
     if (inputElement.isContentEditable || inputElement.tagName === 'P') {
       inputElement.textContent = message;
-      // 富文本可能需要更复杂的处理
       document.execCommand('insertText', false, message);
     } else {
       inputElement.value = message;
@@ -84,11 +83,10 @@ function sendChatMessage(message) {
     return false;
   }
   
-  // 4. 执行点击（带延迟确保内容已处理）
+  // 4. 执行点击
   setTimeout(() => {
     if (!triggerClick(buttonElement)) {
       console.error("发送失败，尝试备用方案...");
-      // 备选方案：直接触发父级按钮点击
       const parentButton = buttonElement.closest('button');
       if (parentButton && parentButton !== buttonElement) {
         triggerClick(parentButton);
@@ -99,28 +97,11 @@ function sendChatMessage(message) {
   return true;
 }
 
-// 使用示例
-sendChatMessage("在浏览器控制台能否控制多个页面执行方法");
-
-// 可选：自动重试机制（针对动态加载的内容）
-function sendWithRetry(message, maxRetries = 3, interval = 500) {
-  let attempts = 0;
-  
-  const trySend = () => {
-    attempts++;
-    if (sendChatMessage(message)) {
-      console.log('消息发送成功');
-      return;
-    }
-    
-    if (attempts < maxRetries) {
-      console.log(`尝试 ${attempts}/${maxRetries}...`);
-      setTimeout(trySend, interval);
-    } else {
-      console.error('达到最大重试次数，发送失败');
-    }
-  };
-  
-  trySend();
-}
-
+// 监听插件消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "sendMessage") {
+    console.log(`收到消息发送请求: ${request.message}`);
+    sendChatMessage(request.message);
+    sendResponse({status: "success"});
+  }
+});

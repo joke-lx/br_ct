@@ -1,4 +1,3 @@
-
 // 通过 XPath 获取目标输入框元素
 function getElementByXpath(xpath) {
   const result = document.evaluate(
@@ -26,11 +25,11 @@ function inputContentToDialog(content, callback) {
   if (inputElement.tagName === 'INPUT' || inputElement.tagName === 'TEXTAREA') {
     inputElement.value = content;
     triggerInputEvents(inputElement);
-    callback && setTimeout(callback, 50); // 加入短暂延迟
+    callback && setTimeout(callback, 50);
   } else if (inputElement.getAttribute('contenteditable') === 'true') {
     inputElement.innerHTML = '';
     document.execCommand('insertText', false, content);
-    callback && setTimeout(callback, 50); // 富文本框需要额外处理时间
+    callback && setTimeout(callback, 50);
   } else {
     console.error('无法识别的输入元素类型');
     callback && callback(false);
@@ -90,7 +89,7 @@ function sendMessage(content) {
         // 备选方案：在页面完全加载后重试
         document.addEventListener('DOMContentLoaded', () => clickSendButton());
       }
-    }, 100); // 增加100ms延迟确保内容已处理
+    }, 100);
   });
 }
 

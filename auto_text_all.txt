@@ -1,4 +1,11 @@
 扫描根目录: D:\a_js\js_proj\br_controller\ext
+扫描时间: 2025-08-20 00:40:49
+
+
+==================================================
+文件: auto_text_all.txt
+==================================================
+扫描根目录: D:\a_js\js_proj\br_controller\ext
 扫描时间: 2025-08-19 23:51:44
 
 
@@ -172,3 +179,499 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 共发现 3 个文本文件
+
+==================================================
+文件: background.js
+==================================================
+// 监听标签页更新事件
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete') {
+    chrome.storage.local.get(['scriptAction'], (result) => {
+      const action = result.scriptAction;
+      if (action?.run) {
+        executeScriptBasedOnSite(tabId, tab.url, action);
+      }
+    });
+  }
+});
+
+// 执行脚本
+function executeScriptBasedOnSite(tabId, url, scriptAction) {
+  // 重置标志
+  chrome.storage.local.set({ scriptAction: { ...scriptAction, run: false } });
+
+  // 特定网站的脚本处理
+  if (scriptAction.name.includes('消息发送')) {
+    executeMessageSenderScript(tabId, scriptAction);
+  }
+  // 其他脚本类型...
+}
+
+// 执行消息发送脚本
+function executeMessageSenderScript(tabId, action) {
+  // 注入内容脚本
+  chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['contentScripts/messageSender.js']
+  }, () => {
+    // 发送消息请求
+    chrome.tabs.sendMessage(tabId, {
+      action: "sendMessage",
+      message: action.message || "这是一个自动发送的测试消息"
+    }, (response) => {
+      if (response?.status === 'success') {
+        console.log("消息发送成功");
+      } else {
+        console.warn("消息发送可能失败");
+      }
+    });
+  });
+}
+
+==================================================
+文件: manifest.json
+==================================================
+{
+  "manifest_version": 3,
+  "name": "URL Jumper & Auto Messenger",
+  "version": "1.0.2",
+  "description": "URL跳转工具，支持自动消息发送",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_popup": "popup/popup.html",
+    "default_title": "URL Jumper"
+  },
+  "permissions": [
+    "tabs",
+    "storage",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["contentScripts/*.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
+
+==================================================
+文件: contentScripts\gemini.js
+==================================================
+// 通过 XPath 获取元素（复用函数）
+function getElementByXpath(xpath) {
+  const result = document.evaluate(
+    xpath,
+    document,
+    null,
+    XPathResult.FIRST_ORDERED_NODE_TYPE,
+    null
+  );
+  return result.singleNodeValue;
+}
+
+// 触发输入元素的完整事件序列
+function triggerInputEvents(element) {
+  const eventTypes = ['input', 'change', 'keydown', 'keypress', 'keyup'];
+  eventTypes.forEach(eventType => {
+    const event = new Event(eventType, {
+      bubbles: true,
+      cancelable: true
+    });
+    element.dispatchEvent(event);
+  });
+}
+
+// 更可靠的点击方法（支持完整鼠标事件序列）
+function triggerClick(element) {
+  if (!element) return false;
+  
+  // 检查元素是否可见/可点击
+  if (element.offsetParent === null || element.disabled) {
+    console.warn('元素不可点击', element);
+    return false;
+  }
+  
+  // 完整的鼠标事件序列
+  const mouseEvents = ['mousedown', 'mouseup', 'click'];
+  mouseEvents.forEach(eventType => {
+    const event = new MouseEvent(eventType, {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      buttons: 1
+    });
+    element.dispatchEvent(event);
+  });
+  
+  // 实际执行点击
+  element.click();
+  return true;
+}
+
+// 主函数：输入文本并发送
+function sendChatMessage(message) {
+  // 1. 定位输入框
+  const inputXPath = '//*[@id="app-root"]/main/side-navigation-v2/mat-sidenav-container/mat-sidenav-content/div/div[2]/chat-window/div/input-container/div/input-area-v2/div/div/div[1]/div/div/rich-textarea/div[1]/p';
+  const inputElement = getElementByXpath(inputXPath);
+  
+  if (!inputElement) {
+    console.error("未找到输入框元素");
+    return false;
+  }
+  
+  // 2. 输入文本（支持contenteditable元素）
+  try {
+    if (inputElement.isContentEditable || inputElement.tagName === 'P') {
+      inputElement.textContent = message;
+      // 富文本可能需要更复杂的处理
+      document.execCommand('insertText', false, message);
+    } else {
+      inputElement.value = message;
+    }
+    triggerInputEvents(inputElement);
+  } catch (e) {
+    console.error('输入文本失败:', e);
+    return false;
+  }
+  
+  // 3. 定位并点击发送按钮
+  const buttonXPath = '//*[@id="app-root"]/main/side-navigation-v2/mat-sidenav-container/mat-sidenav-content/div/div[2]/chat-window/div/input-container/div/input-area-v2/div/div/div[3]/div/div[2]/button/span[3]';
+  const buttonElement = getElementByXpath(buttonXPath)?.closest('button') || getElementByXpath(buttonXPath);
+  
+  if (!buttonElement) {
+    console.error("未找到发送按钮");
+    return false;
+  }
+  
+  // 4. 执行点击（带延迟确保内容已处理）
+  setTimeout(() => {
+    if (!triggerClick(buttonElement)) {
+      console.error("发送失败，尝试备用方案...");
+      // 备选方案：直接触发父级按钮点击
+      const parentButton = buttonElement.closest('button');
+      if (parentButton && parentButton !== buttonElement) {
+        triggerClick(parentButton);
+      }
+    }
+  }, 100);
+  
+  return true;
+}
+
+// 使用示例
+sendChatMessage("在浏览器控制台能否控制多个页面执行方法");
+
+// 可选：自动重试机制（针对动态加载的内容）
+function sendWithRetry(message, maxRetries = 3, interval = 500) {
+  let attempts = 0;
+  
+  const trySend = () => {
+    attempts++;
+    if (sendChatMessage(message)) {
+      console.log('消息发送成功');
+      return;
+    }
+    
+    if (attempts < maxRetries) {
+      console.log(`尝试 ${attempts}/${maxRetries}...`);
+      setTimeout(trySend, interval);
+    } else {
+      console.error('达到最大重试次数，发送失败');
+    }
+  };
+  
+  trySend();
+}
+
+
+
+==================================================
+文件: contentScripts\messageSender.js
+==================================================
+
+// 通过 XPath 获取目标输入框元素
+function getElementByXpath(xpath) {
+  const result = document.evaluate(
+    xpath,
+    document,
+    null,
+    XPathResult.FIRST_ORDERED_NODE_TYPE,
+    null
+  );
+  return result.singleNodeValue;
+}
+
+// 输入内容到目标元素
+function inputContentToDialog(content, callback) {
+  const targetXPath = '//*[@id="app"]/div[1]/div[2]/div/div/div[1]/div/div[1]/div/div[3]/div/div[4]/div/div/div[2]/div[2]/div/div/div[1]';
+  
+  const inputElement = getElementByXpath(targetXPath);
+  
+  if (!inputElement) {
+    console.error("无法通过 XPath 找到元素");
+    return callback && callback(false);
+  }
+
+  // 检查元素类型并处理
+  if (inputElement.tagName === 'INPUT' || inputElement.tagName === 'TEXTAREA') {
+    inputElement.value = content;
+    triggerInputEvents(inputElement);
+    callback && setTimeout(callback, 50); // 加入短暂延迟
+  } else if (inputElement.getAttribute('contenteditable') === 'true') {
+    inputElement.innerHTML = '';
+    document.execCommand('insertText', false, content);
+    callback && setTimeout(callback, 50); // 富文本框需要额外处理时间
+  } else {
+    console.error('无法识别的输入元素类型');
+    callback && callback(false);
+  }
+}
+
+// 触发必要的事件
+function triggerInputEvents(element) {
+  const eventTypes = ['input', 'change', 'keydown', 'keyup'];
+  eventTypes.forEach(eventType => {
+    const event = new Event(eventType, {
+      bubbles: true,
+      cancelable: true
+    });
+    element.dispatchEvent(event);
+  });
+}
+
+// 更可靠的点击发送方法
+function clickSendButton() {
+  const buttonId = 'yuanbao-send-btn';
+  
+  // 方法1：优先尝试直接点击
+  const sendButton = document.getElementById(buttonId);
+  if (sendButton) {
+    // 检查按钮状态
+    if (sendButton.disabled) {
+      console.warn('发送按钮处于禁用状态');
+      return false;
+    }
+    
+    // 创建更完整的鼠标事件序列
+    const mouseEvents = ['mousedown', 'mouseup', 'click'];
+    mouseEvents.forEach(eventType => {
+      const event = new MouseEvent(eventType, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        buttons: 1
+      });
+      sendButton.dispatchEvent(event);
+    });
+    return true;
+  }
+  
+  console.error(`未找到ID为 ${buttonId} 的发送按钮`);
+  return false;
+}
+
+// 主执行函数 (输入+发送)
+function sendMessage(content) {
+  inputContentToDialog(content, function() {
+    // 添加额外延迟确保内容处理完成
+    setTimeout(() => {
+      if (!clickSendButton()) {
+        console.error("消息发送失败，尝试备用方案...");
+        // 备选方案：在页面完全加载后重试
+        document.addEventListener('DOMContentLoaded', () => clickSendButton());
+      }
+    }, 100); // 增加100ms延迟确保内容已处理
+  });
+}
+
+// 监听插件消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "sendMessage") {
+    console.log(`收到消息发送请求: ${request.message}`);
+    sendMessage(request.message);
+    sendResponse({status: "success"});
+  }
+});
+
+==================================================
+文件: popup\popup.html
+==================================================
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>URL Jumper & Auto Messenger</title>
+  <style>
+    /* 原有样式保持不变 */
+    .script-form {
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px solid #eaeaea;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+    }
+    .message-input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .script-send-btn {
+      width: 100%;
+      padding: 8px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .script-send-btn:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+  <h1>URL跳转工具</h1>
+  <input type="text" class="url-input" placeholder="输入URL地址 (如: https://example.com)">
+  <button class="jump-button">跳转</button>
+  
+
+
+  <div class="directory">
+    <!-- 新增消息发送面板 -->
+    <div class="script-form">
+      <h3>消息发送脚本</h3>
+      <input type="text" class="message-input" 
+             placeholder="输入要发送的消息" 
+             value="在浏览器控制台能否控制多个页面 执行方法">
+      <button class="script-send-btn">发送消息到当前页面</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+
+==================================================
+文件: popup\popup.js
+==================================================
+document.addEventListener('DOMContentLoaded', function() {
+  const urlInput = document.querySelector('.url-input');
+  const jumpButton = document.querySelector('.jump-button');
+  const messageInput = document.querySelector('.message-input');
+  const scriptSendBtn = document.querySelector('.script-send-btn');
+  
+  // 加载历史URL和消息
+  chrome.storage.sync.get(['lastUrl', 'lastMessage'], (result) => {
+    urlInput.value = result.lastUrl || '';
+    messageInput.value = result.lastMessage || '在浏览器控制台能否控制多个页面 执行方法';
+  });
+
+  // 跳转功能
+  const navigateToUrl = (url) => {
+    let finalUrl = url;
+    if (!/^https?:\/\//i.test(url)) {
+      finalUrl = `https://${url}`;
+    }
+    
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      tabs[0] 
+        ? chrome.tabs.update(tabs[0].id, { url: finalUrl })
+        : chrome.tabs.create({ url: finalUrl });
+    });
+  };
+
+  // 跳转按钮
+  jumpButton.addEventListener('click', () => {
+    const url = urlInput.value.trim();
+    if (url) {
+      chrome.storage.sync.set({ lastUrl: url });
+      navigateToUrl(url);
+    }
+  });
+
+  // 回车跳转
+  urlInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && urlInput.value.trim()) {
+      jumpButton.click();
+    }
+  });
+
+  // 目录项点击
+  document.querySelectorAll('.directory-item').forEach(item => {
+    item.addEventListener('click', function() {
+      const url = this.dataset.url;
+      const isScriptAction = this.classList.contains('script-action');
+      
+      if (isScriptAction) {
+        chrome.storage.local.set({
+          scriptAction: {
+            run: true,
+            url: url,
+            name: this.textContent.trim()
+          }
+        });
+      }
+      
+      urlInput.value = url;
+      navigateToUrl(url);
+    });
+  });
+  
+  // 消息发送按钮
+  scriptSendBtn.addEventListener('click', () => {
+    const message = messageInput.value.trim();
+    if (message) {
+      // 保存消息
+      chrome.storage.sync.set({ lastMessage: message });
+      
+      // 获取当前活动标签页
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          // 准备执行脚本的数据
+          const scriptData = {
+            run: true,
+            url: tabs[0].url,
+            name: "发送消息到页面",
+            message: message
+          };
+          
+          // 保存并执行脚本
+          chrome.storage.local.set({ scriptAction: scriptData }, () => {
+            // 在当前页面执行脚本
+            chrome.scripting.executeScript({
+              target: { tabId: tabs[0].id },
+              files: ['contentScripts/messageSender.js']
+            }, () => {
+              // 发送消息
+              chrome.tabs.sendMessage(tabs[0].id, {
+                action: "sendMessage",
+                message: message
+              });
+            });
+          });
+        }
+      });
+    }
+  });
+});
+
+共发现 7 个文本文件
