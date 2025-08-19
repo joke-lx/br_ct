@@ -1,4 +1,11 @@
 扫描根目录: D:\a_js\js_proj\br_controller\ext
+扫描时间: 2025-08-20 01:10:22
+
+
+==================================================
+文件: auto_text_all.txt
+==================================================
+扫描根目录: D:\a_js\js_proj\br_controller\ext
 扫描时间: 2025-08-20 00:51:23
 
 
@@ -538,3 +545,762 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 共发现 6 个文本文件
+
+==================================================
+文件: background.js
+==================================================
+// 监听来自popup的消息，启动任务队列处理
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "processQueue") {
+    console.log("收到处理队列的请求");
+    processNextAction();
+    sendResponse({ status: "processing_started" });
+  }
+  return true; // 异步响应
+});
+
+// 处理队列中的下一个任务
+function processNextAction() {
+  chrome.storage.local.get('actionsQueue', (result) => {
+    const queue = result.actionsQueue;
+
+    // 如果队列为空，则任务完成
+    if (!queue || queue.length === 0) {
+      console.log("任务队列已空，处理完成");
+      chrome.storage.local.remove('actionsQueue'); // 清理存储
+      return;
+    }
+
+    const nextAction = queue[0];
+    console.log("正在处理下一个任务:", nextAction);
+
+    // 查询是否已存在目标平台的标签页
+    chrome.tabs.query({}, (tabs) => {
+      const targetTab = tabs.find(tab => isUrlForPlatform(tab.url, nextAction.platform));
+
+      if (targetTab) {
+        // 如果存在，则更新并激活该标签页
+        console.log(`为 ${nextAction.platform} 找到已存在标签页 ${targetTab.id}，正在更新`);
+        chrome.tabs.update(targetTab.id, { url: nextAction.url, active: true });
+      } else {
+        // 如果不存在，则创建新标签页
+        console.log(`未找到 ${nextAction.platform} 的标签页，正在创建`);
+        chrome.tabs.create({ url: nextAction.url, active: true });
+      }
+    });
+  });
+}
+
+// 监听标签页更新，当目标页面加载完成后注入脚本
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url) {
+    chrome.storage.local.get('actionsQueue', (result) => {
+      const queue = result.actionsQueue;
+
+      // 检查队列中是否有待处理的任务
+      if (queue && queue.length > 0) {
+        const currentAction = queue[0];
+
+        // 检查加载完成的页面是否是当前任务的目标平台
+        if (isUrlForPlatform(tab.url, currentAction.platform)) {
+          console.log(`标签页 ${tabId} (${currentAction.platform}) 加载完成，准备执行脚本`);
+          executeScriptForPlatform(tabId, currentAction);
+        }
+      }
+    });
+  }
+});
+
+// 辅助函数：检查URL是否匹配平台
+function isUrlForPlatform(url, platform) {
+  if (!url) return false;
+  if (platform === 'yuanbao' && url.includes('yuanbao.tencent.com')) return true;
+  if (platform === 'gemini' && url.includes('gemini.google.com')) return true;
+  return false;
+}
+
+// 根据平台信息，执行相应的内容脚本
+function executeScriptForPlatform(tabId, action) {
+  const scriptFile = `contentScripts/${action.platform}.js`;
+
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    files: [scriptFile]
+  }, () => {
+    // 脚本注入后，向其发送消息
+    chrome.tabs.sendMessage(tabId, {
+      action: "sendMessage",
+      message: action.message
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error(`向 ${action.platform} 发送消息时出错:`, chrome.runtime.lastError.message);
+      } else {
+        console.log(`成功向 ${action.platform} 发送消息，响应:`, response);
+      }
+
+      // 任务完成（无论成功与否），从队列中移除，并处理下一个
+      chrome.storage.local.get('actionsQueue', (result) => {
+        let queue = result.actionsQueue || [];
+        // 预防竞态条件：确保我们完成的任务仍然是队列的第一个
+        if (queue.length > 0 && queue[0].platform === action.platform) {
+          queue.shift(); // 移除已完成的任务
+          console.log("任务完成，更新队列:", queue);
+          chrome.storage.local.set({ actionsQueue: queue }, () => {
+            // 触发下一个任务
+            processNextAction();
+          });
+        }
+      });
+    });
+  });
+}
+
+
+==================================================
+文件: manifest.json
+==================================================
+{
+  "manifest_version": 3,
+  "name": "AI Assistant",
+  "version": "1.1.0",
+  "description": "多端AI调度工具，支持Yuanbao和Gemini",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_popup": "popup/popup.html",
+    "default_title": "AI Assistant"
+  },
+"permissions": [
+  "tabs",
+  "storage",
+  "scripting",
+  "activeTab",
+  "notifications"
+],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["contentScripts/*.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
+
+==================================================
+文件: contentScripts\gemini.js
+==================================================
+// 通过 XPath 获取元素
+function getElementByXpath(xpath) {
+  const result = document.evaluate(
+    xpath,
+    document,
+    null,
+    XPathResult.FIRST_ORDERED_NODE_TYPE,
+    null
+  );
+  return result.singleNodeValue;
+}
+
+// 触发输入元素的完整事件序列
+function triggerInputEvents(element) {
+  // 现代浏览器中，直接设置 textContent/value 后
+  // 派遣 'input' 事件通常就足够了。
+  const inputEvent = new Event('input', {
+    bubbles: true,
+    cancelable: true
+  });
+  element.dispatchEvent(inputEvent);
+}
+
+// 更可靠的点击方法
+function triggerClick(element) {
+  if (!element) return false;
+  if (element.offsetParent === null || element.disabled) {
+    console.warn('元素不可点击', element);
+    return false;
+  }
+  // 优先使用 element.click()，它在大多数情况下都有效
+  element.click();
+  return true;
+}
+
+/**
+ * 优化的函数：按优先级尝试多个选择器来查找输入框
+ */
+function findInputElement() {
+  const xpaths = [
+    // 最佳选择：定位在 rich-textarea 组件内的 p 标签 (最稳定)
+    '//rich-textarea/div[1]/p',
+    // 备选方案1：通过 ARIA role 属性定位 (非常稳定)
+    "//div[@role='textbox'][@contenteditable='true']/p",
+    // 备选方案2：通过可能的父容器 class 定位 (比较稳定)
+    "//div[contains(@class, 'input-area')]//p[@contenteditable='true']",
+    // 最后的备用方案：您的原始 XPath
+    '//*[@id="app-root"]/main/side-navigation-v2/mat-sidenav-container/mat-sidenav-content/div/div[2]/chat-window/div/input-container/div/input-area-v2/div/div/div[1]/div/div/rich-textarea/div[1]/p'
+  ];
+
+  for (const xpath of xpaths) {
+    const element = getElementByXpath(xpath);
+    if (element) {
+      console.log(`使用 XPath 成功找到输入框: ${xpath}`);
+      return element;
+    }
+  }
+
+  return null; // 如果所有 XPath 都失败了
+}
+
+
+// 主函数：输入文本并发送
+function sendChatMessage(message) {
+  // 1. 使用优化的逻辑定位输入框
+  const inputElement = findInputElement();
+
+  if (!inputElement) {
+    console.error("使用所有备选方案后，仍未找到输入框元素。");
+    return false;
+  }
+
+  // 2. 输入文本
+  try {
+    // 对于 contenteditable 元素，直接修改 textContent 是最可靠的方式
+    inputElement.textContent = message;
+    triggerInputEvents(inputElement); // 触发事件以通知框架更新状态
+  } catch (e) {
+    console.error('输入文本失败:', e);
+    return false;
+  }
+
+  // 3. 定位并点击发送按钮 (这里的 XPath 也建议优化)
+  // 建议优化为: //button[@aria-label='Send message'] 或 //button[contains(@class, 'send-button')]
+  const buttonXPath = "//button[.//span[contains(text(),'Send')]] | //button[@aria-label='Send message'] | //button[contains(@class, 'send')]";
+  let buttonElement = getElementByXpath(buttonXPath);
+  
+  if (!buttonElement) {
+      // 备用查找发送按钮的逻辑
+      const originalButtonXPath = '//*[@id="app-root"]/main/side-navigation-v2/mat-sidenav-container/mat-sidenav-content/div/div[2]/chat-window/div/input-container/div/input-area-v2/div/div/div[3]/div/div[2]/button';
+      buttonElement = getElementByXpath(originalButtonXPath);
+  }
+
+  if (!buttonElement) {
+    console.error("未找到发送按钮");
+    return false;
+  }
+  
+  // 4. 延时后执行点击，确保输入事件被处理
+  setTimeout(() => {
+    if (!triggerClick(buttonElement)) {
+      console.error("发送失败");
+    }
+  }, 100);
+
+  return true;
+}
+
+// 监听插件消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "sendMessage") {
+    console.log(`收到消息发送请求: ${request.message}`);
+    const success = sendChatMessage(request.message);
+    sendResponse({
+      status: success ? "success" : "failed"
+    });
+  }
+  return true; // 异步响应时需要返回 true
+});
+
+==================================================
+文件: contentScripts\yuanbao.js
+==================================================
+// 通过 XPath 获取目标输入框元素
+function getElementByXpath(xpath) {
+  const result = document.evaluate(
+    xpath,
+    document,
+    null,
+    XPathResult.FIRST_ORDERED_NODE_TYPE,
+    null
+  );
+  return result.singleNodeValue;
+}
+
+// 输入内容到目标元素
+function inputContentToDialog(content, callback) {
+  const targetXPath = '//*[@id="app"]/div[1]/div[2]/div/div/div[1]/div/div[1]/div/div[3]/div/div[4]/div/div/div[2]/div[2]/div/div/div[1]';
+  
+  const inputElement = getElementByXpath(targetXPath);
+  
+  if (!inputElement) {
+    console.error("无法通过 XPath 找到元素");
+    return callback && callback(false);
+  }
+
+  // 检查元素类型并处理
+  if (inputElement.tagName === 'INPUT' || inputElement.tagName === 'TEXTAREA') {
+    inputElement.value = content;
+    triggerInputEvents(inputElement);
+    callback && setTimeout(callback, 50);
+  } else if (inputElement.getAttribute('contenteditable') === 'true') {
+    inputElement.innerHTML = '';
+    document.execCommand('insertText', false, content);
+    callback && setTimeout(callback, 50);
+  } else {
+    console.error('无法识别的输入元素类型');
+    callback && callback(false);
+  }
+}
+
+// 触发必要的事件
+function triggerInputEvents(element) {
+  const eventTypes = ['input', 'change', 'keydown', 'keyup'];
+  eventTypes.forEach(eventType => {
+    const event = new Event(eventType, {
+      bubbles: true,
+      cancelable: true
+    });
+    element.dispatchEvent(event);
+  });
+}
+
+// 更可靠的点击发送方法
+function clickSendButton() {
+  const buttonId = 'yuanbao-send-btn';
+  
+  // 方法1：优先尝试直接点击
+  const sendButton = document.getElementById(buttonId);
+  if (sendButton) {
+    // 检查按钮状态
+    if (sendButton.disabled) {
+      console.warn('发送按钮处于禁用状态');
+      return false;
+    }
+    
+    // 创建更完整的鼠标事件序列
+    const mouseEvents = ['mousedown', 'mouseup', 'click'];
+    mouseEvents.forEach(eventType => {
+      const event = new MouseEvent(eventType, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        buttons: 1
+      });
+      sendButton.dispatchEvent(event);
+    });
+    return true;
+  }
+  
+  console.error(`未找到ID为 ${buttonId} 的发送按钮`);
+  return false;
+}
+
+// 主执行函数 (输入+发送)
+function sendMessage(content) {
+  inputContentToDialog(content, function() {
+    // 添加额外延迟确保内容处理完成
+    setTimeout(() => {
+      if (!clickSendButton()) {
+        console.error("消息发送失败，尝试备用方案...");
+        // 备选方案：在页面完全加载后重试
+        document.addEventListener('DOMContentLoaded', () => clickSendButton());
+      }
+    }, 100);
+  });
+}
+
+// 监听插件消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "sendMessage") {
+    console.log(`收到消息发送请求: ${request.message}`);
+    sendMessage(request.message);
+    sendResponse({status: "success"});
+  }
+});
+
+==================================================
+文件: popup\popup.html
+==================================================
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>AI Assistant</title>
+  <style>
+    body {
+      width: 400px;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    .header h1 {
+      font-size: 20px;
+      color: #333;
+    }
+    .platform-selector {
+      margin-bottom: 20px;
+    }
+    .platform-option {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      margin-bottom: 10px;
+      background-color: white;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .platform-option:hover {
+      background-color: #f0f7ff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+    .platform-option.active {
+      background-color: #e6f2ff;
+      border-left: 4px solid #0078d7;
+    }
+    .platform-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      background-color: #ddd;
+      border-radius: 4px;
+    }
+    .platform-name {
+      font-weight: 500;
+    }
+    .message-input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      resize: vertical;
+      min-height: 100px;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+    .send-button {
+      flex: 1;
+      width: 100%;
+      padding: 12px;
+      background-color: #0078d7;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .send-button:hover {
+      background-color: #106ebe;
+    }
+    .send-button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>AI Assistant</h1>
+    <p>多端AI调度工具</p>
+  </div>
+  
+  <div class="platform-selector">
+    <div class="platform-option active" data-platform="yuanbao">
+      <div class="platform-icon"></div>
+      <div class="platform-name">腾讯元宝</div>
+    </div>
+    <div class="platform-option" data-platform="gemini">
+      <div class="platform-icon"></div>
+      <div class="platform-name">Google Gemini</div>
+    </div>
+  </div>
+  
+  <textarea class="message-input" placeholder="输入要发送的消息">在浏览器控制台能否控制多个页面执行方法</textarea>
+  
+  <div class="button-group">
+    <button class="send-button" id="send-button">发送消息</button>
+    <button class="send-button" id="send-all-button">依次发送</button>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
+
+==================================================
+文件: popup\popup.js
+==================================================
+document.addEventListener('DOMContentLoaded', function() {
+  const platformOptions = document.querySelectorAll('.platform-option');
+  const messageInput = document.querySelector('.message-input');
+  const sendButton = document.querySelector('.send-button');
+  
+  // 当前选中的平台
+  let selectedPlatform = 'yuanbao';
+  
+  // 加载历史消息
+  chrome.storage.sync.get(['lastMessage'], (result) => {
+    if (result.lastMessage) {
+      messageInput.value = result.lastMessage;
+    }
+  });
+  
+  // 平台选择事件
+  platformOptions.forEach(option => {
+    option.addEventListener('click', function() {
+      // 更新UI状态
+      platformOptions.forEach(opt => opt.classList.remove('active'));
+      this.classList.add('active');
+      
+      // 更新选中的平台
+      selectedPlatform = this.dataset.platform;
+    });
+  });
+  
+  // 发送按钮事件
+  sendButton.addEventListener('click', function() {
+    const message = messageInput.value.trim();
+    if (!message) {
+      alert('请输入消息内容');
+      return;
+    }
+    
+    // 保存消息
+    chrome.storage.sync.set({ lastMessage: message });
+    
+    // 禁用按钮防止重复点击
+    sendButton.disabled = true;
+    sendButton.textContent = '发送中...';
+    
+    // 准备执行脚本的数据
+    const aiAction = {
+      run: true,
+      platform: selectedPlatform,
+      message: message
+    };
+    
+    // 根据平台设置目标URL
+    let targetUrl;
+    if (selectedPlatform === 'yuanbao') {
+      targetUrl = 'https://yuanbao.tencent.com/chat/naQivTmsDa';
+    } else if (selectedPlatform === 'gemini') {
+      targetUrl = 'https://gemini.google.com/app?hl=zh-cn';
+    }
+    
+    // 保存并执行脚本
+    chrome.storage.local.set({ aiAction }, () => {
+      // 获取当前活动标签页
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0] && tabs[0].url.includes(targetUrl)) {
+          // 如果当前标签页已经是目标平台，直接执行脚本
+          chrome.tabs.reload(tabs[0].id);
+        } else {
+          // 否则创建新标签页或更新当前标签页
+          if (tabs[0]) {
+            chrome.tabs.update(tabs[0].id, { url: targetUrl });
+          } else {
+            chrome.tabs.create({ url: targetUrl });
+          }
+        }
+        
+        // 恢复按钮状态
+        setTimeout(() => {
+          sendButton.disabled = false;
+          sendButton.textContent = '发送消息';
+        }, 3000);
+      });
+    });
+  });
+});
+
+
+
+document.addEventListener('DOMContentLoaded', function() {
+
+  const platformOptions = document.querySelectorAll('.platform-option');
+
+  const messageInput = document.querySelector('.message-input');
+
+  const sendButton = document.getElementById('send-button');
+
+  const sendAllButton = document.getElementById('send-all-button');
+
+
+
+  // 当前选中的平台
+
+  let selectedPlatform = 'yuanbao';
+
+
+
+  // 加载历史消息
+
+  chrome.storage.sync.get(['lastMessage'], (result) => {
+
+    if (result.lastMessage) {
+
+      messageInput.value = result.lastMessage;
+
+    }
+
+  });
+
+
+
+  // 平台选择事件
+
+  platformOptions.forEach(option => {
+
+    option.addEventListener('click', function() {
+
+      // 更新UI状态
+
+      platformOptions.forEach(opt => opt.classList.remove('active'));
+
+      this.classList.add('active');
+
+      
+
+      // 更新选中的平台
+
+      selectedPlatform = this.dataset.platform;
+
+    });
+
+  });
+
+
+
+  // 统一的发送处理函数
+
+  function startSending(actions) {
+
+    const message = messageInput.value.trim();
+
+    if (!message) {
+
+      // 在popup中使用alert是安全的
+
+      alert('请输入消息内容');
+
+      return;
+
+    }
+
+
+
+    // 保存消息历史
+
+    chrome.storage.sync.set({ lastMessage: message });
+
+
+
+    // 禁用按钮
+
+    sendButton.disabled = true;
+
+    sendAllButton.disabled = true;
+
+    sendButton.textContent = '发送中...';
+
+    sendAllButton.textContent = '发送中...';
+
+
+
+    // 根据传入的动作信息创建任务队列
+
+    const actionsQueue = actions.map(actionInfo => ({
+
+      platform: actionInfo.platform,
+
+      message: message,
+
+      url: actionInfo.url
+
+    }));
+
+
+
+    // 存储任务队列，并通知后台脚本开始处理
+
+    chrome.storage.local.set({ actionsQueue }, () => {
+
+      chrome.runtime.sendMessage({ action: "processQueue" }, () => {
+
+        // 通知后台后，关闭popup
+
+        window.close();
+
+      });
+
+    });
+
+  }
+
+
+
+  // “发送消息”按钮事件 (单个平台)
+
+  sendButton.addEventListener('click', function() {
+
+    let targetUrl;
+
+    if (selectedPlatform === 'yuanbao') {
+
+      targetUrl = 'https://yuanbao.tencent.com/chat/naQivTmsDa';
+
+    } else if (selectedPlatform === 'gemini') {
+
+      targetUrl = 'https://gemini.google.com/app?hl=zh-cn';
+
+    }
+
+    startSending([{ platform: selectedPlatform, url: targetUrl }]);
+
+  });
+
+
+
+  // “依次发送”按钮事件 (所有平台)
+
+  sendAllButton.addEventListener('click', function() {
+
+    startSending([
+
+      { platform: 'yuanbao', url: 'https://yuanbao.tencent.com/chat/naQivTmsDa' },
+
+      { platform: 'gemini', url: 'https://gemini.google.com/app?hl=zh-cn' }
+
+    ]);
+
+  });
+
+});
+
+
+共发现 7 个文本文件
