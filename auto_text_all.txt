@@ -1,0 +1,174 @@
+扫描根目录: D:\a_js\js_proj\br_controller\ext
+扫描时间: 2025-08-19 23:51:44
+
+
+==================================================
+文件: manifest.json
+==================================================
+{
+  "manifest_version": 3,
+  "name": "URL Jumper",
+  "version": "1.0",
+  "description": "一个简单的URL跳转插件",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_popup": "popup/popup.html",
+    "default_title": "URL Jumper"
+  },
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ]
+}
+
+==================================================
+文件: popup\popup.html
+==================================================
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>URL Jumper</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    h1 {
+      font-size: 16px;
+      margin-bottom: 10px;
+      color: #333;
+    }
+    .url-input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .jump-button {
+      width: 100%;
+      padding: 8px;
+      background-color: #0078d7;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .jump-button:hover {
+      background-color: #106ebe;
+    }
+    .directory {
+      margin-top: 15px;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
+    }
+    .directory-item {
+      padding: 5px;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .directory-item:hover {
+      background-color: #f5f5f5;
+    }
+  </style>
+</head>
+<body>
+  <h1>URL跳转工具</h1>
+  <input type="text" class="url-input" placeholder="输入URL地址 (如: https://example.com)">
+  <button class="jump-button">跳转</button>
+  
+  <div class="directory">
+    <h2>常用网站</h2>
+    <div class="directory-item" data-url="https://www.bing.com">Bing搜索</div>
+    <div class="directory-item" data-url="https://www.github.com">GitHub</div>
+    <div class="directory-item" data-url="https://stackoverflow.com">Stack Overflow</div>
+    <div class="directory-item" data-url="https://learn.microsoft.com">Microsoft Learn</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+
+==================================================
+文件: popup\popup.js
+==================================================
+document.addEventListener('DOMContentLoaded', function() {
+  const urlInput = document.querySelector('.url-input');
+  const jumpButton = document.querySelector('.jump-button');
+  const directoryItems = document.querySelectorAll('.directory-item');
+  
+  // 从存储中加载上次使用的URL
+  chrome.storage.sync.get(['lastUrl'], function(result) {
+    if (result.lastUrl) {
+      urlInput.value = result.lastUrl;
+    }
+  });
+
+  // 跳转按钮点击事件
+  jumpButton.addEventListener('click', function() {
+    const url = urlInput.value.trim();
+    if (url) {
+      // 保存当前URL
+      chrome.storage.sync.set({ lastUrl: url });
+      
+      // 跳转到指定URL
+      navigateToUrl(url);
+    }
+  });
+
+  // 输入框回车事件
+  urlInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      const url = urlInput.value.trim();
+      if (url) {
+        chrome.storage.sync.set({ lastUrl: url });
+        navigateToUrl(url);
+      }
+    }
+  });
+
+  // 目录项点击事件
+  directoryItems.forEach(item => {
+    item.addEventListener('click', function() {
+      const url = this.getAttribute('data-url');
+      urlInput.value = url;
+      navigateToUrl(url);
+    });
+  });
+
+  // 跳转到URL的函数
+  function navigateToUrl(url) {
+    // 检查URL是否包含协议头，如果没有则添加https://
+    let finalUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      finalUrl = 'https://' + url;
+    }
+    
+    // 使用chrome.tabs API创建或更新标签页
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+      if (tabs[0]) {
+        // 更新当前活动标签页
+        chrome.tabs.update(tabs[0].id, { url: finalUrl });
+      } else {
+        // 创建新标签页
+        chrome.tabs.create({ url: finalUrl });
+      }
+    });
+  }
+});
+
+共发现 3 个文本文件

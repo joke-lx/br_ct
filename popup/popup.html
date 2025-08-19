@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>URL Jumper & Auto Messenger</title>
+  <style>
+    /* 原有样式保持不变 */
+    .script-form {
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px solid #eaeaea;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+    }
+    .message-input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .script-send-btn {
+      width: 100%;
+      padding: 8px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .script-send-btn:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+  <h1>URL跳转工具</h1>
+  <input type="text" class="url-input" placeholder="输入URL地址 (如: https://example.com)">
+  <button class="jump-button">跳转</button>
+  
+  <div class="directory">
+    <h2>常用网站</h2>
+    <div class="directory-item" data-url="https://www.bing.com">Bing搜索</div>
+    <div class="directory-item" data-url="https://www.github.com">GitHub</div>
+    <div class="directory-item" data-url="https://stackoverflow.com">Stack Overflow</div>
+    <div class="directory-item" data-url="https://learn.microsoft.com">Microsoft Learn</div>
+  </div>
+
+  <div class="directory">
+    <h2>自动脚本</h2>
+    <div class="directory-item script-item script-action" 
+         data-url="https://www.bing.com" 
+         data-script="true">Bing自动搜索测试</div>
+    
+    <!-- 新增消息发送面板 -->
+    <div class="script-form">
+      <h3>消息发送脚本</h3>
+      <input type="text" class="message-input" 
+             placeholder="输入要发送的消息" 
+             value="在浏览器控制台能否控制多个页面 执行方法">
+      <button class="script-send-btn">发送消息到当前页面</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
