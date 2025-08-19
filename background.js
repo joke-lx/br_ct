@@ -5,7 +5,7 @@ const platformUrls = {
   gemini: 'https://gemini.google.com/app'
 };
 
-// 监听来自 popup 的任务请求
+// 监听来自 popup 的任务请求 队列分发函数 分发到具体的函数 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "processTaskQueue") {
     // 收到任务队列，保存并开始处理第一个任务
@@ -70,7 +70,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
-// 辅助函数：根据平台信息，执行相应的内容脚本
+// 具体调用执行的脚本
 function executeScriptForPlatform(tabId, action) {
   const scriptFile = `contentScripts/${action.platform}.js`;
 
