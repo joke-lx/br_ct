@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
       this.classList.add('active');
       
       // 更新选中的平台
-      selectedPlatform = this.dataset.platform; 
+      selectedPlatform = this.dataset.platform;  
     });
   });
 
