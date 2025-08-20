@@ -53,6 +53,7 @@ function processNextAction() {
 
 // 监听标签页更新，仅在新标签页加载完成后执行脚本
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // 标签页加载完成的检查
   if (changeInfo.status === 'complete' && tab.url) {
     chrome.storage.local.get('actionsQueue', (result) => {
       const queue = result.actionsQueue || [];
@@ -61,7 +62,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       const currentAction = queue[0];
       const targetUrl = platformUrls[currentAction.platform];
       
-      // 检查加载完成的页面是否是当前任务的目标平台
+      // 检查加载完成的页面是否是当前任务的目标平台 
+      // ======20250820-[Comment]-0598  检查队列  通过监听对象的api 模拟出主动出发 自动检查消息容器
       if (tab.url.includes(targetUrl)) {
         console.log(`新标签页 ${tabId} 加载完成，准备执行脚本。`);
         executeScriptForPlatform(tabId, currentAction);
@@ -86,6 +88,8 @@ function executeScriptForPlatform(tabId, action) {
     }
 
     // 脚本注入后，向其发送消息
+
+    // ======20250820-[Comment]-0599 脚本注入 通过方法名执行指定的函数名
     chrome.tabs.sendMessage(tabId, {
       action: "sendMessage",
       message: action.message
