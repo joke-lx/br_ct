@@ -33,7 +33,10 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["contentScripts/*.js"],
+     "resources": [
+        "contentScripts/*.js",
+        "funcs/*.js"  
+      ],
       "matches": ["<all_urls>"]
     }
   ]

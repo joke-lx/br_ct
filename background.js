@@ -13,7 +13,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       processNextAction();
     });
     sendResponse({ status: "processing_started" });
+  }else if (request.action === "executeFunctionScript") {
+    // 新增逻辑：处理脚本执行请求
+    executeFunctionScript(request.file, sendResponse);
+    return true; // 异步响应
   }
+
+
   return true; // 异步响应
 });
 
@@ -118,5 +124,50 @@ function completeTask(action) {
         processNextAction();
       });
     }
+  });
+}
+// 新增函数：执行指定目录下的脚本
+function executeFunctionScript(scriptFile, sendResponse) {
+  // 获取当前活跃的标签页
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs.length === 0) {
+      sendResponse({ status: 'failed', message: '未找到活跃的标签页。' });
+      return;
+    }
+
+    const tabId = tabs[0].id;
+
+    // 注入脚本
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: [`funcs/${scriptFile}`] // 注入 funcs 目录下的脚本
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("脚本注入失败:", chrome.runtime.lastError.message);
+        sendResponse({ status: 'failed', message: chrome.runtime.lastError.message });
+        return;
+      }
+      
+      // 脚本注入后，执行其 main() 函数
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        func: () => {
+          // 在被注入的页面环境中调用 main() 函数
+          if (typeof main === 'function') {
+            main();
+            return { status: 'success' };
+          }
+          return { status: 'failed', message: '未找到 main() 函数。' };
+        }
+      }, (results) => {
+        if (chrome.runtime.lastError || !results || results[0].result.status === 'failed') {
+          console.error("main() 函数执行失败:", chrome.runtime.lastError?.message || results[0].result.message);
+          sendResponse({ status: 'failed', message: chrome.runtime.lastError?.message || results[0].result.message });
+        } else {
+          console.log(`成功执行 ${scriptFile} 中的 main() 函数。`);
+          sendResponse({ status: 'success' });
+        }
+      });
+    });
   });
 }
