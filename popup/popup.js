@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 统一的发送处理函数
   function startSending(platforms) {
+    // ======20250820-[Comment]-0602 全局变量通信
     const message = messageInput.value.trim();
     if (!message) {
       // 在 popup 中使用 alert 是安全的

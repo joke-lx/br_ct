@@ -1,5 +1,5 @@
 扫描根目录: D:\a_js\js_proj\br_controller\ext
-扫描时间: 2025-08-20 17:24:32
+扫描时间: 2025-08-21 19:14:06
 
 
 ==================================================
@@ -60,6 +60,7 @@ function processNextAction() {
 
 // 监听标签页更新，仅在新标签页加载完成后执行脚本
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // 标签页加载完成的检查
   if (changeInfo.status === 'complete' && tab.url) {
     chrome.storage.local.get('actionsQueue', (result) => {
       const queue = result.actionsQueue || [];
@@ -68,7 +69,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       const currentAction = queue[0];
       const targetUrl = platformUrls[currentAction.platform];
       
-      // 检查加载完成的页面是否是当前任务的目标平台
+      // 检查加载完成的页面是否是当前任务的目标平台 
+      // ======20250820-[Comment]-0598  检查队列  通过监听对象的api 模拟出主动出发 自动检查消息容器
       if (tab.url.includes(targetUrl)) {
         console.log(`新标签页 ${tabId} 加载完成，准备执行脚本。`);
         executeScriptForPlatform(tabId, currentAction);
@@ -93,6 +95,8 @@ function executeScriptForPlatform(tabId, action) {
     }
 
     // 脚本注入后，向其发送消息
+
+    // ======20250820-[Comment]-0599 脚本注入 通过方法名执行指定的函数名 发出对应的消息 
     chrome.tabs.sendMessage(tabId, {
       action: "sendMessage",
       message: action.message
@@ -293,6 +297,61 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 ==================================================
+文件: popup\add.html
+==================================================
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>添加新任务</title>
+  <style>
+    body {
+      width: 400px;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    .header h1 {
+      font-size: 20px;
+      color: #333;
+    }
+    .back-button {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none; /* 移除链接下划线 */
+      transition: background-color 0.2s;
+    }
+    .back-button:hover {
+      background-color: #5a6268;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>新任务添加页面</h1>
+    <p>该页面仅为示例，用于演示页面跳转。</p>
+  </div>
+  <!-- 使用a标签就可以进跳转  -->
+  <a href="popup.html" class="back-button">返回主页</a>
+</body>
+</html>
+
+==================================================
 文件: popup\popup.html
 ==================================================
 <!DOCTYPE html>
@@ -384,6 +443,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       background-color: #cccccc;
       cursor: not-allowed;
     }
+    /* 添加链接的样式 */
+.add-link {
+  color: #0078d7;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+.add-link:hover {
+  color: #106ebe;
+  text-decoration: underline;
+}
   </style>
 </head>
 <body>
@@ -409,6 +480,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     <button class="send-button" id="send-button">发送消息</button>
     <button class="send-button" id="send-all-button">依次发送</button>
   </div>
+  <div style="text-align: center; margin-bottom: 15px;">
+  <a href="add.html" class="add-link">添加新任务</a>
+</div>
+
   
   <script src="popup.js"></script>
 </body>
@@ -448,6 +523,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 统一的发送处理函数
   function startSending(platforms) {
+    // ======20250820-[Comment]-0602 全局变量通信
     const message = messageInput.value.trim();
     if (!message) {
       // 在 popup 中使用 alert 是安全的
@@ -492,4 +568,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-共发现 5 个文本文件
+共发现 6 个文本文件
