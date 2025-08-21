@@ -18,8 +18,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     executeFunctionScript(request.file, sendResponse);
     return true; // 异步响应
   }
-
-
   return true; // 异步响应
 });
 
@@ -57,6 +55,7 @@ function processNextAction() {
   });
 }
 
+// 监听全部的事件 通过容器进行调度
 // 监听标签页更新，仅在新标签页加载完成后执行脚本
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // 标签页加载完成的检查

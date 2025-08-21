@@ -4,8 +4,8 @@
 // 假设我们有一个预定义的脚本列表，或者从后端获取
 // 在实际应用中，您可能需要更复杂的机制来动态发现文件
 const scriptFiles = [
-  { name: '示例脚本 1', file: 'example_func1.js' },
-  { name: '示例脚本 2', file: 'example_func2.js' }
+  { name: 'bili专栏导出的案例 ', file: 'example_func1.js' },
+  { name: 'leecode 100 导出的案例', file: 'example_func2.js' }
 ];
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -1,34 +1,53 @@
-// funcs/example_func1.js
+// 获取父容器节点
+const parentXPath = "/html/body/div[2]/div[2]/div[2]/div/div[5]/div[1]/div[2]/div";
+const parentNode = document.evaluate(
+  parentXPath,
+  document,
+  null,
+  XPathResult.FIRST_ORDERED_NODE_TYPE,
+  null
+).singleNodeValue;
 
-function main() {
- // 获取父容器节点 - 使用类选择器代替长XPath
-const parentContainer = document.querySelector('.video-pod__list.section');
-if (!parentContainer) {
-  console.error("未找到视频列表容器，请检查选择器");
+if (!parentNode) {
+  console.error("未找到父节点，请检查XPath路径");
 } else {
-  // 收集所有视频项目（使用querySelectorAll替代XPath）
-  const videoItems = parentContainer.querySelectorAll('.pod-item.video-pod__item');
+  // 收集所有视频项目
   const items = [];
+  const maxItems = 1000; // 安全限制，避免无限循环
   
-  videoItems.forEach(item => {
+  for (let i = 1; i <= maxItems; i++) {
     try {
-      // 获取data-key并构造完整URL
-      const dataKey = item.getAttribute("data-key");
-      const titleElement = item.querySelector(".title-txt");
+      // 获取每个视频项的节点
+      const itemXPath = `${parentXPath}/div[${i}]`;
+      const node = document.evaluate(
+        itemXPath,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null
+      ).singleNodeValue;
       
-      if (!dataKey || !titleElement) return;
+      if (!node || !node.getAttribute || !node.querySelector) break;
+      
+      // 获取data-key并构造完整URL
+      const dataKey = node.getAttribute("data-key");
+      const titleElement = node.querySelector(".title-txt");
+      
+      if (!dataKey || !titleElement) continue;
       
       items.push({
         title: titleElement.textContent.trim(),
         link: `https://www.bilibili.com/video/${dataKey}`
       });
+      
     } catch (e) {
-      console.error(`处理视频项时出错:`, e);
+      console.error(`处理第${i}项时出错:`, e);
+      break;
     }
-  });
+  }
 
   // 构建输出字符串
-  let markdownOutput = `\n发现 ${items.length} 个视频：\n\n`;
+  let markdownOutput = `\n发现 ${items.length} 个视频专栏项目：\n\n`;
   let clipboardOutput = "";
   
   items.forEach((item, index) => {
@@ -65,5 +84,5 @@ if (!parentContainer) {
   }, 2000);
 }
 
-}
+
 
