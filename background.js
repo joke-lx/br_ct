@@ -47,6 +47,7 @@ function processNextAction() {
           executeScriptForPlatform(targetTab.id, currentAction);
         });
       } else {
+        // ======20250821-[Comment]-0604 进行页面的加载 Load+队列的形式 实现消费
         // 未找到，创建新标签页并等待其加载完成
         console.log(`未找到 ${currentAction.platform} 的标签页，正在创建新标签页。`);
         chrome.tabs.create({ url: targetUrl, active: true });
@@ -68,7 +69,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       const targetUrl = platformUrls[currentAction.platform];
       
       // 检查加载完成的页面是否是当前任务的目标平台 
-      // ======20250820-[Comment]-0598  检查队列  通过监听对象的api 模拟出主动出发 自动检查消息容器
+      // ======20250820-[Comment]-0598  检查队列  通过监听对象的api 模拟出主动出发 自动检查消息容器  过滤性质的容器监听实现  打开一个标签页就会进行触发 
+      // 所有对象的方法触发都会进行监听器事件的调用 自己领取需要消费的队列
       if (tab.url.includes(targetUrl)) {
         console.log(`新标签页 ${tabId} 加载完成，准备执行脚本。`);
         executeScriptForPlatform(tabId, currentAction);

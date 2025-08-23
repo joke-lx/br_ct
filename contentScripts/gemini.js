@@ -106,7 +106,9 @@ function sendChatMessage(message) {
   return true;
 }
 
-// 监听插件消息
+// 监听插件消息  通过消息进行文件之间的传递 也可以直接通过触发器调用方法
+
+// 后继方法的监听器先行的思想
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "sendMessage") {
     console.log(`收到消息发送请求: ${request.message}`);
