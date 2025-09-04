@@ -46,11 +46,39 @@
       width: 24px;
       height: 24px;
       margin-right: 10px;
-      background-color: #ddd;
       border-radius: 4px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    /* 平台特色图标样式 */
+    .platform-icon.yuanbao {
+      background-color: #00A6FB;
+    }
+    .platform-icon.gemini {
+      background: linear-gradient(45deg, #4285F4, #34A853, #FBBC05, #EA4335);
+    }
+    .platform-icon.claude {
+      background-color: #D97706;
+      position: relative;
+    }
+    .platform-icon.claude::after {
+      content: 'C';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
     }
     .platform-name {
       font-weight: 500;
+    }
+    .platform-status {
+      margin-left: auto;
+      font-size: 12px;
+      color: #666;
     }
     .message-input {
       box-sizing: border-box;
@@ -66,6 +94,7 @@
     .button-group {
       display: flex;
       gap: 10px;
+      margin-bottom: 15px;
     }
     .send-button {
       flex: 1;
@@ -87,18 +116,54 @@
       background-color: #cccccc;
       cursor: not-allowed;
     }
+    .send-button.send-all {
+      background-color: #28a745;
+    }
+    .send-button.send-all:hover {
+      background-color: #218838;
+    }
+    .send-button.test-claude {
+      background-color: #D97706;
+      font-size: 14px;
+    }
+    .send-button.test-claude:hover {
+      background-color: #B45309;
+    }
     /* 添加链接的样式 */
-.add-link {
-  color: #0078d7;
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 14px;
-  transition: color 0.2s;
-}
-.add-link:hover {
-  color: #106ebe;
-  text-decoration: underline;
-}
+    .add-link {
+      color: #0078d7;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+    .add-link:hover {
+      color: #106ebe;
+      text-decoration: underline;
+    }
+    .status-message {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+    .status-success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status-error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .status-info {
+      background-color: #cce7ff;
+      color: #004085;
+      border: 1px solid #b3d7ff;
+    }
   </style>
 </head>
 <body>
@@ -109,25 +174,38 @@
   
   <div class="platform-selector">
     <div class="platform-option active" data-platform="yuanbao">
-      <div class="platform-icon"></div>
+      <div class="platform-icon yuanbao"></div>
       <div class="platform-name">腾讯元宝</div>
+      <div class="platform-status">就绪</div>
     </div>
     <div class="platform-option" data-platform="gemini">
-      <div class="platform-icon"></div>
+      <div class="platform-icon gemini"></div>
       <div class="platform-name">Google Gemini</div>
+      <div class="platform-status">就绪</div>
+    </div>
+    <div class="platform-option" data-platform="claude">
+      <div class="platform-icon claude"></div>
+      <div class="platform-name">Claude.ai</div>
+      <div class="platform-status">新增</div>
     </div>
   </div>
   
-  <textarea class="message-input" placeholder="输入要发送的消息">在浏览器控制台能否控制多个页面执行方法</textarea>
+  <textarea class="message-input" placeholder="输入要发送的消息">Hello! 请介绍一下你自己。</textarea>
   
   <div class="button-group">
     <button class="send-button" id="send-button">发送消息</button>
-    <button class="send-button" id="send-all-button">依次发送</button>
+    <button class="send-button send-all" id="send-all-button">依次发送所有</button>
   </div>
+  
+  <div class="button-group">
+    <button class="send-button test-claude" id="test-claude-button">测试 Claude.ai</button>
+  </div>
+  
   <div style="text-align: center; margin-bottom: 15px;">
-  <a href="add.html" class="add-link">添加新任务</a>
-</div>
+    <a href="add.html" class="add-link">添加新任务</a>
+  </div>
 
+  <div class="status-message" id="status-message"></div>
   
   <script src="popup.js"></script>
 </body>

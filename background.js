@@ -2,7 +2,8 @@
 // 存储 AI 平台的 URL 映射，方便管理
 const platformUrls = {
   yuanbao: 'https://yuanbao.tencent.com/chat/',
-  gemini: 'https://gemini.google.com/app'
+  gemini: 'https://gemini.google.com/app',
+  claude: 'https://claude.ai/new' // 新增 Claude.ai 支持
 };
 
 // 监听来自 popup 的任务请求 队列分发函数 分发到具体的函数 
@@ -13,7 +14,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       processNextAction();
     });
     sendResponse({ status: "processing_started" });
-  }else if (request.action === "executeFunctionScript") {
+  } else if (request.action === "executeFunctionScript") {
     // 新增逻辑：处理脚本执行请求
     executeFunctionScript(request.file, sendResponse);
     return true; // 异步响应
@@ -35,9 +36,15 @@ function processNextAction() {
     const currentAction = queue[0];
     const targetUrl = platformUrls[currentAction.platform];
 
+    if (!targetUrl) {
+      console.error(`不支持的平台: ${currentAction.platform}`);
+      completeTask(currentAction);
+      return;
+    }
+
     // 查询所有标签页，寻找目标平台的标签页
     chrome.tabs.query({}, (tabs) => {
-      const targetTab = tabs.find(tab => tab.url && tab.url.includes(targetUrl));
+      const targetTab = tabs.find(tab => tab.url && isMatchingPlatform(tab.url, currentAction.platform));
 
       if (targetTab) {
         // 如果找到目标标签页，直接激活并注入脚本，不重新加载！
@@ -47,13 +54,31 @@ function processNextAction() {
           executeScriptForPlatform(targetTab.id, currentAction);
         });
       } else {
-        // ======20250821-[Comment]-0604 进行页面的加载 Load+队列的形式 实现消费
         // 未找到，创建新标签页并等待其加载完成
         console.log(`未找到 ${currentAction.platform} 的标签页，正在创建新标签页。`);
         chrome.tabs.create({ url: targetUrl, active: true });
       }
     });
   });
+}
+
+/**
+ * 判断 URL 是否匹配指定平台
+ * @param {string} url - 标签页 URL
+ * @param {string} platform - 平台名称
+ * @returns {boolean}
+ */
+function isMatchingPlatform(url, platform) {
+  switch (platform) {
+    case 'yuanbao':
+      return url.includes('yuanbao.tencent.com');
+    case 'gemini':
+      return url.includes('gemini.google.com');
+    case 'claude':
+      return url.includes('claude.ai');
+    default:
+      return false;
+  }
 }
 
 // 监听全部的事件 通过容器进行调度
@@ -66,14 +91,15 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       if (queue.length === 0) return;
       
       const currentAction = queue[0];
-      const targetUrl = platformUrls[currentAction.platform];
       
       // 检查加载完成的页面是否是当前任务的目标平台 
-      // ======20250820-[Comment]-0598  检查队列  通过监听对象的api 模拟出主动出发 自动检查消息容器  过滤性质的容器监听实现  打开一个标签页就会进行触发 
-      // 所有对象的方法触发都会进行监听器事件的调用 自己领取需要消费的队列
-      if (tab.url.includes(targetUrl)) {
+      if (isMatchingPlatform(tab.url, currentAction.platform)) {
         console.log(`新标签页 ${tabId} 加载完成，准备执行脚本。`);
-        executeScriptForPlatform(tabId, currentAction);
+        // 对于 Claude.ai，可能需要额外的加载时间
+        const delay = currentAction.platform === 'claude' ? 2000 : 500;
+        setTimeout(() => {
+          executeScriptForPlatform(tabId, currentAction);
+        }, delay);
       }
     });
   }
@@ -94,9 +120,9 @@ function executeScriptForPlatform(tabId, action) {
       return;
     }
 
-    // 脚本注入后，向其发送消息
+    console.log(`成功注入 ${action.platform} 脚本`);
 
-    // ======20250820-[Comment]-0599 脚本注入 通过方法名执行指定的函数名 发出对应的消息 
+    // 脚本注入后，向其发送消息
     chrome.tabs.sendMessage(tabId, {
       action: "sendMessage",
       message: action.message
@@ -121,12 +147,14 @@ function completeTask(action) {
     if (queue.length > 0 && queue[0].platform === action.platform) {
       queue.shift(); 
       chrome.storage.local.set({ actionsQueue: queue }, () => {
+        console.log(`${action.platform} 任务完成，处理下一个任务`);
         // 触发下一个任务
         processNextAction();
       });
     }
   });
 }
+
 // 新增函数：执行指定目录下的脚本
 function executeFunctionScript(scriptFile, sendResponse) {
   // 获取当前活跃的标签页
