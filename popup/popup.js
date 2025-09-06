@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
       platformOptions.forEach(opt => opt.classList.remove('active'));
       this.classList.add('active');
       
-      // 更新选中的平台
+      // ======20250906-[Comment]-0677 获得元素当中的触发数据字段 
       selectedPlatform = this.dataset.platform;  
     });
   });
@@ -69,6 +69,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // “依次发送”按钮事件 (所有平台)
   sendAllButton.addEventListener('click', function() {
-    startSending(['yuanbao', 'gemini']);
+    startSending(['yuanbao', 'gemini','chatgpt']); // 包含所有平台
   });
 });

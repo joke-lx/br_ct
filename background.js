@@ -1,8 +1,10 @@
 // background.js
 // 存储 AI 平台的 URL 映射，方便管理
+// background.js
 const platformUrls = {
   yuanbao: 'https://yuanbao.tencent.com/chat/',
-  gemini: 'https://gemini.google.com/app'
+  gemini: 'https://gemini.google.com/app',
+  chatgpt: 'https://chatgpt.com'   // ✅ 新增 ChatGPT 平台
 };
 
 // 监听来自 popup 的任务请求 队列分发函数 分发到具体的函数 
