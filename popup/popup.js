@@ -1,28 +1,41 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const platformCheckboxes = document.querySelectorAll('.platform-option input[type="checkbox"]');
   const messageInput = document.querySelector('.message-input');
   const sendButton = document.getElementById('send-button');
   const selectAllButton = document.getElementById('select-all');
 
-  // 加载历史消息
-  chrome.storage.sync.get(['lastMessage'], (result) => {
+  // 加载历史消息和平台勾选状态
+  chrome.storage.sync.get(['lastMessage', 'platformStates'], (result) => {
     if (result.lastMessage) {
       messageInput.value = result.lastMessage;
     }
+    if (result.platformStates) {
+      platformCheckboxes.forEach(cb => {
+        if (result.platformStates.hasOwnProperty(cb.dataset.platform)) {
+          cb.checked = result.platformStates[cb.dataset.platform];
+        }
+      });
+    }
   });
 
-  // 全选/取消全选功能
-  selectAllButton.addEventListener('click', function() {
-    const allChecked = Array.from(platformCheckboxes).every(checkbox => checkbox.checked);
-    
-    platformCheckboxes.forEach(checkbox => {
-      checkbox.checked = !allChecked;
+  // 勾选状态变动时实时保存（可选）
+  platformCheckboxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const checkedStates = {};
+      platformCheckboxes.forEach(c => {
+        checkedStates[c.dataset.platform] = c.checked;
+      });
+      chrome.storage.sync.set({ platformStates: checkedStates });
     });
-    
+  });
+
+  // 全选/取消全选
+  selectAllButton.addEventListener('click', function () {
+    const allChecked = Array.from(platformCheckboxes).every(checkbox => checkbox.checked);
+    platformCheckboxes.forEach(checkbox => { checkbox.checked = !allChecked; });
     this.textContent = allChecked ? '全选' : '取消全选';
   });
 
-  // 统一的发送处理函数
   function startSending() {
     const message = messageInput.value.trim();
     if (!message) {
@@ -30,7 +43,6 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    // 获取选中的平台
     const selectedPlatforms = Array.from(platformCheckboxes)
       .filter(checkbox => checkbox.checked)
       .map(checkbox => checkbox.dataset.platform);
@@ -40,29 +52,21 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    // 保存消息历史
+    // 保存消息历史与平台勾选状态
     chrome.storage.sync.set({ lastMessage: message });
+    const checkedStates = {};
+    platformCheckboxes.forEach(cb => { checkedStates[cb.dataset.platform] = cb.checked; });
+    chrome.storage.sync.set({ platformStates: checkedStates });
 
-    // 禁用按钮，防止重复点击
     sendButton.disabled = true;
     sendButton.textContent = '发送中...';
 
-    // 根据选中的平台创建任务队列
-    const actionsQueue = selectedPlatforms.map(platform => ({
-      platform: platform,
-      message: message
-    }));
+    const actionsQueue = selectedPlatforms.map(platform => ({ platform, message }));
 
-    // 将任务队列存储到本地存储，并通知后台脚本开始处理
-    chrome.runtime.sendMessage({
-      action: "processTaskQueue",
-      queue: actionsQueue
-    }, () => {
-      // 成功发送消息后关闭 popup 窗口
+    chrome.runtime.sendMessage({ action: "processTaskQueue", queue: actionsQueue }, () => {
       window.close();
     });
   }
 
-  // "发送消息"按钮事件
   sendButton.addEventListener('click', startSending);
 });
