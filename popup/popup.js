@@ -1,12 +1,8 @@
-// popup.js
 document.addEventListener('DOMContentLoaded', function() {
-  const platformOptions = document.querySelectorAll('.platform-option');
+  const platformCheckboxes = document.querySelectorAll('.platform-option input[type="checkbox"]');
   const messageInput = document.querySelector('.message-input');
   const sendButton = document.getElementById('send-button');
-  const sendAllButton = document.getElementById('send-all-button');
-
-  // 当前选中的平台
-  let selectedPlatform = 'yuanbao';
+  const selectAllButton = document.getElementById('select-all');
 
   // 加载历史消息
   chrome.storage.sync.get(['lastMessage'], (result) => {
@@ -15,25 +11,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // 平台选择事件
-  platformOptions.forEach(option => {
-    option.addEventListener('click', function() {
-      // 更新UI状态
-      platformOptions.forEach(opt => opt.classList.remove('active'));
-      this.classList.add('active');
-      
-      // ======20250906-[Comment]-0677 获得元素当中的触发数据字段 
-      selectedPlatform = this.dataset.platform;  
+  // 全选/取消全选功能
+  selectAllButton.addEventListener('click', function() {
+    const allChecked = Array.from(platformCheckboxes).every(checkbox => checkbox.checked);
+    
+    platformCheckboxes.forEach(checkbox => {
+      checkbox.checked = !allChecked;
     });
+    
+    this.textContent = allChecked ? '全选' : '取消全选';
   });
 
   // 统一的发送处理函数
-  function startSending(platforms) {
-    // ======20250820-[Comment]-0602 全局变量通信
+  function startSending() {
     const message = messageInput.value.trim();
     if (!message) {
-      // 在 popup 中使用 alert 是安全的
       alert('请输入消息内容');
+      return;
+    }
+
+    // 获取选中的平台
+    const selectedPlatforms = Array.from(platformCheckboxes)
+      .filter(checkbox => checkbox.checked)
+      .map(checkbox => checkbox.dataset.platform);
+
+    if (selectedPlatforms.length === 0) {
+      alert('请至少选择一个平台');
       return;
     }
 
@@ -42,12 +45,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 禁用按钮，防止重复点击
     sendButton.disabled = true;
-    sendAllButton.disabled = true;
     sendButton.textContent = '发送中...';
-    sendAllButton.textContent = '发送中...';
 
-    // 根据传入的平台信息创建任务队列
-    const actionsQueue = platforms.map(platform => ({
+    // 根据选中的平台创建任务队列
+    const actionsQueue = selectedPlatforms.map(platform => ({
       platform: platform,
       message: message
     }));
@@ -62,13 +63,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // “发送消息”按钮事件 (单个平台)
-  sendButton.addEventListener('click', function() {
-    startSending([selectedPlatform]);
-  });
-
-  // “依次发送”按钮事件 (所有平台)
-  sendAllButton.addEventListener('click', function() {
-    startSending(['yuanbao', 'gemini','chatgpt']); // 包含所有平台
-  });
+  // "发送消息"按钮事件
+  sendButton.addEventListener('click', startSending);
 });

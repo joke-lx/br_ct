@@ -138,7 +138,7 @@ function sendChatMessage(message) {
   return true;
 }
 
-// 监听来自扩展程序后台的消息
+// 监听来自扩展程序后台的消息 后台脚本 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "sendMessage") {
     console.log(`收到消息发送请求: ${request.message}`);

@@ -98,7 +98,7 @@ function executeScriptForPlatform(tabId, action) {
 
     // 脚本注入后，向其发送消息
 
-    // ======20250820-[Comment]-0599 脚本注入 通过方法名执行指定的函数名 发出对应的消息 
+    // ======20250820-[Comment]-0599 脚本注入 通过方法名执行指定的函数名 发出对应的消息 发出对应的消息 tabs对象进行发送和消费
     chrome.tabs.sendMessage(tabId, {
       action: "sendMessage",
       message: action.message

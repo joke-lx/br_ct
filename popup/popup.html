@@ -99,6 +99,27 @@
   color: #106ebe;
   text-decoration: underline;
 }
+    .platform-option input[type="checkbox"] {
+      margin-right: 10px;
+    }
+    
+    .platform-selector-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    .select-all {
+      color: #0078d7;
+      cursor: pointer;
+      font-size: 14px;
+      user-select: none;
+    }
+    
+    .select-all:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -108,26 +129,36 @@
   </div>
   
   <div class="platform-selector">
-    <div class="platform-option active" data-platform="yuanbao">
+    <div class="platform-selector-header">
+      <h3>选择平台</h3>
+      <div class="select-all" id="select-all">全选</div>
+    </div>
+    
+    <label class="platform-option">
+      <input type="checkbox" data-platform="yuanbao" checked>
       <div class="platform-icon"></div>
       <div class="platform-name">腾讯元宝</div>
-    </div>
-    <div class="platform-option" data-platform="gemini">
+    </label>
+    
+    <label class="platform-option">
+      <input type="checkbox" data-platform="gemini" checked>
       <div class="platform-icon"></div>
       <div class="platform-name">Google Gemini</div>
-    </div>
-     <div class="platform-option" data-platform="chatgpt">
-    <div class="platform-icon"></div>
-    <div class="platform-name">ChatGPT</div>
-  </div>
+    </label>
+    
+    <label class="platform-option">
+      <input type="checkbox" data-platform="chatgpt" checked>
+      <div class="platform-icon"></div>
+      <div class="platform-name">ChatGPT</div>
+    </label>
   </div>
   
   <textarea class="message-input" placeholder="输入要发送的消息">在浏览器控制台能否控制多个页面执行方法</textarea>
   
   <div class="button-group">
     <button class="send-button" id="send-button">发送消息</button>
-    <button class="send-button" id="send-all-button">依次发送</button>
   </div>
+  
   <div style="text-align: center; margin-bottom: 15px;">
   <a href="add.html" class="add-link">添加新任务</a>
 </div>
