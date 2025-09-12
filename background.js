@@ -4,7 +4,8 @@
 const platformUrls = {
   yuanbao: 'https://yuanbao.tencent.com/chat/',
   gemini: 'https://gemini.google.com/app',
-  chatgpt: 'https://chatgpt.com'   // ✅ 新增 ChatGPT 平台
+  chatgpt: 'https://chatgpt.com'  , // ✅ 新增 ChatGPT 平台
+  claude: 'https://claude.ai'   // ✅ 新增 Claude 平台
 };
 
 // 监听来自 popup 的任务请求 队列分发函数 分发到具体的函数 
