@@ -1,12 +1,7 @@
 /**
  * @fileoverview
  * Claude.ai 聊天机器人内容脚本，用于与 Claude.ai 页面交互。
- * 特性：
- * 1. 多重选择器优先级查找元素（容错强）
- * 2. 支持 contenteditable 的 p 标签输入框
- * 3. 触发完整事件序列，确保框架同步
- * 4. 防重复发送机制
- * 5. 接收扩展后台消息并执行发送
+ * 改进版，增加重试机制和更健壮的选择器。
  */
 
 // ==========================================================
@@ -40,21 +35,39 @@ function getElementByCss(selector) {
   }
 }
 
-// 优化的查找器：按优先级依次尝试
-function findElement(selectors) {
-  for (const selector of selectors) {
-    let el = null;
-    if (selector.type === 'xpath') el = getElementByXpath(selector.value);
-    else if (selector.type === 'css') el = getElementByCss(selector.value);
-    else if (selector.type === 'id') el = document.getElementById(selector.value);
+/**
+ * 优化的查找器：按优先级依次尝试，并提供重试机制。
+ * @param {Array<Object>} selectors - 包含 {type, value} 的选择器数组。
+ * @param {number} retries - 重试次数。
+ * @param {number} delay - 每次重试的延时（毫秒）。
+ * @returns {Promise<Element>} - 成功找到元素则 resolve，否则 reject。
+ */
+function findElementWithRetry(selectors, retries = 5, delay = 200) {
+  return new Promise((resolve, reject) => {
+    const attemptFind = (count) => {
+      for (const selector of selectors) {
+        let el = null;
+        if (selector.type === 'xpath') el = getElementByXpath(selector.value);
+        else if (selector.type === 'css') el = getElementByCss(selector.value);
+        else if (selector.type === 'id') el = document.getElementById(selector.value);
 
-    if (el) {
-      console.log(`Claude.ai: 成功使用 ${selector.type} 找到元素: ${selector.value}`);
-      return el;
-    }
-  }
-  console.warn('Claude.ai: 所有选择器都未找到元素');
-  return null;
+        if (el) {
+          console.log(`Claude.ai: 成功使用 ${selector.type} 找到元素: ${selector.value}`);
+          return resolve(el);
+        }
+      }
+
+      if (count <= 0) {
+        console.warn('Claude.ai: 所有选择器都未找到元素，重试已达上限。');
+        return reject(new Error('元素查找失败'));
+      }
+
+      console.warn(`Claude.ai: 未找到元素，正在进行第 ${5 - count + 1} 次重试...`);
+      setTimeout(() => attemptFind(count - 1), delay);
+    };
+
+    attemptFind(retries);
+  });
 }
 
 // 触发输入元素的完整事件序列
@@ -92,27 +105,29 @@ function triggerClick(element) {
 }
 
 // ==========================================================
-//                     Element Finders
+//                     Element Selectors
 // ==========================================================
 
 // 输入框选择器优先级
 const inputSelectors = [
-  { type: 'xpath', value: '/html/body/div[3]/div[2]/main/div[2]/div/fieldset/div[1]/div[1]/div[1]/div/div/p[2]' },
-  { type: 'css', value: 'div[contenteditable="true"] p' },
-  { type: 'xpath', value: "//div[@role='textbox'][@contenteditable='true']//p" },
-  { type: 'xpath', value: "//div[@aria-label='Write your prompt to Claude']//p" },
+  // 新增：更通用的选择器
   { type: 'css', value: '.ProseMirror p' },
-  { type: 'xpath', value: "//fieldset//div//p[@contenteditable or parent::div[@contenteditable='true']]" }
+  { type: 'xpath', value: "//div[@contenteditable='true']/p" },
+  { type: 'xpath', value: "//div[@aria-label='Write your prompt to Claude']//p" },
+  { type: 'xpath', value: "//div[@role='textbox'][@contenteditable='true']//p" },
+  // 保留原始的 XPath
+  { type: 'xpath', value: '/html/body/div[3]/div[2]/main/div[2]/div/fieldset/div[1]/div[1]/div[1]/div/div/p[2]' },
 ];
 
 // 发送按钮选择器优先级
 const buttonSelectors = [
-  { type: 'xpath', value: '/html/body/div[3]/div[2]/main/div[2]/div/fieldset/div[1]/div[1]/div[2]/div[3]/div/button' },
+  // 新增：更通用的选择器
   { type: 'xpath', value: "//button[@aria-label='Send message']" },
-  { type: 'xpath', value: "//button[.//svg//path[contains(@d,'M208.49,120.49a12,12,0,0,1-17,0L140,69V216')]]" },
-  { type: 'css', value: 'button[aria-label="Send message"]' },
+  { type: 'css', value: 'button[data-testid="send-button"]' },
+  { type: 'xpath', value: "//button[.//svg[contains(@viewBox, '0 0 24 24')]]" }, // 通过 SVG 图标定位
   { type: 'xpath', value: "//button[contains(@class, 'bg-accent-main')]" },
-  { type: 'xpath', value: "//fieldset//button[last()]" }
+  // 保留原始的 XPath
+  { type: 'xpath', value: '/html/body/div[3]/div[2]/main/div[2]/div/fieldset/div[1]/div[1]/div[2]/div[3]/div/button' },
 ];
 
 // ==========================================================
@@ -121,15 +136,9 @@ const buttonSelectors = [
 
 let isSending = false;
 
-function sendChatMessage(message) {
+async function sendChatMessage(message) {
   if (isSending) {
     console.warn('Claude.ai: 正在发送消息，请勿重复操作');
-    return false;
-  }
-
-  const input = findElement(inputSelectors);
-  if (!input) {
-    console.error('Claude.ai: 未找到输入框');
     return false;
   }
 
@@ -137,28 +146,35 @@ function sendChatMessage(message) {
   console.log('Claude.ai: 开始发送流程');
 
   try {
+    // 1. 查找输入框，带重试
+    const input = await findElementWithRetry(inputSelectors);
+    
+    // 2. 输入文本并触发事件
     input.textContent = message;
     triggerInputEvents(input);
+    console.log('Claude.ai: 文本输入成功');
+
+    // 3. 查找发送按钮，带重试
+    const button = await findElementWithRetry(buttonSelectors);
+
+    // 4. 延时后点击发送按钮
+    // 延时是为了确保输入事件已经处理完毕，且按钮已变为可用状态
+    await new Promise(resolve => setTimeout(resolve, 150));
+    
+    if (triggerClick(button)) {
+      console.log('Claude.ai: 消息发送成功');
+    } else {
+      console.error('Claude.ai: 发送失败');
+      return false;
+    }
+
   } catch (e) {
-    console.error('Claude.ai: 输入失败', e);
-    isSending = false;
+    console.error(`Claude.ai: 发送流程失败 - ${e.message}`);
     return false;
-  }
-
-  const button = findElement(buttonSelectors);
-  if (!button) {
-    console.error('Claude.ai: 未找到发送按钮');
-    isSending = false;
-    return false;
-  }
-
-  setTimeout(() => {
-    if (triggerClick(button)) console.log('Claude.ai: 消息发送成功');
-    else console.error('Claude.ai: 发送失败');
-
+  } finally {
     isSending = false;
     console.log('Claude.ai: 发送流程结束');
-  }, 150);
+  }
 
   return true;
 }
@@ -173,10 +189,13 @@ if (window.location.hostname.includes('claude.ai')) {
   chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     if (req.action === 'sendMessage') {
       console.log(`Claude.ai: 收到消息发送请求: "${req.message}"`);
-      const ok = sendChatMessage(req.message);
-      sendResponse({ status: ok ? 'success' : 'failed', platform: 'claude' });
+      // 使用 async/await 确保 sendChatMessage 完成
+      sendChatMessage(req.message).then(ok => {
+        sendResponse({ status: ok ? 'success' : 'failed', platform: 'claude' });
+      });
+      // 返回 true 保持 sendResponse 端口开放，以便异步响应
+      return true;
     }
-    return true;
   });
 } else {
   console.warn('Claude.ai: 当前页面不是 Claude.ai，脚本未激活');
