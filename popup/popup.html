@@ -87,38 +87,42 @@
       background-color: #cccccc;
       cursor: not-allowed;
     }
-    /* 添加链接的样式 */
-.add-link {
-  color: #0078d7;
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 14px;
-  transition: color 0.2s;
-}
-.add-link:hover {
-  color: #106ebe;
-  text-decoration: underline;
-}
+    .add-link {
+      color: #0078d7;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+    .add-link:hover {
+      color: #106ebe;
+      text-decoration: underline;
+    }
     .platform-option input[type="checkbox"] {
       margin-right: 10px;
     }
-    
     .platform-selector-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 10px;
     }
-    
     .select-all {
       color: #0078d7;
       cursor: pointer;
       font-size: 14px;
       user-select: none;
     }
-    
     .select-all:hover {
       text-decoration: underline;
+    }
+    .history-select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -127,48 +131,53 @@
     <h1>AI Assistant</h1>
     <p>多端AI调度工具</p>
   </div>
-  
+
   <div class="platform-selector">
     <div class="platform-selector-header">
       <h3>选择平台</h3>
       <div class="select-all" id="select-all">全选</div>
     </div>
-    
+
     <label class="platform-option">
       <input type="checkbox" data-platform="yuanbao" checked>
       <div class="platform-icon"></div>
       <div class="platform-name">腾讯元宝</div>
     </label>
-    
+
     <label class="platform-option">
       <input type="checkbox" data-platform="gemini" checked>
       <div class="platform-icon"></div>
       <div class="platform-name">Google Gemini</div>
     </label>
-    
+
     <label class="platform-option">
       <input type="checkbox" data-platform="chatgpt" checked>
       <div class="platform-icon"></div>
       <div class="platform-name">ChatGPT</div>
     </label>
-        <label class="platform-option">
+
+    <label class="platform-option">
       <input type="checkbox" data-platform="claude" checked>
       <div class="platform-icon"></div>
-      <div class="platform-name">claude</div>
+      <div class="platform-name">Claude</div>
     </label>
   </div>
-  
-  <textarea class="message-input" placeholder="输入要发送的消息">在浏览器控制台能否控制多个页面执行方法</textarea>
-  
+
+  <!-- 历史消息选择 -->
+  <select id="history-select" class="history-select">
+    <option value="">选择历史消息</option>
+  </select>
+
+  <textarea class="message-input" id="message-input" placeholder="输入要发送的消息">在浏览器控制台能否控制多个页面执行方法</textarea>
+
   <div class="button-group">
     <button class="send-button" id="send-button">发送消息</button>
   </div>
-  
-  <div style="text-align: center; margin-bottom: 15px;">
-  <a href="add.html" class="add-link">添加新任务</a>
-</div>
 
-  
+  <div style="text-align: center; margin-bottom: 15px;">
+    <a href="add.html" class="add-link">添加新任务</a>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
