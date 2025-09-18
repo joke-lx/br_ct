@@ -91,7 +91,7 @@ function createPopupInput() {
     let isDragging = false;
     let dragOffsetX = 0;
     let dragOffsetY = 0;
-    let isPinned = false;
+    let isPinned = true; // 默认设置为固定状态
     
     header.addEventListener('mousedown', startDrag);
     
@@ -131,6 +131,11 @@ function createPopupInput() {
             document.addEventListener("click", clickHandler);
         }
     }
+
+    // 设置初始固定状态
+    pinBtn.classList.add("pinned");
+    pinBtn.title = "取消固定";
+    popup.style.border = "2px solid #3498db"; // 固定状态的边框样式
 
     const sendMessage = () => {
         const message = input.value.trim();
@@ -202,8 +207,5 @@ function createPopupInput() {
         }
     };
     
-    // 初始添加外部点击监听器
-    if (!isPinned) {
-        document.addEventListener("click", clickHandler);
-    }
+    // 初始不添加外部点击监听器（因为默认固定）
 }
