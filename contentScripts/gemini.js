@@ -87,12 +87,12 @@ function findInputElement() {
  */
 function findSendButton() {
   const xpaths = [
-    // 新增：根据你提供的最可靠的完整路径
-    '//*[@id="app-root"]/main/side-navigation-v2/mat-sidenav-container/mat-sidenav-content/div/div[2]/chat-window/div/input-container/div/input-area-v2/div/div/div[3]/div/div[2]/button/span[3]',
-    '/html/body/chat-app/main/side-navigation-v2/mat-sidenav-container/mat-sidenav-content/div/div[2]/chat-window/div/input-container/div/input-area-v2/div/div/div[3]/div/div[2]/button/span[3]',
-    // 原始备选方案，用于通用匹配
+    // 最可靠的方案：根据按钮的 aria-label 属性进行定位
+    // 这个属性通常用于可访问性，很少会变动，且可以区分“发送”和“停止”按钮
     "//button[@aria-label='Send message']",
+    // 通用备选方案：通过按钮内的文本内容定位
     "//button[.//span[contains(text(),'Send')]]",
+    // 最后的备用方案：依赖于特定的 class 或完整的 DOM 路径
     "//button[contains(@class, 'send-button')]",
     '//*[@id="app-root"]/main/side-navigation-v2/mat-sidenav-container/mat-sidenav-content/div/div[2]/chat-window/div/input-container/div/input-area-v2/div/div/div[3]/div/div[2]/button'
   ];
