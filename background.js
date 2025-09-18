@@ -8,7 +8,7 @@ const platformUrls = {
   claude: 'https://claude.ai'   // ✅ 新增 Claude 平台
 };
 
-// 监听来自 popup 的任务请求 队列分发函数 分发到具体的函数 
+// 监听来自 popup 的任务请求 队列分发函数 分发到具体的函数 牺牲类型string 获得任意的api上层快速兼容 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "processTaskQueue") {
     // 收到任务队列，保存并开始处理第一个任务

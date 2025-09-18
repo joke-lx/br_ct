@@ -87,6 +87,10 @@ function findInputElement() {
  */
 function findSendButton() {
   const xpaths = [
+    // 新增：根据你提供的最可靠的完整路径
+    '//*[@id="app-root"]/main/side-navigation-v2/mat-sidenav-container/mat-sidenav-content/div/div[2]/chat-window/div/input-container/div/input-area-v2/div/div/div[3]/div/div[2]/button/span[3]',
+    '/html/body/chat-app/main/side-navigation-v2/mat-sidenav-container/mat-sidenav-content/div/div[2]/chat-window/div/input-container/div/input-area-v2/div/div/div[3]/div/div[2]/button/span[3]',
+    // 原始备选方案，用于通用匹配
     "//button[@aria-label='Send message']",
     "//button[.//span[contains(text(),'Send')]]",
     "//button[contains(@class, 'send-button')]",
@@ -95,9 +99,17 @@ function findSendButton() {
 
   for (const xpath of xpaths) {
     const element = getElementByXpath(xpath);
+    // 检查找到的元素是否是按钮或其父元素
     if (element) {
-      console.log(`使用 XPath 成功找到发送按钮: ${xpath}`);
-      return element;
+        // 如果找到的是子元素，尝试返回其父元素，直到找到 <button> 标签
+        let button = element;
+        while (button && button.tagName !== 'BUTTON') {
+            button = button.parentElement;
+        }
+        if (button) {
+            console.log(`使用 XPath 成功找到发送按钮: ${xpath}`);
+            return button;
+        }
     }
   }
 
