@@ -1,5 +1,5 @@
 .triple-space-popup {
-    position: absolute;
+    position: fixed; /* 改为fixed定位，避免滚动问题 */
     border: 1px solid #ccc;
     background: #fff;
     padding: 8px;
@@ -12,7 +12,11 @@
     animation: fadeIn 0.2s ease;
     font-family: Arial, sans-serif;
     cursor: move;
-    user-select: none; /* 防止拖动时选中文本 */
+    user-select: none;
+    /* 添加最小高度和最大尺寸限制 */
+    min-height: 120px;
+    max-width: 90vw;
+    max-height: 90vh;
 }
 
 .popup-header {
@@ -24,6 +28,11 @@
     padding: 4px;
     background: #f8f9fa;
     border-radius: 4px;
+    /* 防止头部内容被选中 */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .header-buttons {
@@ -41,6 +50,8 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    /* 防止按钮触发拖动 */
+    pointer-events: auto;
 }
 
 .mode-toggle-btn {
@@ -63,8 +74,12 @@
     color: white;
 }
 
-.pin-btn:hover {
+.pin-btn:hover:not(.pinned) {
     background: #ddd;
+}
+
+.pin-btn.pinned:hover {
+    background: #2980b9;
 }
 
 .close-btn {
@@ -85,6 +100,7 @@
     border-radius: 4px;
     font-size: 14px;
     margin-bottom: 6px;
+    box-sizing: border-box;
 }
 
 .send-btn {
@@ -123,4 +139,18 @@
 .status-record {
     background: #cce5ff;
     color: #004085;
+}
+
+/* 固定状态的特殊样式 */
+.triple-space-popup.pinned {
+    border: 2px solid #3498db;
+    box-shadow: 0 4px 16px rgba(52, 152, 219, 0.3);
+}
+
+/* 拖动状态的样式 */
+.triple-space-popup.dragging {
+    cursor: grabbing !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+    transform: scale(1.02);
+    transition: none; /* 拖动时禁用过渡效果 */
 }

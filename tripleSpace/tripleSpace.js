@@ -3,6 +3,7 @@ console.log("tripleSpace.js loaded");
 let spaceCount = 0;
 let lastSpaceTime = 0;
 let currentMode = "message"; // "message" | "record"
+let activePopup = null; // 跟踪当前活跃的弹窗
 
 document.addEventListener("keydown", function (e) {
     const now = Date.now();
@@ -26,12 +27,28 @@ document.addEventListener("keydown", function (e) {
 });
 
 function createPopupInput() {
+    // 如果已有弹窗存在，先关闭它
+    if (activePopup && document.body.contains(activePopup)) {
+        activePopup.remove();
+    }
+
     const selection = window.getSelection();
     const range = selection.rangeCount ? selection.getRangeAt(0) : null;
-    const rect = range ? range.getBoundingClientRect() : { left: window.innerWidth / 2, bottom: window.innerHeight / 2 };
+    let rect;
+    
+    if (range) {
+        rect = range.getBoundingClientRect();
+    } else {
+        // 如果没有选择文本，在鼠标位置或屏幕中心创建
+        rect = { 
+            left: window.innerWidth / 2 - 120, // 120是弹窗宽度的一半
+            bottom: window.innerHeight / 2 
+        };
+    }
 
     const popup = document.createElement("div");
-    popup.className = "triple-space-popup";
+    popup.className = "triple-space-popup pinned"; // 默认添加pinned类
+    activePopup = popup; // 设置为当前活跃弹窗
 
     // 顶部栏（模式切换 + 固定按钮 + 关闭）
     const header = document.createElement("div");
@@ -52,8 +69,8 @@ function createPopupInput() {
     
     const pinBtn = document.createElement("button");
     pinBtn.innerHTML = "📌";
-    pinBtn.className = "pin-btn";
-    pinBtn.title = "固定窗口";
+    pinBtn.className = "pin-btn pinned"; // 默认固定状态
+    pinBtn.title = "取消固定";
     
     const closeBtn = document.createElement("button");
     closeBtn.innerHTML = "×";
@@ -81,9 +98,27 @@ function createPopupInput() {
 
     document.body.appendChild(popup);
 
-    // 初始位置
-    popup.style.left = rect.left + window.scrollX + "px";
-    popup.style.top = rect.bottom + window.scrollY + "px";
+    // 计算并设置初始位置（使用fixed定位，不需要加scrollX/scrollY）
+    let initialLeft = rect.left;
+    let initialTop = rect.bottom + 10; // 添加10px间距
+
+    // 确保弹窗在可视区域内
+    const popupRect = popup.getBoundingClientRect();
+    if (initialLeft + popupRect.width > window.innerWidth) {
+        initialLeft = window.innerWidth - popupRect.width - 10;
+    }
+    if (initialLeft < 10) {
+        initialLeft = 10;
+    }
+    if (initialTop + popupRect.height > window.innerHeight) {
+        initialTop = rect.top - popupRect.height - 10;
+    }
+    if (initialTop < 10) {
+        initialTop = 10;
+    }
+
+    popup.style.left = initialLeft + "px";
+    popup.style.top = initialTop + "px";
 
     input.focus();
 
@@ -92,50 +127,107 @@ function createPopupInput() {
     let dragOffsetX = 0;
     let dragOffsetY = 0;
     let isPinned = true; // 默认设置为固定状态
-    
+    let clickOutsideHandler = null;
+
+    // 设置拖动事件
     header.addEventListener('mousedown', startDrag);
     
     function startDrag(e) {
-        if (e.target !== modeToggle && e.target !== pinBtn && e.target !== closeBtn) {
-            isDragging = true;
-            dragOffsetX = e.clientX - popup.getBoundingClientRect().left;
-            dragOffsetY = e.clientY - popup.getBoundingClientRect().top;
-            
-            popup.style.cursor = "grabbing";
-            popup.style.boxShadow = "0 6px 16px rgba(0,0,0,0.3)";
-            
-            // 开始拖动时临时移除外部点击监听器
-            document.removeEventListener("click", clickHandler);
-            
-            document.addEventListener('mousemove', onDrag);
-            document.addEventListener('mouseup', stopDrag);
+        // 只有在点击头部区域但不是按钮时才开始拖动
+        if (e.target === modeToggle || e.target === pinBtn || e.target === closeBtn || 
+            modeToggle.contains(e.target) || pinBtn.contains(e.target) || closeBtn.contains(e.target)) {
+            return;
         }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        isDragging = true;
+        const popupRect = popup.getBoundingClientRect();
+        dragOffsetX = e.clientX - popupRect.left;
+        dragOffsetY = e.clientY - popupRect.top;
+        
+        popup.classList.add("dragging");
+        
+        // 临时移除外部点击监听器
+        if (clickOutsideHandler) {
+            document.removeEventListener("click", clickOutsideHandler);
+        }
+        
+        document.addEventListener('mousemove', onDrag);
+        document.addEventListener('mouseup', stopDrag);
     }
     
     function onDrag(e) {
-        if (isDragging) {
-            popup.style.left = (e.clientX - dragOffsetX) + 'px';
-            popup.style.top = (e.clientY - dragOffsetY) + 'px';
-        }
+        if (!isDragging) return;
+        
+        e.preventDefault();
+        let newLeft = e.clientX - dragOffsetX;
+        let newTop = e.clientY - dragOffsetY;
+        
+        // 边界检测
+        const popupRect = popup.getBoundingClientRect();
+        newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - popupRect.width));
+        newTop = Math.max(0, Math.min(newTop, window.innerHeight - popupRect.height));
+        
+        popup.style.left = newLeft + 'px';
+        popup.style.top = newTop + 'px';
     }
     
-    function stopDrag() {
+    function stopDrag(e) {
+        if (!isDragging) return;
+        
         isDragging = false;
-        popup.style.cursor = "move";
-        popup.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
+        popup.classList.remove("dragging");
         document.removeEventListener('mousemove', onDrag);
         document.removeEventListener('mouseup', stopDrag);
         
-        // 拖动结束后重新添加外部点击监听器
+        // 重新添加外部点击监听器（如果未固定）
+        updateClickOutsideHandler();
+        
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    // 外部点击处理函数
+    function createClickOutsideHandler() {
+        return function(e) {
+            // 添加延迟，避免与拖动冲突
+            setTimeout(() => {
+                if (!isPinned && !popup.contains(e.target) && document.body.contains(popup)) {
+                    closePopup();
+                }
+            }, 0);
+        };
+    }
+
+    function updateClickOutsideHandler() {
+        // 移除旧的监听器
+        if (clickOutsideHandler) {
+            document.removeEventListener("click", clickOutsideHandler);
+        }
+        
+        // 如果未固定，添加新的监听器
         if (!isPinned) {
-            document.addEventListener("click", clickHandler);
+            clickOutsideHandler = createClickOutsideHandler();
+            // 延迟添加，避免立即触发
+            setTimeout(() => {
+                document.addEventListener("click", clickOutsideHandler);
+            }, 100);
         }
     }
 
-    // 设置初始固定状态
-    pinBtn.classList.add("pinned");
-    pinBtn.title = "取消固定";
-    popup.style.border = "2px solid #3498db"; // 固定状态的边框样式
+    function closePopup() {
+        if (clickOutsideHandler) {
+            document.removeEventListener("click", clickOutsideHandler);
+        }
+        if (document.body.contains(popup)) {
+            popup.remove();
+        }
+        if (activePopup === popup) {
+            activePopup = null;
+        }
+    }
 
     const sendMessage = () => {
         const message = input.value.trim();
@@ -144,29 +236,51 @@ function createPopupInput() {
         if (currentMode === "message") {
             const defaultPlatforms = ['yuanbao', 'gemini', 'chatgpt'];
             const actionsQueue = defaultPlatforms.map(platform => ({ platform, message }));
-            chrome.runtime.sendMessage({ action: "processTaskQueue", queue: actionsQueue }, () => {
-                popup.remove();
-                document.removeEventListener("click", clickHandler);
-            });
+            
+            // 检查chrome.runtime是否可用
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                chrome.runtime.sendMessage({ action: "processTaskQueue", queue: actionsQueue }, () => {
+                    closePopup();
+                });
+            } else {
+                console.log("Chrome runtime not available, message:", message);
+                closePopup();
+            }
         } else {
             console.log("Sending record:", message);
+            // 这里可以添加记录功能的实际实现
             fetch("https://your-record-api.example.com/save", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ content: message, time: Date.now() })
             }).then(() => {
-                popup.remove();
-                document.removeEventListener("click", clickHandler);
+                closePopup();
+            }).catch(err => {
+                console.log("Record saved locally:", message);
+                closePopup();
             });
         }
     };
 
     input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") sendMessage();
+        if (e.key === "Enter") {
+            e.preventDefault();
+            sendMessage();
+        } else if (e.key === "Escape") {
+            closePopup();
+        }
     });
-    sendBtn.addEventListener("click", sendMessage);
+    
+    sendBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sendMessage();
+    });
 
-    modeToggle.addEventListener("click", () => {
+    modeToggle.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
         currentMode = currentMode === "message" ? "record" : "message";
         modeToggle.textContent = currentMode === "message" ? "记录模式" : "消息模式";
         modeToggle.title = currentMode === "message" ? "切换到记录模式" : "切换到消息模式";
@@ -178,34 +292,38 @@ function createPopupInput() {
     });
 
     // 固定按钮功能
-    pinBtn.addEventListener("click", () => {
-        isPinned = !isPinned;
-        pinBtn.classList.toggle("pinned", isPinned);
-        pinBtn.title = isPinned ? "取消固定" : "固定窗口";
+    pinBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         
-        // 添加视觉反馈
+        isPinned = !isPinned;
+        
         if (isPinned) {
-            popup.style.border = "2px solid #3498db";
-            // 固定状态下移除外部点击监听器
-            document.removeEventListener("click", clickHandler);
+            pinBtn.classList.add("pinned");
+            pinBtn.title = "取消固定";
+            popup.classList.add("pinned");
         } else {
-            popup.style.border = "1px solid #ccc";
-            // 非固定状态下添加外部点击监听器
-            document.addEventListener("click", clickHandler);
+            pinBtn.classList.remove("pinned");
+            pinBtn.title = "固定窗口";
+            popup.classList.remove("pinned");
         }
+        
+        updateClickOutsideHandler();
     });
 
-    closeBtn.addEventListener("click", () => {
-        popup.remove();
-        document.removeEventListener("click", clickHandler);
+    closeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closePopup();
     });
 
-    const clickHandler = (ev) => {
-        if (!popup.contains(ev.target) && !isPinned) {
-            popup.remove();
-            document.removeEventListener("click", clickHandler);
-        }
-    };
-    
-    // 初始不添加外部点击监听器（因为默认固定）
+    // 初始化外部点击监听器（默认固定状态下不需要）
+    updateClickOutsideHandler();
 }
+
+// 页面卸载时清理
+window.addEventListener('beforeunload', () => {
+    if (activePopup && document.body.contains(activePopup)) {
+        activePopup.remove();
+    }
+});
