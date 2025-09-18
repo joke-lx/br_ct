@@ -17,13 +17,13 @@
     "default_popup": "popup/popup.html",
     "default_title": "AI Assistant"
   },
-"permissions": [
-  "tabs",
-  "storage",
-  "scripting",
-  "activeTab",
-  "notifications"
-],
+  "permissions": [
+    "tabs",
+    "storage",
+    "scripting",
+    "activeTab",
+    "notifications"
+  ],
   "host_permissions": [
     "*://*/*"
   ],
@@ -31,11 +31,21 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["tripleSpace/tripleSpace.js"],
+      "css": ["tripleSpace/tripleSpace.css"],
+      "run_at": "document_idle"
+    }
+  ],
   "web_accessible_resources": [
     {
-     "resources": [
+      "resources": [
         "contentScripts/*.js",
-        "funcs/*.js"  
+        "funcs/*.js",
+        "tripleSpace/*.js",
+        "tripleSpace/*.css"
       ],
       "matches": ["<all_urls>"]
     }
