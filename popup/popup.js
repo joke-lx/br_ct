@@ -25,6 +25,12 @@ document.addEventListener('DOMContentLoaded', function () {
       populateHistory(result[HISTORY_KEY]);
     }
   });
+
+  // --- 新增代码：实时保存输入框内容 ---
+  messageInput.addEventListener('input', () => {
+    chrome.storage.sync.set({ lastMessage: messageInput.value });
+  });
+  // --- 新增代码结束 ---
   
   // 点击历史消息自动填充
   historySelect.addEventListener('change', () => {
@@ -109,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     // 保存消息历史与平台勾选状态
-    chrome.storage.sync.set({ lastMessage: message });
+    // chrome.storage.sync.set({ lastMessage: message }); // 这行不再需要，因为上面已经实时保存了
     const checkedStates = {};
     platformCheckboxes.forEach(cb => { checkedStates[cb.dataset.platform] = cb.checked; });
     chrome.storage.sync.set({ platformStates: checkedStates });
