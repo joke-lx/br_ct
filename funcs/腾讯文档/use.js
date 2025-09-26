@@ -70,6 +70,7 @@ function exportCSV(data, filename = "excel_data.csv") {
             let v = String(cell).replace(/"/g, '""');
             if (v.includes(",") || v.includes("\n")) {
                 v = `"${v}"`;
+                //1
             }
             return v;
         }).join(",")
