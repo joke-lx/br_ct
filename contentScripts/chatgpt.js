@@ -23,7 +23,7 @@ function findElementByXPaths(xpaths) {
   }
   return null;
 }
-
+// ======20250929-[Comment]-0794 resolve(element); 返回对应的结果
 // 等待元素出现，默认 3 秒超时
 async function waitForElement(xpaths, timeout = 3000) {
   const start = Date.now();
@@ -89,7 +89,7 @@ async function sendChatMessage(message) {
   ];
 
   // 1. 找输入框
-  const inputElement = findElementByXPaths(inputXPaths);
+  const inputElement = await waitForElement(inputXPaths, 3000);
   if (!inputElement) {
     console.error("未找到输入框");
     isSending = false;
