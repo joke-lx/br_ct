@@ -1,16 +1,21 @@
 const PROMPT_TEMPLATES = {
   // 完整代码输出（增强版）
-  'all_code': {
+  '1': {
     label: '完整代码输出',
     template: '%s\n\n要求：\n 输出完整的文件结构 输出完整的代码 输出完整的文件'
   },
 
   // 语言特定模板
-  'python': {
+  '2': {
     label: '完整概念分析',
     template: '告诉我关于 %s 的相关的概念基础 最佳操作手册以及实践路线 内存性能分析 底层原理解读 以及常见的误区和其中巧妙的设计'
   },
 
+  
+  '3': {
+    label: '优化思路',
+    template: '当前的状态时 %s 我希望进行优化 给出我优化思路 优化流程或者优化方案 或者新的高级学习实践路线'
+  },
   'golang': {
     label: 'Go规范代码',
     template: '%s\n\n遵循Go语言最佳实践：\n1. 使用camelCase命名\n2. 添加godoc注释\n3. 正确处理error返回值\n4. 使用接口抽象\n5. 包含单元测试(_test.go)'
@@ -22,10 +27,6 @@ const PROMPT_TEMPLATES = {
     template: '%s\n\n要求按照标准算法题解格式：\n1. 问题描述\n2. 输入输出示例\n3. 解题思路(时间/空间复杂度分析)\n4. 完整实现代码\n5. 测试用例\n6. 可能的优化方向'
   },
 
-  'system_design_template': {
-    label: '系统设计八股文',
-    template: '%s\n\n按系统设计面试标准格式：\n1. 需求分析(明确场景和QPS)\n2. 高层设计(框图)\n3. 详细设计(数据流/接口定义)\n4. 数据库设计(Schema+索引)\n5. 扩展性考虑\n6. 故障处理方案'
-  },
 
   // 代码审查模板
   'code_review': {
