@@ -5,7 +5,8 @@ const platformUrls = {
   yuanbao: 'https://yuanbao.tencent.com/chat/',
   gemini: 'https://gemini.google.com/app',
   chatgpt: 'https://chatgpt.com'  ,
-  claude: 'https://claude.ai'   
+  claude: 'https://claude.ai'   ,
+  doubao: 'https://www.doubao.com/chat/'
 };
 
 // 监听来自 popup 的任务请求 队列分发函数 分发到具体的函数 牺牲类型string 获得任意的api上层快速兼容 
@@ -21,6 +22,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     executeFunctionScript(request.file, sendResponse);
     return true; // 异步响应
   }
+
   return true; // 异步响应
 });
 
