@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
     emptyOption.textContent = '不使用优化';
     promptOptimizerSelect.appendChild(emptyOption);
     
-    // 添加其他优化选项
+    // ======20250929-[Comment]-0795 集合文本流 可以直接记录下访问 
     for (const key in PROMPT_TEMPLATES) {
       const option = document.createElement('option');
       option.value = key;

@@ -16,20 +16,23 @@ const PROMPT_TEMPLATES = {
     label: '优化思路',
     template: '当前的状态时 %s 我希望进行优化 给出我优化思路 优化流程或者优化方案 或者新的高级学习实践路线'
   },
-  'golang': {
+  '4': {
+  label: '翻译',
+  template: '内容 : "%s" 以上内容是需要进行中英翻译或者重新整理格式  输出格式按照一句相对完整的英文 一句中文进行输出 按照编号进行呈现 并且每句都进行换行 对于一些不好确定的翻译 在中文中进行括号标注'
+},
+  '5': {
     label: 'Go规范代码',
     template: '%s\n\n遵循Go语言最佳实践：\n1. 使用camelCase命名\n2. 添加godoc注释\n3. 正确处理error返回值\n4. 使用接口抽象\n5. 包含单元测试(_test.go)'
   },
 
   // 八股文格式模板
-  'algorithm_template': {
-    label: '算法八股文',
-    template: '%s\n\n要求按照标准算法题解格式：\n1. 问题描述\n2. 输入输出示例\n3. 解题思路(时间/空间复杂度分析)\n4. 完整实现代码\n5. 测试用例\n6. 可能的优化方向'
-  },
-
-
+  '6': {
+    label: 'vue模板 ',
+    template: '%s 按照指定格式生成vue代码 <script setup lang = \'ts \'></script><template></template><style scoped></style>' 
+  }
+,
   // 代码审查模板
-  'code_review': {
+  '7': {
     label: '专业代码审查',
     template: '对以下代码进行专业审查：%s\n\n审查要点：\n1. 代码风格一致性\n2. 潜在bug\n3. 性能瓶颈\n4. 安全漏洞\n5. 可测试性\n6. 给出具体改进建议'
   },
