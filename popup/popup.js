@@ -12,6 +12,15 @@ document.addEventListener('DOMContentLoaded', function () {
   const OPTIMIZER_KEY = 'selectedOptimizer';
   const MAX_HISTORY = 5;
 
+  if (messageInput) {
+      // 使用 setTimeout 确保浏览器有足够时间渲染 DOM，提高聚焦成功率
+      setTimeout(() => {
+          messageInput.focus();
+          // 额外操作：将光标移动到文本末尾（如果输入框中有默认文本）
+          const len = messageInput.value.length;
+          messageInput.setSelectionRange(len, len);
+      }, 100); 
+  }
   function populateOptimizer() {
     // 先添加一个空选项表示不进行优化
     const emptyOption = document.createElement('option');
