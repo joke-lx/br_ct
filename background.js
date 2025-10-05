@@ -26,6 +26,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // 其他消息
   return true; 
 });
-
-// 注意：由于使用了 ES Module，您需要在 manifest.json (v3) 中明确指定
-// "background": { "service_worker": "background.js", "type": "module" }
