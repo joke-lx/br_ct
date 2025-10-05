@@ -5,7 +5,9 @@
 // 在实际应用中，您可能需要更复杂的机制来动态发现文件
 const scriptFiles = [
   { name: 'bili专栏导出的案例 ', file: 'example_func1.js' },
-  { name: 'leecode 100 导出的案例', file: 'example_func2.js' }
+  { name: 'leecode 100 导出的案例', file: 'example_func2.js' },
+    { name: 'div Copy', file: 'div_copy_wrapper.js' }
+
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
