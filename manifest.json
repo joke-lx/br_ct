@@ -22,7 +22,8 @@
     "storage",
     "scripting",
     "activeTab",
-    "notifications"
+    "notifications",
+    "commands"
   ],
   "host_permissions": [
     "*://*/*"
@@ -30,6 +31,12 @@
   "background": {
     "service_worker": "background.js",
     "type": "module"
+  },
+   "commands": {
+    "execute_div_copy": {
+      "suggested_key": { "default": "Ctrl+Shift+D" },
+      "description": "执行 div Copy 脚本"
+    }
   },
   "content_scripts": [
     {
