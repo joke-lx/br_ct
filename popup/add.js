@@ -6,8 +6,8 @@
 const scriptFiles = [
   { name: 'bili专栏导出的案例 ', file: 'example_func1.js' },
   { name: 'leecode 100 导出的案例', file: 'example_func2.js' },
-    { name: 'div Copy', file: 'div_copy_wrapper.js' }
-
+    { name: 'div Copy', file: 'div_copy_wrapper.js' },
+  { name: 'img Copy', file: 'div_Img_wrapper.js' }
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -40,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
         file: scriptFile
       }, (response) => {
         if (response && response.status === 'success') {
-          alert(`脚本 ${scriptFile} 执行成功！`);
         } else {
           alert(`脚本 ${scriptFile} 执行失败: ${response?.message || '未知错误'}`);
         }
