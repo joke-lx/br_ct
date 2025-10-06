@@ -24,10 +24,12 @@
       background-color: var(--light-gray);
       color: var(--text-color);
       line-height: 1.5;
+      position: relative;
     }
     .header {
       text-align: center;
       margin-bottom: 12px;
+      position: relative;
     }
 
    .header h1 {
@@ -218,29 +220,79 @@
       box-shadow: none;
     }
 
-    .add-link {
-      color: var(--primary-color);
-      text-decoration: none;
-      font-weight: 500;
-      font-size: 13px;
-      transition: var(--transition);
-      display: inline-flex;
+    /* 悬浮导航按钮样式 */
+    .nav-floating-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: var(--primary-color);
+      color: white;
+      display: flex;
       align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-md);
+      transition: var(--transition);
+      z-index: 1000;
     }
-
-    .add-link:hover {
-      color: var(--primary-hover);
-      text-decoration: underline;
+    
+    .nav-floating-button:hover {
+      background-color: var(--primary-hover);
+      transform: scale(1.05);
     }
-
-    .add-link::after {
-      content: "→";
-      margin-left: 4px;
+    
+    .nav-floating-button::before {
+      content: "≡";
+      font-size: 24px;
+      font-weight: bold;
+    }
+    
+    .nav-menu {
+      position: absolute;
+      bottom: 60px;
+      right: 0;
+      width: 120px;
+      background: white;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(10px);
       transition: var(--transition);
     }
-
-    .add-link:hover::after {
-      transform: translateX(2px);
+    
+    .nav-floating-button:hover .nav-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    
+    .nav-item {
+      display: block;
+      padding: 12px;
+      color: var(--text-color);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: var(--transition);
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .nav-item:last-child {
+      border-bottom: none;
+    }
+    
+    .nav-item:hover {
+      background-color: var(--light-gray);
+      color: var(--primary-color);
+    }
+    
+    .nav-item.active {
+      background-color: var(--primary-color);
+      color: white;
     }
   </style>
 </head>
@@ -299,13 +351,17 @@
     <button class="send-button" id="send-button">发送消息</button>
   </div>
 
-  <div style="text-align: center; margin-bottom: 12px;">
-    <a href="add.html" class="add-link">添加新任务</a>
+  <!-- 悬浮导航按钮 -->
+  <div class="nav-floating-button">
+    <div class="nav-menu">
+      <a href="popup.html" class="nav-item">主页</a>
+      <a href="add.html" class="nav-item">脚本库</a>
+    </div>
   </div>
 
   <script src="./promots/prompts.js"></script>
-<script src="popupUtils.js" type="module"></script>
-<script src="popup.js" type="module"></script>
+  <script src="popupUtils.js" type="module"></script>
+  <script src="popup.js" type="module"></script>
 
 </body>
 </html>
