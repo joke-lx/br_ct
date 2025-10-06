@@ -410,60 +410,96 @@ _escapeHtml(str) {
     /**
      * 生成完整的资源列表 (锁定状态下使用) 或 HTML 结构
      */
-    _createFullResourceList(resources, tagName, element) {
-        let html = `<h2 style="font-size: 16px; margin: 0 0 10px 0;">已锁定元素 <${tagName}> 的资源</h2>`;
+ _createFullResourceList(resources, tagName, element) {
+    // 初始化 HTML 折叠状态（默认折叠）
+    this.htmlCollapsed = true;
+    let html = `<h2 style="font-size: 16px; margin: 0 0 10px 0;">已锁定元素 <${tagName}> 的资源</h2>`;
 
-        // 锁定/关闭按钮
-        html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #4CAF50; color: white;">✅ 已锁定 (点击解锁)</button>`;
-        html += `<button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>`;
-html += `<button id="get-paths-btn" style="width:100%;padding:5px;margin-bottom:10px;
-          border:1px solid #ccc;cursor:pointer;background:#17a2b8;color:white;">
-          获得多种可能路径</button>`;
-        // 检查是否所有资源都为 0
-        if (this._hasNoResources(resources)) {
-            const formattedHtml = this._formatHTML(element.outerHTML);
-                        
-            html += `<pre id="${this.htmlId}" style="white-space: pre-wrap; word-wrap: break-word; font-size: 10px; padding: 5px; border: 1px solid #ddd; background: #fff; max-height: 400px; overflow: auto; text-align: left;"></pre>`;
-            
-            this.container.innerHTML = html;
-            
-            // 确保纯文本插入以避免渲染 HTML 标签
-            const preElement = document.getElementById(this.htmlId);
-            if (preElement) {
-                preElement.textContent = formattedHtml;
-            }
-        } else {
-            const generateFullList = (title, items) => {
-                let listHtml = `<h3 style="font-size: 14px; margin: 15px 0 5px 0;">${title} (${items.length})</h3>`;
-                listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
-                if (items.length === 0) {
-                    listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
-                } else {
-                    items.forEach(url => {
-                        const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
-                        listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none; word-break: break-all;">${displayUrl}</a></li>`;
-                    });
-                    if (title.includes('图片')) {
-                        listHtml += '<p style="font-size: 11px; margin-top: 5px;">(请右键点击链接 -> 另存为)</p>';
-                    }
-                }
-                listHtml += '</ul>';
-                return listHtml;
-            };
+    // 锁定/关闭按钮
+    html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #4CAF50; color: white;">✅ 已锁定 (点击解锁)</button>`;
+    html += `<button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>`;
+    html += `<button id="get-paths-btn" style="width:100%;padding:5px;margin-bottom:10px;
+              border:1px solid #ccc;cursor:pointer;background:#17a2b8;color:white;">
+              获得多种可能路径</button>`;
 
-            html += generateFullList('图片/图标 (IMG, SVG, Background)', resources.images);
-            html += generateFullList('媒体文件 (VIDEO, AUDIO)', resources.media);
-            html += generateFullList('其他链接 (A HREF)', resources.links);
-            html += generateFullList('其他可下载资源 (LINK)', resources.other);
-            
-            this.container.innerHTML = html;
+    // 检查是否所有资源都为 0（显示 HTML 结构，新增可折叠按钮）
+    if (this._hasNoResources(resources)) {
+        const formattedHtml = this._formatHTML(element.outerHTML);
+        // 新增可折叠按钮 + HTML 容器（默认隐藏内容）
+        html += `
+            <div class="html-collapse-container" style="margin-top: 10px;">
+                <button id="toggle-html-collapse" style="width: 100%; padding: 5px; margin-bottom: 5px; border: 1px solid #ccc; cursor: pointer; background: #e9ecef; color: #495057;">
+                    🔽 展开 HTML 结构 (共 ${formattedHtml.split('\n').length} 行)
+                </button>
+                <pre id="${this.htmlId}" style="white-space: pre-wrap; word-wrap: break-word; font-size: 10px; padding: 5px; border: 1px solid #ddd; background: #fff; max-height: 400px; overflow: auto; text-align: left; display: none;"></pre>
+            </div>
+        `;
+        
+        this.container.innerHTML = html;
+        
+        // 插入 HTML 内容（纯文本避免渲染）
+        const preElement = document.getElementById(this.htmlId);
+        if (preElement) {
+            preElement.textContent = formattedHtml;
         }
 
-   this._bindButtonEvents();
-this._bindPathButtonEvent(element);
+        // 绑定 HTML 折叠按钮事件
+        this._bindHtmlCollapseEvent();
+    } else {
+        const generateFullList = (title, items) => {
+            let listHtml = `<h3 style="font-size: 14px; margin: 15px 0 5px 0;">${title} (${items.length})</h3>`;
+            listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
+            if (items.length === 0) {
+                listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
+            } else {
+                items.forEach(url => {
+                    const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
+                    listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none; word-break: break-all;">${displayUrl}</a></li>`;
+                });
+                if (title.includes('图片')) {
+                    listHtml += '<p style="font-size: 11px; margin-top: 5px;">(请右键点击链接 -> 另存为)</p>';
+                }
+            }
+            listHtml += '</ul>';
+            return listHtml;
+        };
+
+        html += generateFullList('图片/图标 (IMG, SVG, Background)', resources.images);
+        html += generateFullList('媒体文件 (VIDEO, AUDIO)', resources.media);
+        html += generateFullList('其他链接 (A HREF)', resources.links);
+        html += generateFullList('其他可下载资源 (LINK)', resources.other);
+        
+        this.container.innerHTML = html;
     }
 
-    // --- 事件绑定方法 ---
+    this._bindButtonEvents();
+    this._bindPathButtonEvent(element);
+}
+
+/**
+ * 绑定 HTML 结构折叠/展开按钮事件
+ */
+_bindHtmlCollapseEvent() {
+    const collapseBtn = document.getElementById('toggle-html-collapse');
+    const htmlContainer = document.getElementById(this.htmlId);
+    if (!collapseBtn || !htmlContainer) return;
+
+    // 折叠/展开逻辑
+    collapseBtn.onclick = () => {
+        if (this.htmlCollapsed) {
+            // 展开：显示 HTML 内容 + 切换按钮文本
+            htmlContainer.style.display = 'block';
+            collapseBtn.innerHTML = '🔼 折叠 HTML 结构 (共 ' + htmlContainer.textContent.split('\n').length + ' 行)';
+            this.htmlCollapsed = false;
+        } else {
+            // 折叠：隐藏 HTML 内容 + 切换按钮文本
+            htmlContainer.style.display = 'none';
+            collapseBtn.innerHTML = '🔽 展开 HTML 结构 (共 ' + htmlContainer.textContent.split('\n').length + ' 行)';
+            this.htmlCollapsed = true;
+        }
+    };
+}
+
 
     _bindButtonEvents() {
         const toggleBtn = document.getElementById('toggle-resource-picker');
