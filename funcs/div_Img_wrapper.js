@@ -48,11 +48,11 @@ function realTimeResourcePicker() {
     let currentElement = null;
 
     // -------------------------------------------------------------------
-    // --- 2. 核心嗅探函数 (最终优化)
+    // --- 2. 核心嗅探函数 (移除脚本和样式表识别)
     // -------------------------------------------------------------------
 
     /**
-     * 递归遍历 DOM 元素，收集更广泛的资源类型
+     * 递归遍历 DOM 元素，收集图片、媒体和链接等资源
      */
     function gatherResources(element) {
         // 细分资源类型
@@ -60,12 +60,10 @@ function realTimeResourcePicker() {
             images: new Set(),
             links: new Set(), // 纯粹的导航链接
             media: new Set(), // 视频/音频文件
-            scripts: new Set(), // JS 文件
-            styles: new Set(), // CSS 文件
-            other: new Set() // 其他可下载资源 (如 Web Manifest)
+            other: new Set() // 其他可下载资源 (如 Web Manifest, 非样式表/脚本的link)
         };
 
-        if (!element) return { images: [], links: [], media: [], scripts: [], styles: [], other: [] };
+        if (!element) return { images: [], links: [], media: [], other: [] };
 
         // 辅助函数：将 URL 转换为绝对 URL 并添加
         const addResource = (set, url) => {
@@ -81,88 +79,74 @@ function realTimeResourcePicker() {
             }
         };
 
-         element.querySelectorAll('img').forEach(img => {
-            // 1. 检查标准属性：src
-            addResource(resources.images, img.src);
-            
-            // 2. 检查响应式图片源：srcset
-            if (img.srcset) {
-                img.srcset.split(',').forEach(part => {
-                    const url = part.trim().split(/\s+/)[0];
-                    addResource(resources.images, url);
-                });
-            }
-            
-            // 3. 检查延迟加载/自定义数据属性 (最重要)
-            const lazySrc = img.getAttribute('data-src') || 
-                            img.getAttribute('data-original') ||
-                            img.getAttribute('data-srcset');
-            
-            if (lazySrc) {
-                // 如果是 data-srcset，可能包含多个 URL
-                if (lazySrc.includes(',')) {
-                     lazySrc.split(',').forEach(part => {
-                        const url = part.trim().split(/\s+/)[0];
-                        addResource(resources.images, url);
-                     });
-                } else {
-                    addResource(resources.images, lazySrc);
-                }
+        // --- A. 图片/图标资源 ---
+ // 1. 检查当前元素自身是否是 IMG 标签
+    const elementsToCheck = element.tagName === 'IMG' 
+        ? [element] 
+        : [];
+        
+    // 2. 收集所有子代的 IMG 标签
+    element.querySelectorAll('img').forEach(img => elementsToCheck.push(img));
+    
+    // 3. 遍历检查所有收集到的图片元素
+    elementsToCheck.forEach(img => {
+        // 1. 检查标准属性：src
+        addResource(resources.images, img.src);
+        
+        // 2. 检查响应式图片源：srcset
+        if (img.srcset) {
+            img.srcset.split(',').forEach(part => {
+                const url = part.trim().split(/\s+/)[0];
+                addResource(resources.images, url);
+            });
+        }
+        
+        // 3. 检查延迟加载/自定义数据属性 (data-src, data-original, etc.)
+        const lazySrc = img.getAttribute('data-src') || 
+                        img.getAttribute('data-original') ||
+                        img.getAttribute('data-srcset');
+        
+        if (lazySrc) {
+            // 如果是 data-srcset，可能包含多个 URL
+            if (lazySrc.includes(',')) {
+                 lazySrc.split(',').forEach(part => {
+                    const url = part.trim().split(/\s+/)[0];
+                    addResource(resources.images, url);
+                 });
+            } else {
+                addResource(resources.images, lazySrc);
             }
-        });
+        }
+    });
 
-        // 查找 SVG 元素 (作为内容标识)
-        element.querySelectorAll('svg').forEach(svg => {
-            resources.images.add(`[SVG Element] Width: ${svg.getAttribute('width') || 'auto'}, Height: ${svg.getAttribute('height') || 'auto'}`);
-        });
 
-        // --- B. 查找 MEDIA 资源 (VIDEO, AUDIO, SOURCE) ---
+        // --- B. 媒体资源 (Video/Audio) ---
         element.querySelectorAll('video, audio').forEach(media => {
-            // 直接捕获 video/audio 的 src
             addResource(resources.media, media.src);
         });
-
-        // 查找 SOURCE 标签 (在 picture, video, audio 内)
         element.querySelectorAll('source').forEach(source => {
+            // source 可能是图片 (在 picture 内) 或媒体文件
             if (source.type && source.type.startsWith('image/')) {
-                addResource(resources.images, source.srcset);
+                addResource(resources.images, source.srcset || source.src);
             } else {
                 addResource(resources.media, source.src);
             }
         });
-
-        // --- C. 查找 SCRIPT 资源 ---
-        element.querySelectorAll('script[src]').forEach(script => {
-            addResource(resources.scripts, script.src);
-        });
-
-        // --- D. 查找 LINKS, STYLES, and CSS Backgrounds ---
-
+        
+        // --- C. 纯粹链接和非样式表/脚本的 LINK 资源 ---
+        
         element.querySelectorAll('a[href]').forEach(a => {
             addResource(resources.links, a.href);
         });
         
         element.querySelectorAll('link[href]').forEach(link => {
             const rel = link.getAttribute('rel');
-            if (rel === 'stylesheet') {
-                addResource(resources.styles, link.href);
-            } else if (rel && (rel.includes('icon') || rel.includes('apple-touch-icon'))) {
+            // 保持对图标的识别，但移除对 'stylesheet' 的识别
+            if (rel && (rel.includes('icon') || rel.includes('apple-touch-icon'))) {
                 addResource(resources.images, link.href); // 图标视为图片
-            } else if (rel) {
+            } else if (rel && rel !== 'stylesheet') {
                 // 其他 link rels (preload, manifest, etc.)
                 addResource(resources.other, `[LINK:${rel}] ${link.href}`);
-            }
-        });
-
-        // CSS background-image
-        element.querySelectorAll('*').forEach(el => {
-            const style = window.getComputedStyle(el);
-            const bgImage = style.backgroundImage;
-            if (bgImage && bgImage.startsWith('url(')) {
-                const urlMatch = bgImage.match(/url\(['"]?(.+?)['"]?\)/);
-                if (urlMatch && urlMatch[1]) {
-                    addResource(resources.images, urlMatch[1].trim());
-                }
             }
         });
 
@@ -170,11 +154,55 @@ function realTimeResourcePicker() {
             images: Array.from(resources.images),
             links: Array.from(resources.links),
             media: Array.from(resources.media),
-            scripts: Array.from(resources.scripts),
-            styles: Array.from(resources.styles),
             other: Array.from(resources.other)
         };
     }
+
+    // --- HTML 格式化函数 (用于零资源时的原始 DOM 文本显示) ---
+    /**
+     * 对 HTML 代码进行简单的格式化，以便于阅读
+     */
+    function formatHTML(html) {
+        let result = '';
+        let indent = 0;
+        const tokens = html.match(/<(?:\w+|[^>]+)>/g); // 匹配所有标签
+        
+        if (!tokens) return html;
+
+        tokens.forEach(token => {
+            if (token.startsWith('</')) { // 闭合标签
+                indent--;
+                result += '\n' + '  '.repeat(indent) + token;
+            } else if (token.endsWith('/>') || token.endsWith('-->')) { // 自闭合标签或注释
+                result += '\n' + '  '.repeat(indent) + token;
+            } else if (token.startsWith('<')) { // 开始标签
+                if (result.length > 0 && result.slice(-1) !== '\n') { // 避免非标签内容紧接在新标签前
+                    result += '\n';
+                }
+                result += '  '.repeat(indent) + token;
+                indent++;
+            } else {
+                // 处理标签之间的文本内容（例如文本节点），保持原样
+                result += token; 
+            }
+        });
+
+        // 清理首尾空行和多余空行
+        return result.trim().replace(/\n\s*\n/g, '\n');
+    }
+    
+    /**
+     * 检查资源是否为空
+     */
+    function hasNoResources(resources) {
+        return (
+            resources.images.length === 0 &&
+            resources.links.length === 0 &&
+            resources.media.length === 0 &&
+            resources.other.length === 0
+        );
+    }
+    // -------------------------------------------------------------------
 
     /**
      * 生成资源列表的 HTML 并更新容器 (预览模式)
@@ -185,34 +213,37 @@ function realTimeResourcePicker() {
         const buttonText = isLocked ? "✅ 已锁定 (点击解锁)" : "🖱️ 实时预览 (点击锁定)";
         const buttonStyle = isLocked ? "background: #4CAF50; color: white;" : "background: #f0f0f0;";
         html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; ${buttonStyle}">${buttonText}</button>`;
-
-        // 辅助函数：生成列表HTML
-        const generateList = (title, items, limit) => {
-            let listHtml = `<h3 style="font-size: 14px; margin: 5px 0;">${title} (${items.length})</h3>`;
-            listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
-            if (items.length === 0) {
-                listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
-            } else {
-                items.slice(0, limit).forEach(url => {
-                    const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
-                    listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none;">${displayUrl}</a></li>`;
-                });
-                if(items.length > limit) {
-                    listHtml += `<li style="font-size: 12px; color: #999;">... 还有 ${items.length - limit} 个未显示。</li>`;
-                }
-            }
-            listHtml += '</ul>';
-            return listHtml;
-        };
         
-        // 生成列表内容 (预览模式下限制数量)
-        html += generateList('图片/图标', resources.images, 5);
-        html += generateList('脚本 (JS)', resources.scripts, 3);
-        html += generateList('样式表 (CSS)', resources.styles, 3);
-        html += generateList('媒体 (Video/Audio)', resources.media, 3);
-        html += generateList('其他链接', resources.links, 5);
-        html += generateList('其他资源 (Manifest, etc.)', resources.other, 2);
-
+        if (hasNoResources(resources) && currentElement) {
+            // 如果没有资源，显示元素标签和提示
+            html += `<h3 style="font-size: 14px; margin: 10px 0; color: #cc3300;">未检测到可下载资源。</h3>`;
+            html += `<p style="font-size: 12px; color: #666;">点击锁定后将显示该元素的**格式化原始 HTML 结构**。</p>`;
+        } else {
+            // 辅助函数：生成列表HTML
+            const generateList = (title, items, limit) => {
+                let listHtml = `<h3 style="font-size: 14px; margin: 5px 0;">${title} (${items.length})</h3>`;
+                listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
+                if (items.length === 0) {
+                    listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
+                } else {
+                    items.slice(0, limit).forEach(url => {
+                        const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
+                        listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none;">${displayUrl}</a></li>`;
+                    });
+                    if(items.length > limit) {
+                        listHtml += `<li style="font-size: 12px; color: #999;">... 还有 ${items.length - limit} 个未显示。</li>`;
+                    }
+                }
+                listHtml += '</ul>';
+                return listHtml;
+            };
+            
+            // 生成列表内容 (预览模式下限制数量)
+            html += generateList('图片/图标', resources.images, 5);
+            html += generateList('媒体', resources.media, 3);
+            html += generateList('链接', resources.links, 5);
+            html += generateList('其他资源', resources.other, 2);
+        }
 
         resourceListContainer.innerHTML = html;
 
@@ -228,41 +259,52 @@ function realTimeResourcePicker() {
     }
     
     /**
-     * 生成完整的资源列表 (锁定状态下使用)
+     * 生成完整的资源列表 (锁定状态下使用) 或 HTML 结构
      */
-    function createFullResourceList(resources, tagName) {
+    function createFullResourceList(resources, tagName, element) {
         let html = `<h2 style="font-size: 16px; margin: 0 0 10px 0;">已锁定元素 <${tagName}> 的资源</h2>`;
         
         // 锁定/关闭按钮
         html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #4CAF50; color: white;">✅ 已锁定 (点击解锁)</button>`;
         html += `<button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>`;
 
-        // 辅助函数：生成完整列表HTML
-        const generateFullList = (title, items) => {
-            let listHtml = `<h3 style="font-size: 14px; margin: 15px 0 5px 0;">${title} (${items.length})</h3>`;
-            listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
-            if (items.length === 0) {
-                listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
-            } else {
-                items.forEach(url => {
-                    const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
-                    listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none; word-break: break-all;">${displayUrl}</a></li>`;
-                });
-                if (title.includes('图片')) {
-                    listHtml += '<p style="font-size: 11px; margin-top: 5px;">(请右键点击链接 -> 另存为)</p>';
+        // 检查是否所有资源都为 0
+        if (hasNoResources(resources)) {
+            // 使用 outerHTML 获取原始 DOM 文本
+            const formattedHtml = formatHTML(element.outerHTML);
+            const htmlId = 'target-element-html-content';
+
+            html += `<h3 style="font-size: 14px; margin: 15px 0 5px 0; color: blue;">未检测到可下载资源，显示原始 HTML 结构：</h3>`;
+            html += `<button id="copy-html-btn" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #007bff; color: white;">复制 HTML 到剪贴板</button>`;
+            // 使用 <pre> 标签和特定样式确保 DOM 文本被正确显示（不被渲染）
+            html += `<pre id="${htmlId}" style="white-space: pre-wrap; word-wrap: break-word; font-size: 10px; padding: 5px; border: 1px solid #ddd; background: #fff; max-height: 400px; overflow: auto; text-align: left;">${formattedHtml}</pre>`;
+            
+        } else {
+            // 辅助函数：生成完整列表HTML
+            const generateFullList = (title, items) => {
+                let listHtml = `<h3 style="font-size: 14px; margin: 15px 0 5px 0;">${title} (${items.length})</h3>`;
+                listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
+                if (items.length === 0) {
+                    listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
+                } else {
+                    items.forEach(url => {
+                        const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
+                        listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none; word-break: break-all;">${displayUrl}</a></li>`;
+                    });
+                    if (title.includes('图片')) {
+                        listHtml += '<p style="font-size: 11px; margin-top: 5px;">(请右键点击链接 -> 另存为)</p>';
+                    }
                 }
-            }
-            listHtml += '</ul>';
-            return listHtml;
-        };
-        
-        // 生成完整的列表内容
-        html += generateFullList('图片/图标 (IMG, SVG, Background)', resources.images);
-        html += generateFullList('脚本 (SCRIPT)', resources.scripts);
-        html += generateFullList('样式表 (CSS)', resources.styles);
-        html += generateFullList('媒体文件 (VIDEO, AUDIO)', resources.media);
-        html += generateFullList('其他链接 (A HREF)', resources.links);
-        html += generateFullList('其他可下载资源 (LINK)', resources.other);
+                listHtml += '</ul>';
+                return listHtml;
+            };
+            
+            // 生成完整的列表内容
+            html += generateFullList('图片/图标 (IMG, SVG, Background)', resources.images);
+            html += generateFullList('媒体文件 (VIDEO, AUDIO)', resources.media);
+            html += generateFullList('其他链接 (A HREF)', resources.links);
+            html += generateFullList('其他可下载资源 (LINK)', resources.other);
+        }
         
         resourceListContainer.innerHTML = html;
         
@@ -272,6 +314,26 @@ function realTimeResourcePicker() {
             startPicking();
         };
         document.getElementById('close-all-picker').onclick = cleanup;
+
+        // 绑定复制按钮事件 (仅在零资源时存在)
+        const copyBtn = document.getElementById('copy-html-btn');
+        if (copyBtn) {
+            copyBtn.onclick = () => {
+                // 获取 <pre> 标签中的纯文本内容
+                const htmlContent = document.getElementById('target-element-html-content').innerText;
+                navigator.clipboard.writeText(htmlContent).then(() => {
+                    copyBtn.innerText = "已复制！";
+                    copyBtn.style.background = "#28a745";
+                    setTimeout(() => {
+                        copyBtn.innerText = "复制 HTML 到剪贴板";
+                        copyBtn.style.background = "#007bff";
+                    }, 1500);
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    copyBtn.innerText = "复制失败！";
+                });
+            };
+        }
     }
 
 
@@ -282,6 +344,7 @@ function realTimeResourcePicker() {
     function onMove(e) {
       if (isLocked) return;
 
+      // 忽略工具本身元素
       let el = document.elementFromPoint(e.clientX, e.clientY);
       if (!el || el === overlay || el === tooltip || el === resourceListContainer || resourceListContainer.contains(el)) {
          el = currentElement;
@@ -290,6 +353,7 @@ function realTimeResourcePicker() {
 
       currentElement = el;
 
+      // 更新高亮和提示框
       const rect = el.getBoundingClientRect();
       overlay.style.top = rect.top + window.scrollY + "px";
       overlay.style.left = rect.left + window.scrollX + "px";
@@ -302,16 +366,19 @@ function realTimeResourcePicker() {
       tooltip.style.left = rect.left + "px";
       tooltip.innerText = `预览 <${el.tagName.toLowerCase()}>`;
       
+      // 实时嗅探和更新列表
       const resources = gatherResources(el);
       createResourceListHTML(resources);
     }
 
     function onClick(e) {
-      if (resourceListContainer.contains(e.target)) return;
+      // 如果点击在工具箱内，且不是 HTML 复制按钮，则不进行锁定/解锁
+      if (resourceListContainer.contains(e.target) && e.target.id !== 'copy-html-btn') return;
         
       e.preventDefault();
       e.stopPropagation();
       
+      // 重新获取元素，确保不是工具元素
       let el = document.elementFromPoint(e.clientX, e.clientY);
       if (!el || el === overlay || el === tooltip || resourceListContainer.contains(el)) return;
       
@@ -321,12 +388,14 @@ function realTimeResourcePicker() {
           isLocked = true;
           document.removeEventListener("mousemove", onMove, true);
           
+          // 切换到锁定样式
           overlay.style.border = "4px solid blue";
           overlay.style.background = "rgba(0,0,255,0.15)";
           tooltip.innerText = `已锁定 <${el.tagName.toLowerCase()}>`;
           
+          // 锁定并生成完整列表/HTML
           const resources = gatherResources(el);
-          createFullResourceList(resources, el.tagName.toLowerCase());
+          createFullResourceList(resources, el.tagName.toLowerCase(), el);
           
           console.log(`资源嗅探已锁定在元素 <${el.tagName.toLowerCase()}>`);
 
@@ -381,7 +450,7 @@ function realTimeResourcePicker() {
     
     window.__pickerCleanup = cleanup;
     
-    console.log("实时资源嗅探已启动 (已增强对所有可下载资源的识别)");
+    console.log("实时资源嗅探已启动 (零资源时显示 HTML 结构)");
   })();
 }
 
