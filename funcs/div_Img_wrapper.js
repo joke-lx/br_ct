@@ -352,46 +352,31 @@ _bindPathButtonEvent(element) {
             let html = "<h3 style='font-size:14px;margin:10px 0;'>多种路径</h3>";
             html += "<ul style='list-style:none;padding:0;font-size:12px;'>";
             for (const [key, value] of Object.entries(paths)) {
-                const inputId = `path-${key}-${Date.now()}`;
-                html += `
-                <li style="margin-bottom:8px;">
-                  <strong>${key}:</strong><br/>
-                  <textarea id="${inputId}" readonly 
-                    style="width:95%;font-size:11px;white-space:nowrap;overflow-x:auto;
-                           display:block;margin:3px 0;"></textarea>
-                  <button class="copy-path-btn" data-input="${inputId}" 
-                    style="margin-top:2px;">复制</button>
-                </li>`;
+                html += `<li><strong>${key}:</strong> 
+                          <input type="text" value="${value}" readonly style="width:90%;" />
+                          <button class="copy-path-btn" data-value="${value}" style="margin-left:5px;">复制</button>
+                         </li>`;
             }
             html += "</ul>";
             this.container.insertAdjacentHTML("beforeend", html);
 
-            // 填充值 & 绑定复制
-            for (const [key, value] of Object.entries(paths)) {
-                const inputEl = document.getElementById(`path-${key}-${Date.now()}`);
-                if (inputEl) inputEl.value = value;
-            }
-
+            // 绑定复制功能
             this.container.querySelectorAll(".copy-path-btn").forEach(btn => {
                 btn.onclick = () => {
-                    const inputId = btn.getAttribute("data-input");
-                    const el = document.getElementById(inputId);
-                    if (el) {
-                        el.select();
-                        document.execCommand("copy");
+                    const value = btn.getAttribute("data-value");
+                    navigator.clipboard.writeText(value).then(() => {
                         btn.innerText = "已复制";
                         btn.style.background = "#28a745";
                         setTimeout(() => {
                             btn.innerText = "复制";
                             btn.style.background = "";
                         }, 1200);
-                    }
+                    });
                 };
             });
         };
     }
 }
-
 
     /**
      * 生成完整的资源列表 (锁定状态下使用) 或 HTML 结构
