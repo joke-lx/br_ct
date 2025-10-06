@@ -1,488 +1,503 @@
-function realTimeResourcePicker() {
-    (() => {
-        // -------------------------------------------------------------------
-        // --- 1. UI 元素创建 (保持不变)
-        // -------------------------------------------------------------------
-        // 创建高亮框 (Overlay)
+/**
+ * 实时资源选择器 (Resource Picker) 类。
+ * 将所有 UI 元素、状态和事件处理逻辑封装在一起，提高可维护性。
+ */
+class ResourcePicker {
+    constructor() {
+        this.isLocked = false;
+        this.currentElement = null;
+        this.htmlId = 'target-element-html-content';
+
+        // 1. UI 元素初始化
+        this.overlay = this._createOverlay();
+        this.tooltip = this._createTooltip();
+        this.container = this._createContainer();
+
+        // 2. 启动事件监听
+        this._startPicking();
+
+        console.log("实时资源嗅探已启动 (零资源时显示 HTML 结构)");
+        // 暴露清理方法，以便外部脚本可以停止工具
+        window.__pickerCleanup = this.cleanup.bind(this);
+    }
+
+    // --- 辅助 UI 创建方法 ---
+
+    _createOverlay() {
         const overlay = document.createElement("div");
-        overlay.style.position = "absolute";
-        overlay.style.border = "2px solid red";
-        overlay.style.background = "rgba(255,0,0,0.1)";
-        overlay.style.pointerEvents = "none";
-        overlay.style.zIndex = "999999";
+        Object.assign(overlay.style, {
+            position: "absolute",
+            border: "2px solid red",
+            background: "rgba(255,0,0,0.1)",
+            pointerEvents: "none",
+            zIndex: "999999"
+        });
         document.body.appendChild(overlay);
-        // 创建提示框 (Tooltip)
+        return overlay;
+    }
+
+    _createTooltip() {
         const tooltip = document.createElement("div");
-        tooltip.style.position = "fixed";
-        tooltip.style.background = "black";
-        tooltip.style.color = "white";
-        tooltip.style.fontSize = "12px";
-        tooltip.style.padding = "2px 6px";
-        tooltip.style.borderRadius = "3px";
-        tooltip.style.zIndex = "1000000";
-        tooltip.style.pointerEvents = "none";
+        Object.assign(tooltip.style, {
+            position: "fixed",
+            background: "black",
+            color: "white",
+            fontSize: "12px",
+            padding: "2px 6px",
+            borderRadius: "3px",
+            zIndex: "1000000",
+            pointerEvents: "none"
+        });
         document.body.appendChild(tooltip);
-        // 创建资源列表容器 (Container)
-        const resourceListContainer = document.createElement("div");
-        resourceListContainer.style.position = "fixed";
-        resourceListContainer.style.top = "10px";
-        resourceListContainer.style.right = "10px";
-        resourceListContainer.style.width = "300px";
-        resourceListContainer.style.maxHeight = "90%";
-        resourceListContainer.style.overflowY = "auto";
-        resourceListContainer.style.background = "rgba(255, 255, 215, 0.95)";
-        resourceListContainer.style.border = "1px solid #ccc";
-        resourceListContainer.style.padding = "10px";
-        resourceListContainer.style.zIndex = "1000001";
-        resourceListContainer.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
-        resourceListContainer.style.fontFamily = "sans-serif";
-        resourceListContainer.style.display = "block";
-        resourceListContainer.style.userSelect = "text";
-        document.body.appendChild(resourceListContainer);
-        // 状态追踪
-        let isLocked = false;
-        let currentElement = null;
-        // -------------------------------------------------------------------
-        // --- 2. 核心嗅探函数 (移除脚本和样式表识别)
-        // -------------------------------------------------------------------
-        /**
-         * 递归遍历 DOM 元素，收集图片、媒体和链接等资源
-         */
-        function gatherResources(element) {
-            // 细分资源类型
-            const resources = {
-                images: new Set(),
-                links: new Set(), // 纯粹的导航链接
-                media: new Set(), // 视频/音频文件
-                other: new Set() // 其他可下载资源 (如 Web Manifest, 非样式表/脚本的link)
-            };
-            if (!element) return { images: [], links: [], media: [], other: [] };
-            // 辅助函数：将 URL 转换为绝对 URL 并添加
-            const addResource = (set, url) => {
-                if (url && typeof url === 'string' && url.trim().length > 0) {
-                    if (url.startsWith('data:')) {
-                        const typeMatch = url.match(/^data:([^;,]+)/);
-                        const type = typeMatch ? typeMatch[1] : 'unknown';
-                        const sizeKB = Math.ceil((url.length * 0.75) / 1024);
-                        set.add(`[DATA URI] Type: ${type}, Size: ${sizeKB} KB`);
-                    } else {
-                        set.add(new URL(url, window.location.href).href);
-                    }
-                }
-            };
-            // --- A. 图片/图标资源 ---
-            // 1. 检查当前元素自身是否是 IMG 标签
-            const elementsToCheck = element.tagName === 'IMG'
-                ? [element]
-                : [];
+        return tooltip;
+    }
 
-            // 2. 收集所有子代的 IMG 标签
-            element.querySelectorAll('img').forEach(img => elementsToCheck.push(img));
+    _createContainer() {
+        const container = document.createElement("div");
+        Object.assign(container.style, {
+            position: "fixed",
+            top: "10px",
+            right: "10px",
+            width: "300px",
+            maxHeight: "90%",
+            overflowY: "auto",
+            background: "rgba(255, 255, 215, 0.95)",
+            border: "1px solid #ccc",
+            padding: "10px",
+            zIndex: "1000001",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            fontFamily: "sans-serif",
+            display: "block",
+            userSelect: "text"
+        });
+        document.body.appendChild(container);
+        return container;
+    }
 
-            // 3. 遍历检查所有收集到的图片元素
-            elementsToCheck.forEach(img => {
-                // 1. 检查标准属性：src
-                addResource(resources.images, img.src);
+    // --- 核心工具方法 ---
 
-                // 2. 检查响应式图片源：srcset
-                if (img.srcset) {
-                    img.srcset.split(',').forEach(part => {
-                        const url = part.trim().split(/\s+/)[0];
-                        addResource(resources.images, url);
+    /**
+     * 将 URL 转换为绝对 URL 或处理 Data URI
+     */
+    _addResource(set, url) {
+        if (url && typeof url === 'string' && url.trim().length > 0) {
+            if (url.startsWith('data:')) {
+                const typeMatch = url.match(/^data:([^;,]+)/);
+                const type = typeMatch ? typeMatch[1] : 'unknown';
+                const sizeKB = Math.ceil((url.length * 0.75) / 1024);
+                set.add(`[DATA URI] Type: ${type}, Size: ${sizeKB} KB`);
+            } else {
+                set.add(new URL(url, window.location.href).href);
+            }
+        }
+    }
+
+    /**
+     * 嗅探当前元素及其子元素中的资源
+     */
+    _gatherResources(element) {
+        const resources = {
+            images: new Set(),
+            links: new Set(),
+            media: new Set(),
+            other: new Set()
+        };
+        if (!element) return { images: [], links: [], media: [], other: [] };
+
+        // 收集所有 IMG 元素 (包括自身)
+        const elementsToCheck = element.tagName === 'IMG' ? [element] : Array.from(element.querySelectorAll('img'));
+
+        elementsToCheck.forEach(img => {
+            this._addResource(resources.images, img.src);
+            if (img.srcset) {
+                img.srcset.split(',').forEach(part => {
+                    this._addResource(resources.images, part.trim().split(/\s+/)[0]);
+                });
+            }
+            const lazySrc = img.getAttribute('data-src') || img.getAttribute('data-original') || img.getAttribute('data-srcset');
+            if (lazySrc) {
+                if (lazySrc.includes(',')) {
+                    lazySrc.split(',').forEach(part => {
+                        this._addResource(resources.images, part.trim().split(/\s+/)[0]);
                     });
-                }
-
-                // 3. 检查延迟加载/自定义数据属性 (data-src, data-original, etc.)
-                const lazySrc = img.getAttribute('data-src') ||
-                    img.getAttribute('data-original') ||
-                    img.getAttribute('data-srcset');
-
-                if (lazySrc) {
-                    // 如果是 data-srcset，可能包含多个 URL
-                    if (lazySrc.includes(',')) {
-                        lazySrc.split(',').forEach(part => {
-                            const url = part.trim().split(/\s+/)[0];
-                            addResource(resources.images, url);
-                        });
-                    } else {
-                        addResource(resources.images, lazySrc);
-                    }
-                }
-            });
-            // --- B. 媒体资源 (Video/Audio) ---
-            element.querySelectorAll('video, audio').forEach(media => {
-                addResource(resources.media, media.src);
-            });
-            element.querySelectorAll('source').forEach(source => {
-                // source 可能是图片 (在 picture 内) 或媒体文件
-                if (source.type && source.type.startsWith('image/')) {
-                    addResource(resources.images, source.srcset || source.src);
                 } else {
-                    addResource(resources.media, source.src);
+                    this._addResource(resources.images, lazySrc);
                 }
-            });
-
-            // --- C. 纯粹链接和非样式表/脚本的 LINK 资源 ---
-
-            element.querySelectorAll('a[href]').forEach(a => {
-                addResource(resources.links, a.href);
-            });
-
-            element.querySelectorAll('link[href]').forEach(link => {
-                const rel = link.getAttribute('rel');
-                // 保持对图标的识别，但移除对 'stylesheet' 的识别
-                if (rel && (rel.includes('icon') || rel.includes('apple-touch-icon'))) {
-                    addResource(resources.images, link.href); // 图标视为图片
-                } else if (rel && rel !== 'stylesheet') {
-                    // 其他 link rels (preload, manifest, etc.)
-                    addResource(resources.other, `[LINK:${rel}] ${link.href}`);
-                }
-            });
-            return {
-                images: Array.from(resources.images),
-                links: Array.from(resources.links),
-                media: Array.from(resources.media),
-                other: Array.from(resources.other)
-            };
-        }
-        // --- HTML 格式化函数 (用于零资源时的原始 DOM 文本显示) ---
-        /**
-         * 对 HTML 代码进行简单的格式化，以便于阅读
-         */
-        function formatHTML(html) {
-            let result = '';
-            let indent = 0;
-            // 使用四个空格作为标准缩进
-            const INDENT_SPACES = '    '; 
-            
-            // 匹配所有标签，包括闭合标签和自闭合标签
-            const tokens = html.match(/<(?:\w+|[^>]+)>/g) || [];
-            let lastIndex = 0;
-
-            tokens.forEach(token => {
-                // 处理标签之前的文本内容 (如果有的话)
-                const textContent = html.substring(lastIndex, html.indexOf(token, lastIndex)).trim();
-                if (textContent.length > 0) {
-                    // 如果不是紧跟着上一个标签，则添加换行和缩进
-                    if (result.length > 0 && result.slice(-1) !== '\n') {
-                         result += '\n' + INDENT_SPACES.repeat(indent);
-                    }
-                    result += textContent;
-                }
-
-                if (token.startsWith('</')) { // 闭合标签
-                    indent--;
-                    result += '\n' + INDENT_SPACES.repeat(indent) + token;
-                } else if (token.endsWith('/>') || token.endsWith('-->')) { // 自闭合标签或注释
-                    result += '\n' + INDENT_SPACES.repeat(indent) + token;
-                } else if (token.startsWith('<')) { // 开始标签
-                    if (result.length > 0 && !result.endsWith('\n')) {
-                        result += '\n';
-                    }
-                    result += INDENT_SPACES.repeat(indent) + token;
-                    indent++;
-                }
-                lastIndex = html.indexOf(token, lastIndex) + token.length;
-            });
-            
-            // 处理最后一个标签之后的文本内容
-            const remainingText = html.substring(lastIndex).trim();
-            if (remainingText.length > 0) {
-                 if (result.length > 0 && !result.endsWith('\n')) {
-                    result += '\n' + INDENT_SPACES.repeat(indent);
-                }
-                result += remainingText;
             }
+        });
 
-            // 清理首尾空行和多余空行
-            return result.trim().replace(/\n\s*\n/g, '\n');
-        }
-
-        /**
-         * 检查资源是否为空
-         */
-        function hasNoResources(resources) {
-            return (
-                resources.images.length === 0 &&
-                resources.links.length === 0 &&
-                resources.media.length === 0 &&
-                resources.other.length === 0
-            );
-        }
-        // -------------------------------------------------------------------
-        /**
-         * 生成资源列表的 HTML 并更新容器 (预览模式)
-         */
-        function createResourceListHTML(resources) {
-            let html = '<h2 style="font-size: 16px; margin: 0 0 10px 0;">资源嗅探结果</h2>';
-
-            const buttonText = isLocked ? "✅ 已锁定 (点击解锁)" : "🖱️ 实时预览 (点击锁定)";
-            const buttonStyle = isLocked ? "background: #4CAF50; color: white;" : "background: #f0f0f0;";
-            html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; ${buttonStyle}">${buttonText}</button>`;
-
-            if (hasNoResources(resources) && currentElement) {
-                // 如果没有资源，显示元素标签和提示
-                html += `<h3 style="font-size: 14px; margin: 10px 0; color: #cc3300;">未检测到可下载资源。</h3>`;
-                html += `<p style="font-size: 12px; color: #666;">点击锁定后将显示该元素的**格式化原始 HTML 结构**。</p>`;
+        element.querySelectorAll('video, audio').forEach(media => {
+            this._addResource(resources.media, media.src);
+        });
+        element.querySelectorAll('source').forEach(source => {
+            if (source.type && source.type.startsWith('image/')) {
+                this._addResource(resources.images, source.srcset || source.src);
             } else {
-                // 辅助函数：生成列表HTML
-                const generateList = (title, items, limit) => {
-                    let listHtml = `<h3 style="font-size: 14px; margin: 5px 0;">${title} (${items.length})</h3>`;
-                    listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
-                    if (items.length === 0) {
-                        listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
-                    } else {
-                        items.slice(0, limit).forEach(url => {
-                            const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
-                            listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none;">${displayUrl}</a></li>`;
-                        });
-                        if (items.length > limit) {
-                            listHtml += `<li style="font-size: 12px; color: #999;">... 还有 ${items.length - limit} 个未显示。</li>`;
-                        }
-                    }
-                    listHtml += '</ul>';
-                    return listHtml;
-                };
-
-                // 生成列表内容 (预览模式下限制数量)
-                html += generateList('图片/图标', resources.images, 5);
-                html += generateList('媒体', resources.media, 3);
-                html += generateList('链接', resources.links, 5);
-                html += generateList('其他资源', resources.other, 2);
+                this._addResource(resources.media, source.src);
             }
-            resourceListContainer.innerHTML = html;
-            // 重新绑定关闭/解锁按钮事件
-            document.getElementById('toggle-resource-picker').onclick = () => {
-                if (isLocked) {
-                    isLocked = false;
-                    startPicking();
+        });
+
+        element.querySelectorAll('a[href]').forEach(a => {
+            this._addResource(resources.links, a.href);
+        });
+
+        element.querySelectorAll('link[href]').forEach(link => {
+            const rel = link.getAttribute('rel');
+            if (rel && (rel.includes('icon') || rel.includes('apple-touch-icon'))) {
+                this._addResource(resources.images, link.href);
+            } else if (rel && rel !== 'stylesheet') {
+                this._addResource(resources.other, `[LINK:${rel}] ${link.href}`);
+            }
+        });
+
+        return {
+            images: Array.from(resources.images),
+            links: Array.from(resources.links),
+            media: Array.from(resources.media),
+            other: Array.from(resources.other)
+        };
+    }
+
+    /**
+     * 检查资源是否为空
+     */
+    _hasNoResources(resources) {
+        return (
+            resources.images.length === 0 &&
+            resources.links.length === 0 &&
+            resources.media.length === 0 &&
+            resources.other.length === 0
+        );
+    }
+
+    /**
+     * 对 HTML 代码进行简单的格式化，以便于阅读
+     * 保持与原代码中格式化逻辑的一致性，使用四个空格缩进
+     */
+    _formatHTML(html) {
+        let result = '';
+        let indent = 0;
+        const INDENT_SPACES = '    '; 
+        
+        const tokens = html.match(/<(?:\w+|[^>]+)>/g) || [];
+        let lastIndex = 0;
+
+        tokens.forEach(token => {
+            const textContent = html.substring(lastIndex, html.indexOf(token, lastIndex)).trim();
+            if (textContent.length > 0) {
+                if (result.length > 0 && result.slice(-1) !== '\n') {
+                     result += '\n' + INDENT_SPACES.repeat(indent);
+                }
+                result += textContent;
+            }
+
+            if (token.startsWith('</')) { 
+                indent--;
+                result += '\n' + INDENT_SPACES.repeat(indent) + token;
+            } else if (token.endsWith('/>') || token.endsWith('-->')) { 
+                result += '\n' + INDENT_SPACES.repeat(indent) + token;
+            } else if (token.startsWith('<')) { 
+                if (result.length > 0 && !result.endsWith('\n')) {
+                    result += '\n';
+                }
+                result += INDENT_SPACES.repeat(indent) + token;
+                indent++;
+            }
+            lastIndex = html.indexOf(token, lastIndex) + token.length;
+        });
+        
+        const remainingText = html.substring(lastIndex).trim();
+        if (remainingText.length > 0) {
+             if (result.length > 0 && !result.endsWith('\n')) {
+                result += '\n' + INDENT_SPACES.repeat(indent);
+            }
+            result += remainingText;
+        }
+
+        return result.trim().replace(/\n\s*\n/g, '\n');
+    }
+
+    // --- UI 渲染方法 ---
+
+    /**
+     * 生成资源列表的 HTML 并更新容器 (预览模式)
+     */
+    _createResourceListHTML(resources) {
+        let html = '<h2 style="font-size: 16px; margin: 0 0 10px 0;">资源嗅探结果</h2>';
+
+        const buttonText = this.isLocked ? "✅ 已锁定 (点击解锁)" : "🖱️ 实时预览 (点击锁定)";
+        const buttonStyle = this.isLocked ? "background: #4CAF50; color: white;" : "background: #f0f0f0;";
+        html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; ${buttonStyle}">${buttonText}</button>`;
+        html += `<button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>`;
+
+
+        if (this._hasNoResources(resources) && this.currentElement) {
+            html += `<h3 style="font-size: 14px; margin: 10px 0; color: #cc3300;">未检测到可下载资源。</h3>`;
+            html += `<p style="font-size: 12px; color: #666;">点击锁定后将显示该元素的**格式化原始 HTML 结构**。</p>`;
+        } else {
+            const generateList = (title, items, limit) => {
+                let listHtml = `<h3 style="font-size: 14px; margin: 5px 0;">${title} (${items.length})</h3>`;
+                listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
+                if (items.length === 0) {
+                    listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
                 } else {
-                    cleanup(); // 在解锁模式下点击是锁定，但此处处理的是预览模式下的解锁/关闭，逻辑有点绕，实际是重新触发点击事件，或解除锁定
+                    items.slice(0, limit).forEach(url => {
+                        const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
+                        listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none;">${displayUrl}</a></li>`;
+                    });
+                    if (items.length > limit) {
+                        listHtml += `<li style="font-size: 12px; color: #999;">... 还有 ${items.length - limit} 个未显示。</li>`;
+                    }
                 }
+                listHtml += '</ul>';
+                return listHtml;
             };
-            // 确保 close-all-picker 在预览模式下也能被绑定
-             const closeBtn = document.getElementById('close-all-picker');
-             if (closeBtn) {
-                 closeBtn.onclick = cleanup;
-             }
+
+            html += generateList('图片/图标', resources.images, 5);
+            html += generateList('媒体', resources.media, 3);
+            html += generateList('链接', resources.links, 5);
+            html += generateList('其他资源', resources.other, 2);
         }
 
-        /**
-         * 生成完整的资源列表 (锁定状态下使用) 或 HTML 结构
-         */
-        function createFullResourceList(resources, tagName, element) {
-            let html = `<h2 style="font-size: 16px; margin: 0 0 10px 0;">已锁定元素 <${tagName}> 的资源</h2>`;
+        this.container.innerHTML = html;
+        this._bindButtonEvents();
+    }
 
-            // 锁定/关闭按钮
-            html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #4CAF50; color: white;">✅ 已锁定 (点击解锁)</button>`;
-            html += `<button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>`;
+    /**
+     * 生成完整的资源列表 (锁定状态下使用) 或 HTML 结构
+     */
+    _createFullResourceList(resources, tagName, element) {
+        let html = `<h2 style="font-size: 16px; margin: 0 0 10px 0;">已锁定元素 <${tagName}> 的资源</h2>`;
+
+        // 锁定/关闭按钮
+        html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #4CAF50; color: white;">✅ 已锁定 (点击解锁)</button>`;
+        html += `<button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>`;
+
+        // 检查是否所有资源都为 0
+        if (this._hasNoResources(resources)) {
+            const formattedHtml = this._formatHTML(element.outerHTML);
             
-            const htmlId = 'target-element-html-content';
-
-            // 检查是否所有资源都为 0
-            if (hasNoResources(resources)) {
-                // 使用 outerHTML 获取原始 DOM 文本
-                const formattedHtml = formatHTML(element.outerHTML);
-                                
-                // *** 关键修改：<pre> 标签内为空，等待使用 .textContent 插入 ***
-                html += `<pre id="${htmlId}" style="white-space: pre-wrap; word-wrap: break-word; font-size: 10px; padding: 5px; border: 1px solid #ddd; background: #fff; max-height: 400px; overflow: auto; text-align: left;"></pre>`;
-                
-                // 设置容器 HTML
-                resourceListContainer.innerHTML = html;
-                
-                // *** 保证纯文本显示的实现：通过 textContent 插入内容 ***
-                const preElement = document.getElementById(htmlId);
-                if (preElement) {
-                    // 这里插入的内容就是经过 formatHTML 处理的，包含正确的空格缩进
-                    preElement.textContent = formattedHtml;
-                }
-            } else {
-                // 辅助函数：生成完整列表HTML
-                const generateFullList = (title, items) => {
-                    let listHtml = `<h3 style="font-size: 14px; margin: 15px 0 5px 0;">${title} (${items.length})</h3>`;
-                    listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
-                    if (items.length === 0) {
-                        listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
-                    } else {
-                        items.forEach(url => {
-                            const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
-                            listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none; word-break: break-all;">${displayUrl}</a></li>`;
-                        });
-                        if (title.includes('图片')) {
-                            listHtml += '<p style="font-size: 11px; margin-top: 5px;">(请右键点击链接 -> 另存为)</p>';
-                        }
-                    }
-                    listHtml += '</ul>';
-                    return listHtml;
-                };
-
-                // 生成完整的列表内容
-                html += generateFullList('图片/图标 (IMG, SVG, Background)', resources.images);
-                html += generateFullList('媒体文件 (VIDEO, AUDIO)', resources.media);
-                html += generateFullList('其他链接 (A HREF)', resources.links);
-                html += generateFullList('其他可下载资源 (LINK)', resources.other);
-                
-                resourceListContainer.innerHTML = html;
+            html += `<h3 style="font-size: 14px; margin: 15px 0 5px 0; color: blue;">未检测到可下载资源，显示原始 HTML 结构：</h3>`;
+            html += `<button id="copy-html-btn" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #007bff; color: white;">复制 HTML 到剪贴板</button>`;
+            
+            html += `<pre id="${this.htmlId}" style="white-space: pre-wrap; word-wrap: break-word; font-size: 10px; padding: 5px; border: 1px solid #ddd; background: #fff; max-height: 400px; overflow: auto; text-align: left;"></pre>`;
+            
+            this.container.innerHTML = html;
+            
+            // 确保纯文本插入以避免渲染 HTML 标签
+            const preElement = document.getElementById(this.htmlId);
+            if (preElement) {
+                preElement.textContent = formattedHtml;
             }
-
-            // 重新绑定事件
-            document.getElementById('toggle-resource-picker').onclick = () => {
-                isLocked = false;
-                startPicking();
+            this._bindCopyButtonEvent(this.htmlId);
+        } else {
+            const generateFullList = (title, items) => {
+                let listHtml = `<h3 style="font-size: 14px; margin: 15px 0 5px 0;">${title} (${items.length})</h3>`;
+                listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
+                if (items.length === 0) {
+                    listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
+                } else {
+                    items.forEach(url => {
+                        const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
+                        listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none; word-break: break-all;">${displayUrl}</a></li>`;
+                    });
+                    if (title.includes('图片')) {
+                        listHtml += '<p style="font-size: 11px; margin-top: 5px;">(请右键点击链接 -> 另存为)</p>';
+                    }
+                }
+                listHtml += '</ul>';
+                return listHtml;
             };
-            document.getElementById('close-all-picker').onclick = cleanup;
+
+            html += generateFullList('图片/图标 (IMG, SVG, Background)', resources.images);
+            html += generateFullList('媒体文件 (VIDEO, AUDIO)', resources.media);
+            html += generateFullList('其他链接 (A HREF)', resources.links);
+            html += generateFullList('其他可下载资源 (LINK)', resources.other);
             
-            // 绑定复制按钮事件 (仅在零资源时存在)
-            const copyBtn = document.getElementById('copy-html-btn');
-            if (copyBtn) {
-                copyBtn.onclick = () => {
-                    // 获取 <pre> 标签中的纯文本内容 (使用 textContent 确保获取的是未渲染的文本)
-                    const htmlContent = document.getElementById(htmlId).textContent; 
-                    
-                    // 检查浏览器是否支持 Clipboard API
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(htmlContent).then(() => {
-                            copyBtn.innerText = "已复制！";
-                            copyBtn.style.background = "#28a745";
-                            setTimeout(() => {
-                                copyBtn.innerText = "复制 HTML 到剪贴板";
-                                copyBtn.style.background = "#007bff";
-                            }, 1500);
-                        }).catch(err => {
-                            console.error('复制失败:', err);
-                            copyBtn.innerText = "复制失败！(请检查权限)";
-                            copyBtn.style.background = "#dc3545";
-                        });
-                    } else {
-                        // 降级处理: 传统execCommand (可能会被废弃)
-                        const textarea = document.createElement('textarea');
-                        textarea.value = htmlContent;
-                        document.body.appendChild(textarea);
-                        textarea.select();
-                        try {
-                            document.execCommand('copy');
-                            copyBtn.innerText = "已复制 (旧方法)！";
-                            copyBtn.style.background = "#ffc107";
-                        } catch (err) {
-                            copyBtn.innerText = "复制失败！(浏览器不支持)";
-                            copyBtn.style.background = "#dc3545";
-                        }
-                        document.body.removeChild(textarea);
+            this.container.innerHTML = html;
+        }
+
+        this._bindButtonEvents();
+    }
+
+    // --- 事件绑定方法 ---
+
+    _bindButtonEvents() {
+        const toggleBtn = document.getElementById('toggle-resource-picker');
+        if (toggleBtn) {
+            toggleBtn.onclick = () => {
+                if (this.isLocked) {
+                    this.isLocked = false;
+                    this._startPicking(); // 解锁，恢复预览
+                } else {
+                    // 在预览模式下，这个按钮实际触发的是锁定功能。
+                    // 但由于 onClick 已经处理了锁定逻辑，这里主要处理解锁/关闭逻辑，
+                    // 在预览模式下它会触发 startPicking 保持状态，或在初始状态下触发 onClick 锁定。
+                    this.cleanup(); 
+                }
+            };
+        }
+        const closeBtn = document.getElementById('close-all-picker');
+        if (closeBtn) {
+            closeBtn.onclick = this.cleanup.bind(this);
+        }
+    }
+    
+    _bindCopyButtonEvent(htmlId) {
+        const copyBtn = document.getElementById('copy-html-btn');
+        if (copyBtn) {
+            copyBtn.onclick = () => {
+                const htmlContent = document.getElementById(htmlId).textContent; 
+                
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(htmlContent).then(() => {
+                        copyBtn.innerText = "已复制！";
+                        copyBtn.style.background = "#28a745";
                         setTimeout(() => {
                             copyBtn.innerText = "复制 HTML 到剪贴板";
                             copyBtn.style.background = "#007bff";
                         }, 1500);
+                    }).catch(err => {
+                        console.error('复制失败:', err);
+                        copyBtn.innerText = "复制失败！(请检查权限)";
+                        copyBtn.style.background = "#dc3545";
+                    });
+                } else {
+                    // 降级处理
+                    const textarea = document.createElement('textarea');
+                    textarea.value = htmlContent;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        copyBtn.innerText = "已复制 (旧方法)！";
+                        copyBtn.style.background = "#ffc107";
+                    } catch (err) {
+                        copyBtn.innerText = "复制失败！(浏览器不支持)";
+                        copyBtn.style.background = "#dc3545";
                     }
-                };
-            }
+                    document.body.removeChild(textarea);
+                    setTimeout(() => {
+                        copyBtn.innerText = "复制 HTML 到剪贴板";
+                        copyBtn.style.background = "#007bff";
+                    }, 1500);
+                }
+            };
         }
-        // -------------------------------------------------------------------
-        // --- 3. 事件处理和锁定逻辑 (保持不变)
-        // -------------------------------------------------------------------
-        function onMove(e) {
-            if (isLocked) return;
-            // 忽略工具本身元素
-            let el = document.elementFromPoint(e.clientX, e.clientY);
-            if (!el || el === overlay || el === tooltip || el === resourceListContainer || resourceListContainer.contains(el)) {
-                el = currentElement;
-            }
-            if (!el) return;
-            currentElement = el;
-            // 更新高亮和提示框
-            const rect = el.getBoundingClientRect();
-            overlay.style.top = rect.top + window.scrollY + "px";
-            overlay.style.left = rect.left + window.scrollX + "px";
-            overlay.style.width = rect.width + "px";
-            overlay.style.height = rect.height + "px";
-            overlay.style.border = "2px solid red";
-            overlay.style.background = "rgba(255,0,0,0.1)";
-            tooltip.style.top = rect.top - 24 + "px";
-            tooltip.style.left = rect.left + "px";
-            tooltip.innerText = `预览 <${el.tagName.toLowerCase()}>`;
+    }
 
-            // 实时嗅探和更新列表
-            const resources = gatherResources(el);
-            createResourceListHTML(resources);
+    // --- 事件处理程序 (使用箭头函数确保 this 绑定) ---
+
+    _onMove = (e) => {
+        if (this.isLocked) return;
+
+        let el = document.elementFromPoint(e.clientX, e.clientY);
+        // 忽略工具本身元素
+        if (!el || el === this.overlay || el === this.tooltip || this.container.contains(el)) {
+            el = this.currentElement;
         }
-        function onClick(e) {
-            // 如果点击在工具箱内，且不是 HTML 复制按钮，则不进行锁定/解锁
-            if (resourceListContainer.contains(e.target) && e.target.id !== 'copy-html-btn') return;
+        if (!el) return;
+        this.currentElement = el;
 
-            e.preventDefault();
-            e.stopPropagation();
+        // 更新高亮和提示框
+        const rect = el.getBoundingClientRect();
+        this.overlay.style.top = rect.top + window.scrollY + "px";
+        this.overlay.style.left = rect.left + window.scrollX + "px";
+        this.overlay.style.width = rect.width + "px";
+        this.overlay.style.height = rect.height + "px";
+        this.overlay.style.border = "2px solid red";
+        this.overlay.style.background = "rgba(255,0,0,0.1)";
+        this.tooltip.style.top = rect.top - 24 + "px";
+        this.tooltip.style.left = rect.left + "px";
+        this.tooltip.innerText = `预览 <${el.tagName.toLowerCase()}>`;
 
-            // 重新获取元素，确保不是工具元素
-            let el = document.elementFromPoint(e.clientX, e.clientY);
-            if (!el || el === overlay || el === tooltip || resourceListContainer.contains(el)) return;
+        // 实时嗅探和更新列表
+        const resources = this._gatherResources(el);
+        this._createResourceListHTML(resources);
+    }
 
-            currentElement = el;
-            if (!isLocked) {
-                isLocked = true;
-                document.removeEventListener("mousemove", onMove, true);
+    _onClick = (e) => {
+        // 如果点击在工具箱内，且不是 HTML 复制按钮，则不进行锁定/解锁
+        if (this.container.contains(e.target) && e.target.id !== 'copy-html-btn') return;
 
-                // 切换到锁定样式
-                overlay.style.border = "4px solid blue";
-                overlay.style.background = "rgba(0,0,255,0.15)";
-                tooltip.innerText = `已锁定 <${el.tagName.toLowerCase()}>`;
+        e.preventDefault();
+        e.stopPropagation();
 
-                // 锁定并生成完整列表/HTML
-                const resources = gatherResources(el);
-                createFullResourceList(resources, el.tagName.toLowerCase(), el);
+        let el = document.elementFromPoint(e.clientX, e.clientY);
+        if (!el || el === this.overlay || el === this.tooltip || this.container.contains(el)) return;
 
-                console.log(`资源嗅探已锁定在元素 <${el.tagName.toLowerCase()}>`);
-            } else {
-                isLocked = false;
-                startPicking();
-                console.log("资源嗅探已解锁，恢复实时预览");
-            }
+        this.currentElement = el;
+
+        if (!this.isLocked) {
+            this.isLocked = true;
+            document.removeEventListener("mousemove", this._onMove, true);
+
+            // 切换到锁定样式
+            this.overlay.style.border = "4px solid blue";
+            this.overlay.style.background = "rgba(0,0,255,0.15)";
+            this.tooltip.innerText = `已锁定 <${el.tagName.toLowerCase()}>`;
+
+            // 锁定并生成完整列表/HTML
+            const resources = this._gatherResources(el);
+            this._createFullResourceList(resources, el.tagName.toLowerCase(), el);
+
+            console.log(`资源嗅探已锁定在元素 <${el.tagName.toLowerCase()}>`);
+        } else {
+            this.isLocked = false;
+            this._startPicking();
+            console.log("资源嗅探已解锁，恢复实时预览");
         }
+    }
 
-        /**
-         * 清理所有 UI 和事件监听
-         */
-        function cleanup() {
-            document.removeEventListener("mousemove", onMove, true);
-            document.removeEventListener("click", onClick, true);
-            overlay.remove();
-            tooltip.remove();
-            resourceListContainer.remove();
-            window.__pickerCleanup = undefined;
-            console.log("资源嗅探工具已完全关闭");
+    // --- 启动与清理 ---
+
+    /**
+     * 启动/重置拾取状态
+     */
+    _startPicking() {
+        document.addEventListener("mousemove", this._onMove, true);
+        document.addEventListener("click", this._onClick, true);
+
+        this.overlay.style.border = "2px solid red";
+        this.overlay.style.background = "rgba(255,0,0,0.1)";
+
+        if (!this.currentElement) {
+            // 初始启动界面
+            this.container.innerHTML = '<h2>资源嗅探工具</h2><p>将鼠标移动到页面元素上开始实时预览。</p><button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #f0f0f0;">🖱️ 实时预览 (点击锁定)</button><button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>';
+            this._bindButtonEvents();
+        } else {
+            const resources = this._gatherResources(this.currentElement);
+            this._createResourceListHTML(resources);
         }
+    }
 
-        /**
-         * 启动/重置拾取状态
-         */
-        function startPicking() {
-            document.addEventListener("mousemove", onMove, true);
-            document.addEventListener("click", onClick, true);
-
-            overlay.style.border = "2px solid red";
-            overlay.style.background = "rgba(255,0,0,0.1)";
-
-            if (!currentElement) {
-                // 初始启动界面
-                resourceListContainer.innerHTML = '<h2>资源嗅探工具</h2><p>将鼠标移动到页面元素上开始实时预览。</p><button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #f0f0f0;">🖱️ 实时预览 (点击锁定)</button><button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>';
-                document.getElementById('toggle-resource-picker').onclick = onClick;
-                document.getElementById('close-all-picker').onclick = cleanup;
-            } else {
-                const resources = gatherResources(currentElement);
-                createResourceListHTML(resources);
-            }
-        }
-        // -------------------------------------------------------------------
-        // --- 4. 启动
-        // -------------------------------------------------------------------
-
-        startPicking();
-
-        window.__pickerCleanup = cleanup;
-
-        console.log("实时资源嗅探已启动 (零资源时显示 HTML 结构)");
-    })();
+    /**
+     * 清理所有 UI 和事件监听
+     */
+    cleanup() {
+        document.removeEventListener("mousemove", this._onMove, true);
+        document.removeEventListener("click", this._onClick, true);
+        this.overlay.remove();
+        this.tooltip.remove();
+        this.container.remove();
+        window.__pickerCleanup = undefined;
+        console.log("资源嗅探工具已完全关闭");
+    }
 }
+
+// -------------------------------------------------------------------
+// --- 启动脚本 (保持原入口函数逻辑)
+// -------------------------------------------------------------------
+
+function realTimeResourcePicker() {
+    // 确保只运行一次
+    if (window.__pickerInstance) {
+        window.__pickerInstance.cleanup();
+    }
+    window.__pickerInstance = new ResourcePicker();
+}
+
 function main() {
     // 调用主函数启动
     realTimeResourcePicker();
 }
-
