@@ -345,39 +345,68 @@ _generateSelectors(element) {
 }
 
 _bindPathButtonEvent(element) {
-    const pathBtn = document.getElementById('get-paths-btn');
-    if (pathBtn) {
-        pathBtn.onclick = () => {
-            const paths = this._generateSelectors(element);
-            let html = "<h3 style='font-size:14px;margin:10px 0;'>多种路径</h3>";
-            html += "<ul style='list-style:none;padding:0;font-size:12px;'>";
-            for (const [key, value] of Object.entries(paths)) {
-                html += `<li><strong>${key}:</strong> 
-                          <input type="text" value="${value}" readonly style="width:90%;" />
-                          <button class="copy-path-btn" data-value="${value}" style="margin-left:5px;">复制</button>
-                         </li>`;
-            }
-            html += "</ul>";
-            this.container.insertAdjacentHTML("beforeend", html);
+  // 首先创建并插入样式
 
-            // 绑定复制功能
-            this.container.querySelectorAll(".copy-path-btn").forEach(btn => {
-                btn.onclick = () => {
-                    const value = btn.getAttribute("data-value");
-                    navigator.clipboard.writeText(value).then(() => {
-                        btn.innerText = "已复制";
-                        btn.style.background = "#28a745";
-                        setTimeout(() => {
-                            btn.innerText = "复制";
-                            btn.style.background = "";
-                        }, 1200);
-                    });
-                };
-            });
+
+  const pathBtn = document.getElementById('get-paths-btn');
+  if (pathBtn) {
+    pathBtn.onclick = () => {
+      const paths = this._generateSelectors(element);
+      // 使用样式类代替内联样式
+      let html = "<h3 class='paths-title'>多种路径</h3>";
+      html += "<ul class='paths-list'>";
+      
+      for (const [key, value] of Object.entries(paths)) {
+        const escapedKey = this._escapeHtml(key);
+        const escapedValue = this._escapeHtml(value);
+        
+        // 使用样式类并移除内联样式
+        html += `<li>
+                  <strong>${escapedKey}:</strong> 
+                  <input type="text" class="path-input" value="${escapedValue}" readonly />
+                  <button class="copy-path-btn" data-value="${escapedValue}">复制</button>
+                 </li>`;
+      }
+      
+      html += "</ul>";
+      this.container.insertAdjacentHTML("beforeend", html);
+
+      // 修改复制按钮的样式切换方式
+      this.container.querySelectorAll(".copy-path-btn").forEach(btn => {
+        btn.onclick = () => {
+          const value = btn.getAttribute("data-value");
+          navigator.clipboard.writeText(value).then(() => {
+            btn.innerText = "已复制";
+            btn.classList.add('copied'); // 使用类切换样式
+            setTimeout(() => {
+              btn.innerText = "复制";
+              btn.classList.remove('copied');
+            }, 1200);
+          });
         };
-    }
+      });
+    };
+  }
 }
 
+/**
+ * HTML 转义函数：将特殊字符转换为文本实体，避免被解析为 HTML
+ * @param {string} str - 需要转义的原始文本
+ * @returns {string} 转义后的安全文本
+ */
+_escapeHtml(str) {
+  if (typeof str !== 'string') return str; // 非字符串直接返回
+  // 映射表：key 是原始特殊字符，value 是对应的 HTML 实体
+  const escapeMap = {
+    '&': '&amp;',  // 与符号：避免解析为 HTML 实体的开始
+    '<': '&lt;',   // 小于号：避免解析为 HTML 标签的开始
+    '>': '&gt;',   // 大于号：避免解析为 HTML 标签的结束
+    '"': '&quot;', // 双引号：避免提前闭合 HTML 属性（如 value=""）
+    "'": '&#39;'   // 单引号：避免提前闭合 HTML 属性（如 onclick=''）
+  };
+  // 替换所有特殊字符
+  return str.replace(/[&<>"']/g, match => escapeMap[match]);
+}
     /**
      * 生成完整的资源列表 (锁定状态下使用) 或 HTML 结构
      */
@@ -393,10 +422,7 @@ html += `<button id="get-paths-btn" style="width:100%;padding:5px;margin-bottom:
         // 检查是否所有资源都为 0
         if (this._hasNoResources(resources)) {
             const formattedHtml = this._formatHTML(element.outerHTML);
-            
-            html += `<h3 style="font-size: 14px; margin: 15px 0 5px 0; color: blue;">未检测到可下载资源，显示原始 HTML 结构：</h3>`;
-            html += `<button id="copy-html-btn" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #007bff; color: white;">复制 HTML 到剪贴板</button>`;
-            
+                        
             html += `<pre id="${this.htmlId}" style="white-space: pre-wrap; word-wrap: break-word; font-size: 10px; padding: 5px; border: 1px solid #ddd; background: #fff; max-height: 400px; overflow: auto; text-align: left;"></pre>`;
             
             this.container.innerHTML = html;
@@ -406,7 +432,6 @@ html += `<button id="get-paths-btn" style="width:100%;padding:5px;margin-bottom:
             if (preElement) {
                 preElement.textContent = formattedHtml;
             }
-            this._bindCopyButtonEvent(this.htmlId);
         } else {
             const generateFullList = (title, items) => {
                 let listHtml = `<h3 style="font-size: 14px; margin: 15px 0 5px 0;">${title} (${items.length})</h3>`;
@@ -461,48 +486,6 @@ this._bindPathButtonEvent(element);
         }
     }
     
-    _bindCopyButtonEvent(htmlId) {
-        const copyBtn = document.getElementById('copy-html-btn');
-        if (copyBtn) {
-            copyBtn.onclick = () => {
-                const htmlContent = document.getElementById(htmlId).textContent; 
-                
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(htmlContent).then(() => {
-                        copyBtn.innerText = "已复制！";
-                        copyBtn.style.background = "#28a745";
-                        setTimeout(() => {
-                            copyBtn.innerText = "复制 HTML 到剪贴板";
-                            copyBtn.style.background = "#007bff";
-                        }, 1500);
-                    }).catch(err => {
-                        console.error('复制失败:', err);
-                        copyBtn.innerText = "复制失败！(请检查权限)";
-                        copyBtn.style.background = "#dc3545";
-                    });
-                } else {
-                    // 降级处理
-                    const textarea = document.createElement('textarea');
-                    textarea.value = htmlContent;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    try {
-                        document.execCommand('copy');
-                        copyBtn.innerText = "已复制 (旧方法)！";
-                        copyBtn.style.background = "#ffc107";
-                    } catch (err) {
-                        copyBtn.innerText = "复制失败！(浏览器不支持)";
-                        copyBtn.style.background = "#dc3545";
-                    }
-                    document.body.removeChild(textarea);
-                    setTimeout(() => {
-                        copyBtn.innerText = "复制 HTML 到剪贴板";
-                        copyBtn.style.background = "#007bff";
-                    }, 1500);
-                }
-            };
-        }
-    }
 
     // --- 事件处理程序 (使用箭头函数确保 this 绑定) ---
 
