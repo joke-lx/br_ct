@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>AI Assistant - 多端AI调度工具</title>
   <style>
+    /* CSS 代码已集成到 <style> 标签中 */
     :root {
       --primary-color: #4361ee;
       --primary-hover: #3a56d4;
@@ -86,52 +87,78 @@
       color: var(--primary-hover);
       text-decoration: underline;
     }
-
-    .platform-option {
+    
+    /* Icon Row */
+    .platform-options-row {
       display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
+      gap: 5px;
+    }
+
+    .platform-icon-option {
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      padding: 10px;
-      margin-bottom: 6px;
-      background-color: white;
+      cursor: pointer;
+      padding: 5px;
       border-radius: var(--radius-md);
-      box-shadow: var(--shadow-sm);
-      cursor: pointer;
       transition: var(--transition);
-      border: 1px solid var(--border-color);
+      flex-basis: 0;
+      flex-grow: 1;
+      text-align: center;
+      position: relative;
     }
 
-    .platform-option:hover {
+    /* **优化：减轻选择动效，移除 :hover 上的 box-shadow 晃动** */
+    .platform-icon-option:hover .icon-wrapper {
       border-color: var(--primary-color);
-      box-shadow: var(--shadow-md);
-      transform: translateY(-1px);
+      /* box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2); <-- 移除或注释此行 */
     }
 
-    .platform-option input[type="checkbox"] {
-      margin-right: 10px;
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
+    .platform-icon-option input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
     }
 
-    .platform-icon {
-      width: 22px;
-      height: 22px;
-      margin-right: 10px;
-      background-color: #e2e8f0;
-      border-radius: 6px;
+    .icon-wrapper {
+      width: 40px;
+      height: 40px;
+      margin-bottom: 4px;
+      background-color: #f0f4ff;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 16px;
       color: var(--primary-color);
       font-weight: bold;
+      border: 2px solid var(--border-color);
+      transition: var(--transition);
     }
 
-    .platform-name {
-      font-weight: 500;
-      flex-grow: 1;
-      font-size: 14px;
+    /* 选中状态 */
+    .platform-icon-option input[type="checkbox"]:checked + .icon-wrapper {
+      background-color: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
     }
+
+    /* **优化：让 hover 时的状态与 checked 状态保持一致的边框颜色，避免晃动** */
+    .platform-icon-option:hover .icon-wrapper {
+        border-color: var(--primary-color);
+    }
+
+    .platform-label {
+      font-weight: 500;
+      font-size: 12px;
+      color: var(--text-color);
+      line-height: 1;
+    }
+
 
     .history-select, 
     #prompt-optimizer-select {
@@ -298,41 +325,47 @@
 </head>
 <body>
 
+  <div class="header">
+    <h1>AI Assistant</h1>
+  </div>
+
   <div class="platform-selector">
     <div class="platform-selector-header">
       <h3>选择平台</h3>
       <div class="select-all" id="select-all">全选</div>
     </div>
 
-    <label class="platform-option">
-      <input type="checkbox" data-platform="yuanbao" checked>
-      <div class="platform-icon">元</div>
-      <div class="platform-name">腾讯元宝</div>
-    </label>
+    <div class="platform-options-row" id="platform-options-row">
+      <label class="platform-icon-option">
+        <input type="checkbox" data-platform="yuanbao">
+        <div class="icon-wrapper" data-platform-icon="元">元</div>
+        <div class="platform-label">元宝</div>
+      </label>
 
-    <label class="platform-option">
-      <input type="checkbox" data-platform="gemini" checked>
-      <div class="platform-icon">G</div>
-      <div class="platform-name">Google Gemini</div>
-    </label>
+      <label class="platform-icon-option">
+        <input type="checkbox" data-platform="gemini">
+        <div class="icon-wrapper" data-platform-icon="G">G</div>
+        <div class="platform-label">Gemini</div>
+      </label>
 
-    <label class="platform-option">
-      <input type="checkbox" data-platform="chatgpt" checked>
-      <div class="platform-icon">C</div>
-      <div class="platform-name">ChatGPT</div>
-    </label>
+      <label class="platform-icon-option">
+        <input type="checkbox" data-platform="chatgpt">
+        <div class="icon-wrapper" data-platform-icon="C">C</div>
+        <div class="platform-label">ChatGPT</div>
+      </label>
 
-    <label class="platform-option">
-      <input type="checkbox" data-platform="claude" checked>
-      <div class="platform-icon">A</div>
-      <div class="platform-name">Claude</div>
-    </label>
-    
-    <label class="platform-option">
-      <input type="checkbox" data-platform="doubao" checked>
-      <div class="platform-icon">D</div>
-      <div class="platform-name">doubao</div>
-    </label>
+      <label class="platform-icon-option">
+        <input type="checkbox" data-platform="claude">
+        <div class="icon-wrapper" data-platform-icon="A">A</div>
+        <div class="platform-label">Claude</div>
+      </label>
+      
+      <label class="platform-icon-option">
+        <input type="checkbox" data-platform="doubao">
+        <div class="icon-wrapper" data-platform-icon="D">D</div>
+        <div class="platform-label">豆包</div>
+      </label>
+    </div>
   </div>
 
   <select id="history-select" class="history-select">
@@ -341,8 +374,7 @@
 
   <div class="prompt-optimizer-selector">
     <select id="prompt-optimizer-select" class="history-select">
-      <!-- 选项将通过JS动态生成 -->
-    </select>
+      </select>
   </div>
 
   <textarea class="message-input" id="message-input" placeholder="输入要发送的消息">在浏览器控制台能否控制多个页面执行方法</textarea>
@@ -351,7 +383,6 @@
     <button class="send-button" id="send-button">发送消息</button>
   </div>
 
-  <!-- 悬浮导航按钮 -->
   <div class="nav-floating-button">
     <div class="nav-menu">
       <a href="popup.html" class="nav-item">主页</a>
