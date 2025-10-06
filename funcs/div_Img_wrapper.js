@@ -263,6 +263,136 @@ class ResourcePicker {
         this._bindButtonEvents();
     }
 
+    // === 在 ResourcePicker 类里新增方法 ===
+_generateSelectors(element) {
+    if (!element) return {};
+
+    // 1. CSS 选择器 (带唯一性)
+    const getCssSelector = (el) => {
+        if (el.id) return `#${el.id}`;
+        if (el.className) {
+            const classSelector = "." + el.className.trim().split(/\s+/).join(".");
+            return `${el.tagName.toLowerCase()}${classSelector}`;
+        }
+        return el.tagName.toLowerCase();
+    };
+
+    // 2. JS 路径 (querySelector)
+    const getJsPath = (el) => {
+        let path = "";
+        while (el && el.nodeType === 1 && el !== document.body) {
+            let selector = el.nodeName.toLowerCase();
+            if (el.id) {
+                selector += "#" + el.id;
+                path = selector + (path ? " > " + path : "");
+                break;
+            } else {
+                let sib = el, nth = 1;
+                while (sib.previousElementSibling) {
+                    sib = sib.previousElementSibling;
+                    if (sib.nodeName === el.nodeName) nth++;
+                }
+                selector += `:nth-of-type(${nth})`;
+            }
+            path = selector + (path ? " > " + path : "");
+            el = el.parentElement;
+        }
+        return "document.querySelector(\"" + path + "\")";
+    };
+
+    // 3. 简单 XPath
+    const getXPath = (el) => {
+        if (el.id) return `//*[@id="${el.id}"]`;
+        if (el === document.body) return "/html/body";
+        let ix = 0;
+        const siblings = el.parentNode ? el.parentNode.childNodes : [];
+        for (let i = 0; i < siblings.length; i++) {
+            const sibling = siblings[i];
+            if (sibling === el) {
+                return getXPath(el.parentNode) + "/" + el.tagName.toLowerCase() + "[" + (ix + 1) + "]";
+            }
+            if (sibling.nodeType === 1 && sibling.tagName === el.tagName) {
+                ix++;
+            }
+        }
+        return "";
+    };
+
+    // 4. 完整 XPath (从 html 开始)
+    const getFullXPath = (el) => {
+        const path = [];
+        while (el && el.nodeType === 1) {
+            let index = 0;
+            let sibling = el.previousSibling;
+            while (sibling) {
+                if (sibling.nodeType === 1 && sibling.nodeName === el.nodeName) index++;
+                sibling = sibling.previousSibling;
+            }
+            const tagName = el.nodeName.toLowerCase();
+            const step = tagName + "[" + (index + 1) + "]";
+            path.unshift(step);
+            el = el.parentNode;
+        }
+        return "/" + path.join("/");
+    };
+
+    return {
+        css: getCssSelector(element),
+        jsPath: getJsPath(element),
+        xpath: getXPath(element),
+        fullXPath: getFullXPath(element)
+    };
+}
+
+_bindPathButtonEvent(element) {
+    const pathBtn = document.getElementById('get-paths-btn');
+    if (pathBtn) {
+        pathBtn.onclick = () => {
+            const paths = this._generateSelectors(element);
+            let html = "<h3 style='font-size:14px;margin:10px 0;'>多种路径</h3>";
+            html += "<ul style='list-style:none;padding:0;font-size:12px;'>";
+            for (const [key, value] of Object.entries(paths)) {
+                const inputId = `path-${key}-${Date.now()}`;
+                html += `
+                <li style="margin-bottom:8px;">
+                  <strong>${key}:</strong><br/>
+                  <textarea id="${inputId}" readonly 
+                    style="width:95%;font-size:11px;white-space:nowrap;overflow-x:auto;
+                           display:block;margin:3px 0;"></textarea>
+                  <button class="copy-path-btn" data-input="${inputId}" 
+                    style="margin-top:2px;">复制</button>
+                </li>`;
+            }
+            html += "</ul>";
+            this.container.insertAdjacentHTML("beforeend", html);
+
+            // 填充值 & 绑定复制
+            for (const [key, value] of Object.entries(paths)) {
+                const inputEl = document.getElementById(`path-${key}-${Date.now()}`);
+                if (inputEl) inputEl.value = value;
+            }
+
+            this.container.querySelectorAll(".copy-path-btn").forEach(btn => {
+                btn.onclick = () => {
+                    const inputId = btn.getAttribute("data-input");
+                    const el = document.getElementById(inputId);
+                    if (el) {
+                        el.select();
+                        document.execCommand("copy");
+                        btn.innerText = "已复制";
+                        btn.style.background = "#28a745";
+                        setTimeout(() => {
+                            btn.innerText = "复制";
+                            btn.style.background = "";
+                        }, 1200);
+                    }
+                };
+            });
+        };
+    }
+}
+
+
     /**
      * 生成完整的资源列表 (锁定状态下使用) 或 HTML 结构
      */
@@ -272,7 +402,9 @@ class ResourcePicker {
         // 锁定/关闭按钮
         html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #4CAF50; color: white;">✅ 已锁定 (点击解锁)</button>`;
         html += `<button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>`;
-
+html += `<button id="get-paths-btn" style="width:100%;padding:5px;margin-bottom:10px;
+          border:1px solid #ccc;cursor:pointer;background:#17a2b8;color:white;">
+          获得多种可能路径</button>`;
         // 检查是否所有资源都为 0
         if (this._hasNoResources(resources)) {
             const formattedHtml = this._formatHTML(element.outerHTML);
@@ -317,7 +449,8 @@ class ResourcePicker {
             this.container.innerHTML = html;
         }
 
-        this._bindButtonEvents();
+   this._bindButtonEvents();
+this._bindPathButtonEvent(element);
     }
 
     // --- 事件绑定方法 ---

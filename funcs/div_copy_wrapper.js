@@ -43,8 +43,13 @@ function main() {
       let el = document.elementFromPoint(e.clientX, e.clientY);
       if (!el) return;
 
-      // 获取元素中的文字（优先 innerText，否则 textContent）
-      const text = (el.innerText || el.textContent || "").trim();
+      // 获取元素文字
+      let text = (el.innerText || el.textContent || "").trim();
+
+      // 处理：去掉连续空格和连续空行
+      text = text
+        .replace(/[ \t]+/g, " ")   // 多个空格合并成一个
+        .replace(/\n\s*\n+/g, "\n"); // 多个空行合并成一个
 
       navigator.clipboard.writeText(text).then(() => {
         tooltip.innerText = "文本已复制到剪贴板！";
