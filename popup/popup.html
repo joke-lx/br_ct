@@ -15,7 +15,7 @@
       --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
       --radius-md: 8px;
       --radius-lg: 12px;
-      --transition: all 0.2s ease;
+      --transition: all 0.25s ease;
     }
 
     body {
@@ -27,24 +27,34 @@
       line-height: 1.5;
       position: relative;
     }
+
+    /* 关键修改：标题容器设为相对定位，用于承载横向目录 */
     .header {
       text-align: center;
-      margin-bottom: 12px;
-      position: relative;
+      margin-bottom: 1px;
+      position: relative; /* 目录绝对定位的参考点 */
+      padding: 0px 0 2px; /* 底部预留目录空间，避免遮挡 */
+      cursor: default; /* 提示可交互 */
     }
 
-   .header h1 {
+    .header h1 {
       font-size: 18px;
       font-weight: 600;
       color: var(--primary-color);
       margin: 0;
       padding: 4px 0;
+      transition: var(--transition);
+    }
+
+    /* 标题hover时轻微放大，增强交互提示 */
+    .header:hover h1 {
+      transform: scale(1.03);
     }
 
     .header::after {
       content: "";
       position: absolute;
-      bottom: -1px;
+      bottom: 0; /* 调整下划线位置，与目录错开 */
       left: 50%;
       transform: translateX(-50%);
       width: 60px;
@@ -52,6 +62,58 @@
       background: linear-gradient(90deg, var(--primary-color), #4cc9f0);
     }
 
+    /* 核心：横向展开目录样式 */
+    .header-nav-menu {
+      position: absolute;
+      top: 100%; /* 目录在标题正下方 */
+      left: 50%;
+      transform: translateX(-50%) translateY(5px); /* 横向居中+向下偏移 */
+      display: flex; /* 横向排列菜单项 */
+      gap: 1px; /* 菜单项之间的分隔线间距 */
+      background: white;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-color);
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition);
+      z-index: 999; /* 确保在其他元素上方 */
+    }
+
+    /* 鼠标悬浮标题时，显示横向目录 */
+    .header:hover .header-nav-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0); /* 取消偏移，平滑展开 */
+    }
+
+    /* 横向菜单项样式 */
+    .header-nav-item {
+      display: block;
+      padding: 8px 18px; /* 横向适配的内边距 */
+      color: var(--text-color);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: var(--transition);
+      white-space: nowrap; /* 防止菜单项换行 */
+    }
+
+    /* 菜单项hover效果：背景色+主色调文字 */
+    .header-nav-item:hover {
+      background-color: #f0f4ff;
+      color: var(--primary-color);
+    }
+
+    /* 活跃菜单项样式 */
+    .header-nav-item.active {
+      background-color: var(--primary-color);
+      color: white;
+      font-weight: 600;
+      border-radius: calc(var(--radius-md) - 1px); /* 适配容器圆角 */
+    }
+
+    /* 平台选择区样式（保持不变） */
     .platform-selector {
       margin-bottom: 20px;
       background: white;
@@ -87,7 +149,7 @@
       color: var(--primary-hover);
       text-decoration: underline;
     }
-    
+
     /* Icon Row */
     .platform-options-row {
       display: flex;
@@ -110,10 +172,8 @@
       position: relative;
     }
 
-    /* **优化：减轻选择动效，移除 :hover 上的 box-shadow 晃动** */
     .platform-icon-option:hover .icon-wrapper {
       border-color: var(--primary-color);
-      /* box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2); <-- 移除或注释此行 */
     }
 
     .platform-icon-option input[type="checkbox"] {
@@ -147,11 +207,6 @@
       border-color: var(--primary-color);
     }
 
-    /* **优化：让 hover 时的状态与 checked 状态保持一致的边框颜色，避免晃动** */
-    .platform-icon-option:hover .icon-wrapper {
-        border-color: var(--primary-color);
-    }
-
     .platform-label {
       font-weight: 500;
       font-size: 12px;
@@ -159,8 +214,8 @@
       line-height: 1;
     }
 
-
-    .history-select, 
+    /* 下拉选择框样式（保持不变） */
+    .history-select,
     #prompt-optimizer-select {
       width: 100%;
       padding: 9px 11px;
@@ -177,7 +232,7 @@
       background-size: 14px;
     }
 
-    .history-select:focus, 
+    .history-select:focus,
     #prompt-optimizer-select:focus {
       outline: none;
       border-color: var(--primary-color);
@@ -196,6 +251,7 @@
       color: var(--text-color);
     }
 
+    /* 输入框样式（保持不变） */
     .message-input {
       box-sizing: border-box;
       width: 100%;
@@ -216,6 +272,7 @@
       box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
     }
 
+    /* 按钮组样式（保持不变） */
     .button-group {
       display: flex;
       gap: 10px;
@@ -247,88 +304,24 @@
       box-shadow: none;
     }
 
-    /* 悬浮导航按钮样式 */
-    .nav-floating-button {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background-color: var(--primary-color);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: var(--shadow-md);
-      transition: var(--transition);
-      z-index: 1000;
-    }
-    
-    .nav-floating-button:hover {
-      background-color: var(--primary-hover);
-      transform: scale(1.05);
-    }
-    
-    .nav-floating-button::before {
-      content: "≡";
-      font-size: 24px;
-      font-weight: bold;
-    }
-    
-    .nav-menu {
-      position: absolute;
-      bottom: 60px;
-      right: 0;
-      width: 120px;
-      background: white;
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-md);
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(10px);
-      transition: var(--transition);
-    }
-    
-    .nav-floating-button:hover .nav-menu {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-    }
-    
-    .nav-item {
-      display: block;
-      padding: 12px;
-      color: var(--text-color);
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 500;
-      transition: var(--transition);
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .nav-item:last-child {
-      border-bottom: none;
-    }
-    
-    .nav-item:hover {
-      background-color: var(--light-gray);
-      color: var(--primary-color);
-    }
-    
-    .nav-item.active {
-      background-color: var(--primary-color);
-      color: white;
-    }
+    /* 移除原右下角悬浮按钮（冗余） */
   </style>
 </head>
 <body>
 
+  <!-- 标题容器：包含标题 + 横向目录 -->
   <div class="header">
     <h1>AI Assistant</h1>
+    <!-- 横向展开目录：默认隐藏，hover标题时显示 -->
+    <div class="header-nav-menu">
+      <a href="popup.html" class="header-nav-item active">主页</a>
+      <a href="add.html" class="header-nav-item">脚本库</a>
+      <!-- 可按需添加更多菜单项，自动横向排列 -->
+      <!-- <a href="settings.html" class="header-nav-item">设置</a> -->
+    </div>
   </div>
 
+  <!-- 平台选择区（保持不变） -->
   <div class="platform-selector">
     <div class="platform-selector-header">
       <h3>选择平台</h3>
@@ -368,28 +361,27 @@
     </div>
   </div>
 
+  <!-- 历史消息选择框（保持不变） -->
   <select id="history-select" class="history-select">
     <option value="">选择历史消息</option>
   </select>
 
+  <!-- 提示词优化选择框（保持不变） -->
   <div class="prompt-optimizer-selector">
     <select id="prompt-optimizer-select" class="history-select">
-      </select>
+      <!-- 由JS动态填充选项 -->
+    </select>
   </div>
 
+  <!-- 消息输入框（保持不变） -->
   <textarea class="message-input" id="message-input" placeholder="输入要发送的消息">在浏览器控制台能否控制多个页面执行方法</textarea>
 
+  <!-- 发送按钮（保持不变） -->
   <div class="button-group">
     <button class="send-button" id="send-button">发送消息</button>
   </div>
 
-  <div class="nav-floating-button">
-    <div class="nav-menu">
-      <a href="popup.html" class="nav-item">主页</a>
-      <a href="add.html" class="nav-item">脚本库</a>
-    </div>
-  </div>
-
+  <!-- 脚本引用（保持不变） -->
   <script src="./promots/prompts.js"></script>
   <script src="popupUtils.js" type="module"></script>
   <script src="popup.js" type="module"></script>
