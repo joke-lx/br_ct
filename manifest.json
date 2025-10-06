@@ -34,7 +34,11 @@
   },
    "commands": {
     "execute_div_copy": {
-      "suggested_key": { "default": "Ctrl+Shift+D" },
+      "suggested_key": { "default": "Alt+C" },
+      "description": "执行 div Copy 脚本"
+    },
+     "imgs_picker": {
+      "suggested_key": { "default": "Alt+D" },
       "description": "执行 div Copy 脚本"
     }
   },

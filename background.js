@@ -1,19 +1,12 @@
 // background.js
 // 使用 ES Modules 导入功能
 import { processNextAction, setupTabUpdateListener } from './backgroudtask/ai_platform_processor.js';
-import { executeFunctionScript } from './backgroudtask/func_executor.js';
+import { executeFunctionScript , setupFuncCommandListener } from './backgroudtask/func_executor.js';
 
 // 初始化标签页更新监听器，用于处理 AI 平台任务的加载完成事件
 setupTabUpdateListener();
+setupFuncCommandListener();
 
-
-chrome.commands.onCommand.addListener((command) => {
-  if (command === "execute_div_copy") {
-    executeFunctionScript("div_copy_wrapper.js", (response) => {
-      console.log("快捷键执行结果:", response);
-    });
-  }
-});
 // 监听来自 popup 的任务请求 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "processTaskQueue") {
@@ -32,5 +25,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // 其他消息
   return true; 
 });
-// 监听快捷键执行
-// 监听快捷键执行
