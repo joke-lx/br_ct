@@ -6,7 +6,8 @@ export const platformUrls = {
   gemini: 'https://gemini.google.com/app',
   chatgpt: 'https://chatgpt.com',
   claude: 'https://claude.ai',
-  doubao: 'https://www.doubao.com/chat/'
+  doubao: 'https://www.doubao.com/chat/',
+  glm: "https://chatglm.cn/main/alltoolsdetail?lang=zh"
 };
 
 /**
