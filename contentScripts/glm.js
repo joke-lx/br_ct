@@ -111,28 +111,10 @@ function triggerClick(element) {
       view: window
     });
     
-    // 模拟「鼠标抬起」事件
-    const mouseupEvent = new MouseEvent('mouseup', {
-      clientX: clickX,
-      clientY: clickY,
-      bubbles: true,
-      cancelable: true,
-      view: window
-    });
-    
-    // 模拟「点击」事件
-    const clickEvent = new MouseEvent('click', {
-      clientX: clickX,
-      clientY: clickY,
-      bubbles: true,
-      cancelable: true,
-      view: window
-    });
     
     // 按真实操作顺序触发事件（mousedown → mouseup → click）
     element.dispatchEvent(mousedownEvent);
-    element.dispatchEvent(mouseupEvent);
-    element.dispatchEvent(clickEvent);
+   
     
     console.log(`已在视口坐标 (${clickX}, ${clickY}) 模拟完整点击`);
     return true;
