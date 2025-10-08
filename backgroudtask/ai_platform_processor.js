@@ -7,7 +7,7 @@ export const platformUrls = {
   chatgpt: 'https://chatgpt.com',
   claude: 'https://claude.ai',
   doubao: 'https://www.doubao.com/chat/',
-  glm: "https://chatglm.cn/main/alltoolsdetail?lang=zh"
+  glm: "https://chatglm.cn/main/alltoolsdetail"
 };
 
 /**
