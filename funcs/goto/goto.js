@@ -220,7 +220,7 @@
   function showMenu(items, parentElement) {
     clearMenuItems();
     const center = getCircleCenter();
-    const radius = 100;
+    const radius = 80;
     const angleStep = (Math.PI * 2) / items.length;
 
     items.forEach((item, index) => {
@@ -345,25 +345,21 @@
   });
 
   // 页面滚动时更新
-  let scrollTimeout;
-  window.addEventListener('scroll', () => {
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
-      // 滚动时，如果菜单是打开的，重新渲染菜单以保持其相对于主圆圈的位置
-      if (isActive && currentMenuItems.length > 0) {
-        // 判断当前显示的是一级菜单还是子菜单 (一个简单的近似判断)
-        if (activeSubmenus.length === 0) {
-          // 显示一级菜单
-          showMenu(menuData.children, mainCircle);
-        } else {
-          // 如果有子菜单，最好的做法是重新计算并渲染子菜单，但这较为复杂。
-          // 简单的处理是全部关闭并等待用户重新打开或悬停。
-          // 为了简单性，这里只清除所有。
-          clearMenuItems();
-        }
-      }
-    }, 50); // 略微缩短延迟以提供更流畅的体验
-  });
+// 页面滚动时自动收回菜单
+let scrollTimeout;
+window.addEventListener('scroll', () => {
+  clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    // 滚动时，如果菜单是打开的，就直接关闭它
+    if (isActive) {
+      isActive = false;
+      mainCircle.classList.remove('active');
+      mainCircle.innerHTML = '☰';
+      mainCircle.title = '悬浮激活菜单';
+      clearMenuItems();
+    }
+  }, 50); 
+});
 
   console.log('圆形菜单插件已加载 (支持悬浮展开 + 点击关闭 + 拖动 + 位置记忆 + 自动展开 + 子菜单方向优化 + 网站跳转)');
 })();
