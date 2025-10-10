@@ -86,13 +86,12 @@
         isRoot: true,
         children: [
             {
-                name: '📄 文件',
+                name: '📄 网站跳转',
                 children: [
-                    { name: '新建', children: [] },
-                    { name: '打开', children: [] },
-                    { name: '保存', children: [] },
-                    { name: '主题', children: [] },
-                    { name: '语言', children: [] }
+                    // 添加了 url 字段
+                    { name: 'b站', url: 'https://www.bilibili.com', children: [] },
+                    { name: '知乎', url: 'https://www.zhihu.com', children: [] },
+                    { name: '抖音', url: 'https://www.douyin.com', children: [] },
                 ]
             },
             {
@@ -108,13 +107,6 @@
                 children: [
                     { name: '全屏', children: [] },
                     { name: '缩放', children: [] }
-                ]
-            },
-            {
-                name: '⚙️ 设置',
-                children: [
-                    { name: '主题', children: [] },
-                    { name: '语言', children: [] }
                 ]
             },
             {
@@ -208,7 +200,7 @@
             mainCircle.innerHTML = '✕';
             mainCircle.title = '关闭菜单';
             clearMenuItems(); // 先清除旧菜单
-            showMenu(menuData.children, mainCircle); // ✅ 点击后立即展开
+            showMenu(menuData.children, mainCircle); // 点击后立即展开
         } else {
             mainCircle.classList.remove('active');
             mainCircle.innerHTML = '☰';
@@ -246,15 +238,20 @@
                 }
             });
 
-            // 点击事件
+            // 点击事件：处理一级菜单项
             menuItem.addEventListener('click', (e) => {
                 e.stopPropagation();
                 console.log('点击了菜单项:', item.name);
+                
+                // 检查是否有 URL，如果有则执行跳转
+                if (item.url) {
+                    handleUrlNavigation(item.url);
+                }
             });
         });
     }
 
-    // ✅ 自动根据父级角度朝外展开 180°
+    // 自动根据父级角度朝外展开 180°
     function showSubmenu(items, parentElement, parentAngle) {
         const rect = parentElement.getBoundingClientRect();
         const center = {
@@ -282,18 +279,40 @@
 
             setTimeout(() => submenuItem.classList.add('show'), index * 50);
 
+            // 点击事件：处理子菜单项
             submenuItem.addEventListener('click', (e) => {
                 e.stopPropagation();
                 console.log('点击了子菜单项:', item.name);
+
+                // 检查是否有 URL，如果有则执行跳转
+                if (item.url) {
+                    handleUrlNavigation(item.url);
+                }
             });
         });
+    }
+
+    // 处理 URL 跳转的逻辑
+    function handleUrlNavigation(url) {
+        // 在新标签页中打开链接，避免中断用户当前页面操作
+        window.open(url, '_blank');
+        
+        // 可选：跳转后关闭菜单
+        if (isActive) {
+            isActive = false;
+            mainCircle.classList.remove('active');
+            mainCircle.innerHTML = '☰';
+            mainCircle.title = '点击激活菜单';
+            clearMenuItems();
+        }
     }
 
     // 清除子菜单
     function clearSubmenus() {
         activeSubmenus.forEach(item => {
             item.classList.remove('show');
-            setTimeout(() => item.remove(), 300);
+            // 使用 requestAnimationFrame 或更短的 timeout 来优化动画/清理
+            setTimeout(() => item.remove(), 200); 
         });
         activeSubmenus = [];
     }
@@ -302,7 +321,7 @@
     function clearMenuItems() {
         currentMenuItems.forEach(item => {
             item.classList.remove('show');
-            setTimeout(() => item.remove(), 300);
+            setTimeout(() => item.remove(), 200);
         });
         currentMenuItems = [];
         clearSubmenus();
@@ -327,11 +346,21 @@
     window.addEventListener('scroll', () => {
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(() => {
+            // 滚动时，如果菜单是打开的，重新渲染菜单以保持其相对于主圆圈的位置
             if (isActive && currentMenuItems.length > 0) {
-                showMenu(menuData.children, mainCircle);
+                // 判断当前显示的是一级菜单还是子菜单 (一个简单的近似判断)
+                if (activeSubmenus.length === 0) {
+                    // 显示一级菜单
+                    showMenu(menuData.children, mainCircle);
+                } else {
+                    // 如果有子菜单，最好的做法是重新计算并渲染子菜单，但这较为复杂。
+                    // 简单的处理是全部关闭并等待用户重新打开或悬停。
+                    // 为了简单性，这里只清除所有。
+                    clearMenuItems(); 
+                }
             }
-        }, 100);
+        }, 50); // 略微缩短延迟以提供更流畅的体验
     });
 
-    console.log('圆形菜单插件已加载 (支持拖动 + 位置记忆 + 自动展开 + 子菜单方向优化)');
+    console.log('圆形菜单插件已加载 (支持拖动 + 位置记忆 + 自动展开 + 子菜单方向优化 + 网站跳转)');
 })();
