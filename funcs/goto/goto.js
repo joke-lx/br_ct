@@ -85,7 +85,16 @@
     isRoot: true,
     children: [
       {
-        name: '📄 网站跳转',
+        name: '📄 最近',
+        children: [
+          // 添加了 url 字段
+          { name: 'IT老齐', url: 'https://www.itlaoqi.com/chapter.html?sid=143&cid=3292', children: [] },
+          { name: 'NOTION', url: 'https://www.notion.so/a23ee5b49d7d474ebf9d3e3094441088', children: [] },
+          { name: '抖音', url: 'https://www.douyin.com', children: [] },
+        ]
+      },
+      {
+         name: '📄 网站跳转2',
         children: [
           // 添加了 url 字段
           { name: 'b站', url: 'https://www.bilibili.com', children: [] },
@@ -94,25 +103,21 @@
         ]
       },
       {
-        name: '✏️ 编辑',
+        name: '📄 网站跳转3',
         children: [
-          { name: '复制', children: [] },
-          { name: '粘贴', children: [] },
-          { name: '剪切', children: [] }
+          // 添加了 url 字段
+          { name: 'b站', url: 'https://www.bilibili.com', children: [] },
+          { name: '知乎', url: 'https://www.zhihu.com', children: [] },
+          { name: '抖音', url: 'https://www.douyin.com', children: [] },
         ]
       },
       {
-        name: '👁️ 视图',
+         name: '📄 网站跳转4',
         children: [
-          { name: '全屏', children: [] },
-          { name: '缩放', children: [] }
-        ]
-      },
-      {
-        name: '⚙️ 设置',
-        children: [
-          { name: '主题', children: [] },
-          { name: '语言', children: [] }
+          // 添加了 url 字段
+          { name: 'b站', url: 'https://www.bilibili.com', children: [] },
+          { name: '知乎', url: 'https://www.zhihu.com', children: [] },
+          { name: '抖音', url: 'https://www.douyin.com', children: [] },
         ]
       }
     ]
@@ -296,11 +301,9 @@
     });
   }
 
-  // 处理 URL 跳转的逻辑
-  function handleUrlNavigation(url) {
-    // 在新标签页中打开链接，避免中断用户当前页面操作
-    window.open(url, '_blank');
-    // 可选：跳转后关闭菜单
+
+function handleUrlNavigation(url) {
+  chrome.runtime.sendMessage({ action: 'openUrl', url }, () => {
     if (isActive) {
       isActive = false;
       mainCircle.classList.remove('active');
@@ -308,7 +311,8 @@
       mainCircle.title = '悬浮激活菜单';
       clearMenuItems();
     }
-  }
+  });
+}
 
   // 清除子菜单
   function clearSubmenus() {
