@@ -1,3 +1,46 @@
+// ========== 菜单配置数据 ==========
+const menuData = {
+  name: '菜单',
+  isRoot: true,
+  children: [
+    {
+      name: '📄 最近',
+      children: [
+        { name: 'IT老齐', url: 'https://www.itlaoqi.com/chapter.html?sid=143&cid=3292', children: [] },
+        { name: 'NOTION', url: 'https://www.notion.so/a23ee5b49d7d474ebf9d3e3094441088', children: [] },
+        { name: 'B站', url: 'https://www.bilibili.com', children: [] },
+      ]
+    },
+    {
+      name: '📄 面包',
+      children: [
+        { name: '上海演唱会', url: 'https://www.bilibili.com/video/BV1L48qzsESK?spm_id_from=333.788.videopod.sections', children: [] },
+        { name: '宁波演唱会', url: 'https://www.bilibili.com/video/BV1pca3zPECZ/?spm_id_from=333.337.search-card.all.click&vd_source=b00eb5ad0e31d2629f81cb48d7fab1f2', children: [] },
+        { name: '北京演唱会', url: 'https://www.bilibili.com/video/BV13hSzYfEfD?spm_id_from=333.788.videopod.sections&vd_source=b00eb5ad0e31d2629f81cb48d7fab1f2', children: [] },
+        { name: '广州演唱会', url: 'https://www.bilibili.com/video/BV1g2oiYqEiM?spm_id_from=333.788.videopod.sections&vd_source=b00eb5ad0e31d2629f81cb48d7fab1f2', children: [] },
+        { name: '成都演唱会', url: 'https://www.bilibili.com/video/BV1dUjkzqEUj/?spm_id_from=333.788.videopod.sections', children: [] },
+      ]
+    },
+    {
+      name: '📄 网站跳转3',
+      children: [
+        { name: 'b站', url: 'https://www.bilibili.com', children: [] },
+        { name: '知乎', url: 'https://www.zhihu.com', children: [] },
+        { name: '抖音', url: 'https://www.douyin.com', children: [] },
+      ]
+    },
+    {
+      name: '📄 网站跳转4',
+      children: [
+        { name: 'b站', url: 'https://www.bilibili.com', children: [] },
+        { name: '知乎', url: 'https://www.zhihu.com', children: [] },
+        { name: '抖音', url: 'https://www.douyin.com', children: [] },
+      ]
+    }
+  ]
+};
+// ===================================
+
 // content.js - 浏览器插件内容脚本
 (function() {
   'use strict';
@@ -78,50 +121,6 @@
     }
   `;
   document.head.appendChild(style);
-
-  // 菜单数据结构
-  const menuData = {
-    name: '菜单',
-    isRoot: true,
-    children: [
-      {
-        name: '📄 最近',
-        children: [
-          // 添加了 url 字段
-          { name: 'IT老齐', url: 'https://www.itlaoqi.com/chapter.html?sid=143&cid=3292', children: [] },
-          { name: 'NOTION', url: 'https://www.notion.so/a23ee5b49d7d474ebf9d3e3094441088', children: [] },
-          { name: '抖音', url: 'https://www.douyin.com', children: [] },
-        ]
-      },
-      {
-         name: '📄 网站跳转2',
-        children: [
-          // 添加了 url 字段
-          { name: 'b站', url: 'https://www.bilibili.com', children: [] },
-          { name: '知乎', url: 'https://www.zhihu.com', children: [] },
-          { name: '抖音', url: 'https://www.douyin.com', children: [] },
-        ]
-      },
-      {
-        name: '📄 网站跳转3',
-        children: [
-          // 添加了 url 字段
-          { name: 'b站', url: 'https://www.bilibili.com', children: [] },
-          { name: '知乎', url: 'https://www.zhihu.com', children: [] },
-          { name: '抖音', url: 'https://www.douyin.com', children: [] },
-        ]
-      },
-      {
-         name: '📄 网站跳转4',
-        children: [
-          // 添加了 url 字段
-          { name: 'b站', url: 'https://www.bilibili.com', children: [] },
-          { name: '知乎', url: 'https://www.zhihu.com', children: [] },
-          { name: '抖音', url: 'https://www.douyin.com', children: [] },
-        ]
-      }
-    ]
-  };
 
   // 创建主容器
   const container = document.createElement('div');
@@ -301,18 +300,17 @@
     });
   }
 
-
-function handleUrlNavigation(url) {
-  chrome.runtime.sendMessage({ action: 'openUrl', url }, () => {
-    if (isActive) {
-      isActive = false;
-      mainCircle.classList.remove('active');
-      mainCircle.innerHTML = '☰';
-      mainCircle.title = '悬浮激活菜单';
-      clearMenuItems();
-    }
-  });
-}
+  function handleUrlNavigation(url) {
+    chrome.runtime.sendMessage({ action: 'openUrl', url }, () => {
+      if (isActive) {
+        isActive = false;
+        mainCircle.classList.remove('active');
+        mainCircle.innerHTML = '☰';
+        mainCircle.title = '悬浮激活菜单';
+        clearMenuItems();
+      }
+    });
+  }
 
   // 清除子菜单
   function clearSubmenus() {
@@ -348,22 +346,21 @@ function handleUrlNavigation(url) {
     }
   });
 
-  // 页面滚动时更新
-// 页面滚动时自动收回菜单
-let scrollTimeout;
-window.addEventListener('scroll', () => {
-  clearTimeout(scrollTimeout);
-  scrollTimeout = setTimeout(() => {
-    // 滚动时，如果菜单是打开的，就直接关闭它
-    if (isActive) {
-      isActive = false;
-      mainCircle.classList.remove('active');
-      mainCircle.innerHTML = '☰';
-      mainCircle.title = '悬浮激活菜单';
-      clearMenuItems();
-    }
-  }, 50); 
-});
+  // 页面滚动时自动收回菜单
+  let scrollTimeout;
+  window.addEventListener('scroll', () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      // 滚动时，如果菜单是打开的，就直接关闭它
+      if (isActive) {
+        isActive = false;
+        mainCircle.classList.remove('active');
+        mainCircle.innerHTML = '☰';
+        mainCircle.title = '悬浮激活菜单';
+        clearMenuItems();
+      }
+    }, 50); 
+  });
 
   console.log('圆形菜单插件已加载 (支持悬浮展开 + 点击关闭 + 拖动 + 位置记忆 + 自动展开 + 子菜单方向优化 + 网站跳转)');
 })();
