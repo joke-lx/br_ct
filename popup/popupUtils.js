@@ -1,4 +1,3 @@
-
 import { populateOptimizer } from './promots/promptsUI.js';
 
 // popupUtils.js
@@ -97,8 +96,9 @@ function setupEventListeners() {
   });
 
   // 优化器选择
-  elements.promptOptimizerSelect.addEventListener('change', () => {
-    chrome.storage.sync.set({ [OPTIMIZER_KEY]: elements.promptOptimizerSelect.value });
+  elements.promptOptimizerSelect.addEventListener('change', (e) => {
+    const value = e.detail.value;
+    chrome.storage.sync.set({ [OPTIMIZER_KEY]: value });
   });
 
   // 平台复选框变化

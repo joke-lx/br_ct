@@ -239,19 +239,83 @@
       box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
     }
 
-    .prompt-optimizer-selector {
-      margin-bottom: 0px;
-    }
+    /* 自定义提示词下拉框样式 */
+.prompt-optimizer-selector {
+  position: relative;
+  width: 100%;
+  margin-bottom: 14px;
+}
 
-    .prompt-optimizer-selector label {
-      font-size: 13px;
-      font-weight: 500;
-      display: block;
-      margin-bottom: 5px;
-      color: var(--text-color);
-    }
+.custom-select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: white;
+  cursor: pointer;
+  font-size: 13px;
+}
 
-    /* 输入框样式（保持不变） */
+.custom-select-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  display: none;
+}
+
+.custom-select.active .custom-select-options {
+  display: block;
+}
+
+.select-group {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.select-group:last-child {
+  border-bottom: none;
+}
+
+.select-group-header {
+  padding: 8px 12px;
+  color: var(--primary-color);
+  font-weight: 600;
+  cursor: pointer;
+  background: #f8fafc;
+}
+
+.select-group-header:hover {
+  background-color: #f0f4ff;
+}
+
+.select-options {
+  display: none;
+  background: white;
+}
+
+.select-group.active .select-options {
+  display: block;
+}
+
+.select-option {
+  padding: 8px 12px;
+  padding-left: 24px;
+  cursor: pointer;
+}
+
+.select-option:hover {
+  background-color: #f0f4ff;
+  color: var(--primary-color);
+}
+
+/* 输入框样式（保持不变） */
     .message-input {
       box-sizing: border-box;
       width: 100%;
@@ -374,9 +438,12 @@
 
   <!-- 提示词优化选择框（保持不变） -->
   <div class="prompt-optimizer-selector">
-    <select id="prompt-optimizer-select" class="history-select">
-      <!-- 由JS动态填充选项 -->
-    </select>
+    <div class="custom-select" id="prompt-optimizer-select">
+      <div class="selected-value">不使用优化</div>
+      <div class="custom-select-options">
+        <!-- 由JS动态填充选项 -->
+      </div>
+    </div>
   </div>
 
   <!-- 消息输入框（保持不变） -->
