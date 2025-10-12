@@ -199,14 +199,17 @@ function startSending() {
     return;
   }
 
-  const optimizerKey = elements.promptOptimizerSelect.value;
+  // 从selectedValue中直接获取当前选中的模板
+  const selectedValue = elements.promptOptimizerSelect.querySelector('.selected-value');
+  const templateKey = selectedValue.dataset.value;
+  const templateContent = selectedValue.dataset.template;
+  
   let finalMessage = originalMessage;
 
-  if (optimizerKey && PROMPT_TEMPLATES[optimizerKey]) {
-    const template = PROMPT_TEMPLATES[optimizerKey].template;
-    finalMessage = template.includes('%s')
-      ? template.replace('%s', originalMessage)
-      : originalMessage + ' ' + template;
+  if (templateKey && templateContent) {
+    finalMessage = templateContent.includes('%s')
+      ? templateContent.replace('%s', originalMessage)
+      : originalMessage + ' ' + templateContent;
   }
 
   const selectedPlatforms = Array.from(elements.platformCheckboxes)

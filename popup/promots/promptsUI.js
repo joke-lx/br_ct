@@ -8,6 +8,18 @@ function populateOptimizer(promptOptimizerSelect) {
   // 清空现有选项
   optionsContainer.innerHTML = '';
 
+  // 创建两栏布局容器
+  const twoColumnContainer = document.createElement('div');
+  twoColumnContainer.className = 'two-column-container';
+  
+  // 创建左侧分组列表
+  const groupList = document.createElement('div');
+  groupList.className = 'group-list';
+  
+  // 创建右侧选项列表
+  const optionsList = document.createElement('div');
+  optionsList.className = 'options-list';
+
   // 恢复上次选择的提示词
   chrome.storage.sync.get(['lastPromptTemplate'], (result) => {
     if (result.lastPromptTemplate) {
@@ -32,19 +44,54 @@ function populateOptimizer(promptOptimizerSelect) {
     });
   }
 
+  // 显示指定分组的选项
+  function showGroupOptions(groupName) {
+    const allOptions = document.querySelectorAll('.group-options');
+    allOptions.forEach(container => {
+      if(container.dataset.group === groupName) {
+        container.style.display = 'block';
+        container.classList.add('active');
+      } else {
+        container.style.display = 'none';
+        container.classList.remove('active');
+      }
+    });
+  }
+
   // 按分组添加选项
+  let firstGroup = null;
   for (const groupName in groups) {
-    const groupDiv = document.createElement('div');
-    groupDiv.className = 'select-group';
-
-    // 创建分组标题
-    const groupHeader = document.createElement('div');
-    groupHeader.className = 'select-group-header';
-    groupHeader.textContent = groupName;
-
-    const optionsDiv = document.createElement('div');
-    optionsDiv.className = 'select-options';
-
+    const groupItem = document.createElement('div');
+    groupItem.className = 'group-item';
+    groupItem.textContent = groupName;
+    if (!firstGroup) firstGroup = groupName;
+    
+    // 使用事件委托来处理hover
+    let hoverTimer = null;
+    
+    groupItem.addEventListener('mouseenter', () => {
+      // 清除之前的定时器
+      if (hoverTimer) clearTimeout(hoverTimer);
+      
+      // 立即移除其他active状态
+      document.querySelectorAll('.group-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      
+      // 立即添加当前active状态
+      groupItem.classList.add('active');
+      
+      // 立即显示对应选项
+      showGroupOptions(groupName);
+    });
+    
+    groupList.appendChild(groupItem);
+    
+    // 为每个分组创建选项容器
+    const groupOptions = document.createElement('div');
+    groupOptions.className = 'group-options';
+    groupOptions.dataset.group = groupName;
+    
     groups[groupName].forEach(template => {
       const option = document.createElement('div');
       option.className = 'select-option';
@@ -56,26 +103,42 @@ function populateOptimizer(promptOptimizerSelect) {
         e.stopPropagation();
         selectedValue.textContent = template.label;
         selectedValue.dataset.value = template.key;
+        selectedValue.dataset.template = template.template; // 添加template数据
         promptOptimizerSelect.classList.remove('active');
 
         // 保存选择的提示词
         chrome.storage.sync.set({ 
-          lastPromptTemplate: template.key 
+          lastPromptTemplate: template.key,
+          lastPromptTemplate_template: template.template // 同时保存模板内容
         });
 
         // 触发change事件
         const event = new CustomEvent('change', { 
-          detail: { value: template.key, template: template.template }
+          detail: { 
+            value: template.key, 
+            template: template.template,
+            label: template.label
+          }
         });
         promptOptimizerSelect.dispatchEvent(event);
       });
       
-      optionsDiv.appendChild(option);
+      groupOptions.appendChild(option);
     });
+    
+    optionsList.appendChild(groupOptions);
+  }
 
-    groupDiv.appendChild(groupHeader);
-    groupDiv.appendChild(optionsDiv);
-    optionsContainer.appendChild(groupDiv);
+  // 装载两栏布局
+  twoColumnContainer.appendChild(groupList);
+  twoColumnContainer.appendChild(optionsList);
+  optionsContainer.appendChild(twoColumnContainer);
+
+  // 初始化显示第一个分组的选项
+  if (firstGroup) {
+    const firstGroupItem = groupList.querySelector('.group-item');
+    firstGroupItem.classList.add('active');
+    showGroupOptions(firstGroup);
   }
 
   // 添加点击事件切换下拉框显示状态
