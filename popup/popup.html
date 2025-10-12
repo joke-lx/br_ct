@@ -368,7 +368,19 @@
       box-shadow: none;
     }
 
-    /* 移除原右下角悬浮按钮（冗余） */
+    /* 修改select-group的hover效果,移除点击展开 */
+.select-group:hover {
+  background-color: #f0f4ff;
+}
+
+.select-group:hover .select-options {
+  display: block;
+}
+
+/* 移除active相关样式 */
+.select-group.active .select-options {
+  display: none;
+}
   </style>
 </head>
 <body>

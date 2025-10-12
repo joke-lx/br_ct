@@ -7,6 +7,17 @@ function populateOptimizer(promptOptimizerSelect) {
   
   // 清空现有选项
   optionsContainer.innerHTML = '';
+
+  // 恢复上次选择的提示词
+  chrome.storage.sync.get(['lastPromptTemplate'], (result) => {
+    if (result.lastPromptTemplate) {
+      const template = PROMPT_TEMPLATES[result.lastPromptTemplate];
+      if (template) {
+        selectedValue.textContent = template.label;
+        selectedValue.dataset.value = result.lastPromptTemplate;
+      }
+    }
+  });
   
   // 获取所有分组
   const groups = {};
@@ -30,19 +41,6 @@ function populateOptimizer(promptOptimizerSelect) {
     const groupHeader = document.createElement('div');
     groupHeader.className = 'select-group-header';
     groupHeader.textContent = groupName;
-    
-    // 添加分组点击事件
-    groupHeader.addEventListener('click', (e) => {
-      e.stopPropagation();
-      // 关闭其他所有分组
-      optionsContainer.querySelectorAll('.select-group').forEach(group => {
-        if (group !== groupDiv) {
-          group.classList.remove('active');
-        }
-      });
-      // 切换当前分组
-      groupDiv.classList.toggle('active');
-    });
 
     const optionsDiv = document.createElement('div');
     optionsDiv.className = 'select-options';
@@ -59,6 +57,12 @@ function populateOptimizer(promptOptimizerSelect) {
         selectedValue.textContent = template.label;
         selectedValue.dataset.value = template.key;
         promptOptimizerSelect.classList.remove('active');
+
+        // 保存选择的提示词
+        chrome.storage.sync.set({ 
+          lastPromptTemplate: template.key 
+        });
+
         // 触发change事件
         const event = new CustomEvent('change', { 
           detail: { value: template.key, template: template.template }
@@ -83,10 +87,6 @@ function populateOptimizer(promptOptimizerSelect) {
   document.addEventListener('click', (e) => {
     if (!promptOptimizerSelect.contains(e.target)) {
       promptOptimizerSelect.classList.remove('active');
-      // 关闭所有分组
-      optionsContainer.querySelectorAll('.select-group').forEach(group => {
-        group.classList.remove('active');
-      });
     }
   });
 }
