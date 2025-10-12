@@ -57,6 +57,14 @@ function populateOptimizer(promptOptimizerSelect) {
         container.classList.remove('active');
       }
     });
+    
+    // 更新分组项的active状态
+    document.querySelectorAll('.group-item').forEach(item => {
+      item.classList.toggle('active', item.textContent === groupName);
+    });
+    
+    // 保存最后选中的分组
+    chrome.storage.sync.set({ lastActiveGroup: groupName });
   }
 
   // 按分组添加选项
@@ -142,9 +150,30 @@ function populateOptimizer(promptOptimizerSelect) {
     showGroupOptions(firstGroup);
   }
 
-  // 添加点击事件切换下拉框显示状态
+  // 修改点击事件切换下拉框显示状态
   promptOptimizerSelect.addEventListener('click', () => {
+    const isOpening = !promptOptimizerSelect.classList.contains('active');
     promptOptimizerSelect.classList.toggle('active');
+    
+    // 当下拉框打开时，显示对应分组
+    if (isOpening) {
+      chrome.storage.sync.get(['lastActiveGroup', 'lastPromptTemplate'], (result) => {
+        let groupToShow = firstGroup; // 默认显示第一个分组
+        
+        if (result.lastPromptTemplate) {
+          // 如果有上次选中的模板，优先使用其分组
+          const template = PROMPT_TEMPLATES[result.lastPromptTemplate];
+          if (template) {
+            groupToShow = template.group;
+          }
+        } else if (result.lastActiveGroup && groups[result.lastActiveGroup]) {
+          // 其次使用上次激活的分组
+          groupToShow = result.lastActiveGroup;
+        }
+        
+        showGroupOptions(groupToShow);
+      });
+    }
   });
 
   // 点击外部关闭下拉框
