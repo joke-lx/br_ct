@@ -5,7 +5,12 @@ const PROMPT_TEMPLATES = {
     label: '完整代码输出',
     template: '%s\n\n要求：\n 输出完整的文件结构 输出完整的代码 输出完整的文件'
   },
-  '6': {
+  '44': {
+    group: '实践输出',
+    label: '不修饰',
+    template: '%s'
+  },
+  '99': {
     group: '实践输出',
     label: 'vue模板',
     template: '%s 按照指定格式生成vue代码 <script setup lang = \'ts \'></script><template></template><style scoped></style>' 
