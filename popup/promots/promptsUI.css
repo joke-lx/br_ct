@@ -81,8 +81,7 @@
 .custom-select.active .custom-select-options {
   display: block;
 }
-  color: var(--primary-color);
-}
+
 
 .custom-select-options {
   position: absolute;
