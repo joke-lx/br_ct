@@ -20,13 +20,14 @@ function populateOptimizer(promptOptimizerSelect) {
   const optionsList = document.createElement('div');
   optionsList.className = 'options-list';
 
-  // 恢复上次选择的提示词
+  // 修改恢复逻辑，同时获取lastPromptTemplate和对应的模板内容
   chrome.storage.sync.get(['lastPromptTemplate'], (result) => {
     if (result.lastPromptTemplate) {
       const template = PROMPT_TEMPLATES[result.lastPromptTemplate];
       if (template) {
         selectedValue.textContent = template.label;
         selectedValue.dataset.value = result.lastPromptTemplate;
+        selectedValue.dataset.template = template.template;
       }
     }
   });
@@ -101,21 +102,21 @@ function populateOptimizer(promptOptimizerSelect) {
       
       option.addEventListener('click', (e) => {
         e.stopPropagation();
+        // 更新选中值的所有数据属性
         selectedValue.textContent = template.label;
         selectedValue.dataset.value = template.key;
-        selectedValue.dataset.template = template.template; // 添加template数据
+        selectedValue.dataset.template = template.template;
         promptOptimizerSelect.classList.remove('active');
 
-        // 保存选择的提示词
+        // 只保存模板的key，恢复时从PROMPT_TEMPLATES中获取完整信息
         chrome.storage.sync.set({ 
-          lastPromptTemplate: template.key,
-          lastPromptTemplate_template: template.template // 同时保存模板内容
+          lastPromptTemplate: template.key
         });
 
         // 触发change事件
         const event = new CustomEvent('change', { 
           detail: { 
-            value: template.key, 
+            value: template.key,
             template: template.template,
             label: template.label
           }

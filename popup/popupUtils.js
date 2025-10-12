@@ -38,7 +38,7 @@ function initializePopup() {
  * 加载存储的数据
  */
 function loadStoredData() {
-  chrome.storage.sync.get(['lastMessage', 'platformStates', HISTORY_KEY, OPTIMIZER_KEY], (result) => {
+  chrome.storage.sync.get(['lastMessage', 'platformStates', HISTORY_KEY, OPTIMIZER_KEY, 'lastPromptTemplate'], (result) => {
     // 恢复最后输入的消息
     if (result.lastMessage) {
       elements.messageInput.value = result.lastMessage;
@@ -57,6 +57,17 @@ function loadStoredData() {
     // 恢复优化器选择
     if (result[OPTIMIZER_KEY]) {
       elements.promptOptimizerSelect.value = result[OPTIMIZER_KEY];
+    }
+    
+    // 恢复提示词选择
+    if (result.lastPromptTemplate) {
+      const template = PROMPT_TEMPLATES[result.lastPromptTemplate];
+      if (template) {
+        const selectedValue = elements.promptOptimizerSelect.querySelector('.selected-value');
+        selectedValue.textContent = template.label;
+        selectedValue.dataset.value = result.lastPromptTemplate;
+        selectedValue.dataset.template = template.template;
+      }
     }
   });
 }
