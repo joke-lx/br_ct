@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>提示模板选择器演示 (美化版)</title>
+<style>
+/* 导入一个简单的图标字体库，例如 Font Awesome，这里仅用作占位符 */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
+
+body {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  padding: 50px;
+  background-color: #f4f7f6; /* 轻微的背景色 */
+}
+
+/* 容器样式 */
+.prompt-optimizer-selector {
+  position: relative;
+  width: 300px;
+}
+
+/* 主按钮样式 */
+.prompt-optimizer-selector .selected {
+  padding: 10px 15px;
+  border: 1px solid #dcdcdc;
+  border-radius: 6px; /* 圆角 */
+  cursor: pointer;
+  background: #ffffff;
+  user-select: none;
+  display: flex;
+  justify-content: space-between; /* 文本和图标分隔 */
+  align-items: center;
+  font-size: 14px;
+  color: #333;
+  transition: all 0.3s ease; /* 过渡效果 */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.prompt-optimizer-selector .selected:hover {
+  border-color: #007bff; /* 悬停颜色 */
+  box-shadow: 0 1px 5px rgba(0, 123, 255, 0.1);
+}
+
+/* 下拉箭头图标 */
+.prompt-optimizer-selector .selected::after {
+  content: '\f0dc'; /* Font Awesome - sort icon */
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  margin-left: 10px;
+  transition: transform 0.3s ease;
+}
+
+/* 下拉菜单打开时的箭头旋转 */
+.prompt-optimizer-selector.open .selected::after {
+  transform: rotate(180deg);
+}
+
+
+/* 下拉菜单样式 */
+.prompt-optimizer-selector .dropdown {
+  position: absolute;
+  top: calc(100% + 5px); /* 略微拉开距离 */
+  left: 0;
+  width: 100%;
+  border: 1px solid #dcdcdc;
+  border-radius: 6px;
+  background: #ffffff;
+  display: none;
+  z-index: 100; /* 确保在顶层 */
+  max-height: 350px; /* 增加高度 */
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* 更明显的阴影 */
+  padding: 5px 0; /* 内边距 */
+}
+
+/* 滚动条美化 (仅 WebKit 浏览器) */
+.prompt-optimizer-selector .dropdown::-webkit-scrollbar {
+  width: 8px;
+}
+.prompt-optimizer-selector .dropdown::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 4px;
+}
+.prompt-optimizer-selector .dropdown::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+
+/* 分组样式 */
+.prompt-optimizer-selector .group {
+  padding: 8px 15px;
+  cursor: pointer;
+  background: #f9f9f9;
+  font-weight: 600;
+  color: #555;
+  border-bottom: 1px solid #eee;
+  position: relative;
+  font-size: 13px;
+  transition: background-color 0.2s;
+}
+
+.prompt-optimizer-selector .group:hover {
+  background-color: #f0f0f0;
+}
+
+/* 分组箭头指示 */
+.prompt-optimizer-selector .group::after {
+  content: '\f0da'; /* Font Awesome - chevron right icon */
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: #aaa;
+}
+
+
+/* 子选项容器（默认隐藏） */
+.prompt-optimizer-selector .labels {
+  display: none;
+  /* background-color: #fff; */
+  padding: 0;
+}
+
+/* 分组悬浮展开子选项 */
+/* 重点修改：使用 group:hover + labels 实现 hover 展开 */
+.prompt-optimizer-selector .group:hover .labels {
+  display: block;
+}
+
+/* 子选项样式 */
+.prompt-optimizer-selector .label {
+  padding: 8px 30px; /* 增加缩进 */
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.prompt-optimizer-selector .label:hover {
+  background: #e6f2ff; /* 浅蓝色悬停背景 */
+  color: #007bff; /* 悬停文字颜色 */
+}
+</style>
+</head>
+<body>
+
+<h2>提示模板选择器演示 (美化版)</h2>
+
+<div class="prompt-optimizer-selector">
+  <div class="selected">选择提示模板</div>
+  <div class="dropdown" id="dropdown"></div>
+</div>
+
+<script>
+const PROMPT_TEMPLATES = {
+  '1': { group: '代码生成与输出', label: '完整代码输出' },
+  '2': { group: '概念与原理分析', label: '完整概念分析' },
+  '3': { group: '优化与提升', label: '优化思路' },
+  '4': { group: '内容处理', label: '翻译' },
+  '6': { group: '代码生成与输出', label: 'vue模板' },
+  '7': { group: '代码调试与修复', label: '帮助我修复bug' },
+  '8': { group: '任务规划', label: '步骤规划' },
+  '9': { group: '命令与操作', label: '指令序列' },
+  '10': { group: '项目分析', label: '目录读取' },
+  '11': { group: '代码分析', label: '代码变量名的含义' },
+  '12': { group: '脚本生成', label: '生成bat文件' },
+  '13': { group: '脚本生成', label: '大python文件' },
+  '14': { group: '设计思想', label: '设计思想哲学' }
+};
+
+// 根据分组生成菜单
+const selectorContainer = document.querySelector('.prompt-optimizer-selector');
+const selectedDiv = selectorContainer.querySelector('.selected');
+const dropdown = document.getElementById('dropdown');
+const groups = {};
+
+for (const key in PROMPT_TEMPLATES) {
+  const item = PROMPT_TEMPLATES[key];
+  if (!groups[item.group]) groups[item.group] = [];
+  groups[item.group].push({ key, label: item.label });
+}
+
+for (const groupName in groups) {
+  const groupDiv = document.createElement('div');
+  groupDiv.className = 'group';
+  // groupDiv.textContent = groupName; // 移除这行，内容将在后面设置
+
+  const groupNameSpan = document.createElement('span');
+  groupNameSpan.textContent = groupName;
+  groupDiv.appendChild(groupNameSpan);
+
+
+  const labelsDiv = document.createElement('div');
+  labelsDiv.className = 'labels';
+
+  groups[groupName].forEach(item => {
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'label';
+    labelDiv.textContent = item.label;
+    labelDiv.dataset.key = item.key;
+    labelDiv.onclick = (e) => {
+      e.stopPropagation(); // 阻止事件冒泡到父级，防止外部点击事件被触发两次
+      selectedDiv.textContent = item.label;
+      dropdown.style.display = 'none';
+      selectorContainer.classList.remove('open');
+      console.log('选择模板ID:', item.key);
+    };
+    labelsDiv.appendChild(labelDiv);
+  });
+
+  groupDiv.appendChild(labelsDiv);
+  dropdown.appendChild(groupDiv);
+}
+
+// 点击显示/隐藏下拉
+selectedDiv.onclick = (e) => {
+  e.stopPropagation(); // 阻止事件冒泡
+  const isVisible = dropdown.style.display === 'block';
+  dropdown.style.display = isVisible ? 'none' : 'block';
+  selectorContainer.classList.toggle('open', !isVisible); // 添加/移除 open 类
+};
+
+// 点击外部关闭下拉
+document.addEventListener('click', e => {
+  if (!selectorContainer.contains(e.target)) {
+    dropdown.style.display = 'none';
+    selectorContainer.classList.remove('open');
+  }
+});
+</script>
+
+</body>
+</html>

@@ -4,11 +4,12 @@ const menuData = {
   isRoot: true,
   children: [
     {
-      name: '📄 最近',
+      name: '📄 feed',
       children: [
         { name: 'IT老齐', url: 'https://www.itlaoqi.com/chapter.html?sid=143&cid=3292', children: [] },
         { name: 'NOTION', url: 'https://www.notion.so/a23ee5b49d7d474ebf9d3e3094441088', children: [] },
         { name: 'B站', url: 'https://www.bilibili.com', children: [] },
+        { name: 'github', url: 'https://github.com/', children: [] },
       ]
     },
     {
