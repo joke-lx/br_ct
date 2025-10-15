@@ -27,7 +27,7 @@ const menuData = {
       name: '📄 网站跳转3',
       children: [
         { name: 'gitee_api', url: 'https://gitee.com/api/v5/swagger', children: [] },
-        { name: '知乎', url: 'https://www.zhihu.com', children: [] },
+        { name: '高德地图', url: 'https://ditu.amap.com/', children: [] },
         { name: '抖音', url: 'https://www.douyin.com', children: [] },
       ]
     },
