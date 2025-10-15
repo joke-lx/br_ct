@@ -1,54 +1,64 @@
 const PROMPT_TEMPLATES = {
-  // 实践输出类
-    '提示词': {
-    group: '其他',
-    label: '提示词',
-    template: '我需要 %s , 请你帮我生成一个高质量的提示词和给出一些创意点, 以便我可以更好的使用chatgpt ,使用\%\s 作为占位符 '
-  },
+  // code_gen类
   '完整代码输出': {
-    group: '实践输出',
+    group: 'code_gen',
     label: '完整代码输出',
     template: '%s\n\n要求：\n 输出完整的文件结构 输出完整的代码 输出完整的文件'
   },
+    '异常日志': {
+    group: 'code_gen',
+    label: '异常日志',
+    template: '代码: %s\n\n 要求：异常及时抛出 并且尽可能打印出完整的异常上下文 具体相关传入的参数或者网络相关的错误'
+  },
   '不修饰': {
-    group: '实践输出',
+    group: 'code_gen',
     label: '不修饰',
     template: '%s'
   },
   'vue模板': {
-    group: '实践输出',
+    group: 'code_gen',
     label: 'vue模板',
     template: '%s 按照指定格式生成vue代码 <script setup lang = \'ts \'></script><template></template><style scoped></style>' 
   },
   '生成bat文件': {
-    group: '实践输出',
+    group: 'code_gen',
     label: '生成bat文件',
     template: '内容: %s 要求: 只需要考虑windows系统  参考上面的概念或者从现成的案例当中获得上面文本当中的指令序列分组, 如果有文件的依赖 定义单独的bat来创建文件,把内容放到markdown的代码段当中,以及成功运行他们的前提条件和可能的报错 ,你只需要生成不同阶段的bat文件的内容即可, 把注意事项和相关的全部都放到bat文件的注释当中'
   },
+    'swagger': {
+    group: 'code_gen',
+    label: 'swagger接口文档',
+    template: '内容: %s 要求: 生成swagger yml接口文档 ,可以适当进行合理推测 进行描述'
+  },
   '大python文件': {
-    group: '实践输出', 
+    group: 'code_gen', 
     label: '大python文件',
     template: '内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件和执行文件(bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释, 不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  '
   },
 
   // 思维分析类
   '完整概念分析': {
-    group: '思维分析',
+    group: 'analyze_plan',
     label: '分析和手册',
-    template: '告诉我关于 %s 的相关的概念基础 最佳操作手册以及实践路线 内存性能分析 底层原理解读 以及常见的误区和其中巧妙的设计'
+    template: '告诉我关于 %s 的相关的概念基础 最佳操作手册以及实践路线 使用场景的具体规模和成本,以及在使用场景的落地补充(比如各种计算机资源的成本和消耗) 底层原理解读  以及常见的误区和其中巧妙的设计'
   },
   '优化思路': {
-    group: '思维分析',
+    group: 'analyze_plan',
     label: '状态优化',
     template: '当前的状态时 %s 我希望进行优化 给出我优化思路 优化流程或者优化方案 或者新的高级学习实践路线'
   },
   '设计思想哲学': {
-    group: '思维分析',
+    group: 'analyze_plan',
     label: '学习软件设计 :: 类比概念 ',
     template: '告诉我 %s 的设计思想和哲学 在软件开发和系统设计领域的其他实践和思想落地 ,这种思想有什么好处 和限制  '
   },
 
   // 内容转译类
+    '相关网站搜索': {
+    group: 'search',
+    label: '相关网站搜索',
+    template: '内容 : "%s" 要求 : 帮我搜索相关的网站或者资源,或者github开源仓库,尽可能满足用户的要求,对每个结果都进行简单的描述 '
+  },
   '翻译': {
     group: 'read',
     label: '翻译',
@@ -69,30 +79,35 @@ const PROMPT_TEMPLATES = {
     label: '代码即文档',
     template: '用户代码或文件: %s  要求: 尽可能对长方法进行解耦, 添加这种代码语言的标准注释 , 完善代码 比如尽快返回失败的思想 比如代码即文档的思想 使用设计模式进行优化 提高可扩展性 请生成: 完整的方案 完整的代码'
   },
-  // 开发调试类
+  // search类
   '帮助我修复bug': {
-    group: '开发调试',
+    group: 'code_gen',
     label: '帮助我修复bug',
     template: '%s 帮助我完成bug的修复 分析产生这种问题的底层原理 给出修复思路 和修复方案 以及修复后的代码'
   },
   '步骤规划': {
-    group: '开发调试',
+    group: 'analyze_plan',
     label: '步骤规划',
     template: '我现在需要 %s , 帮助我规划完成这个任务的步骤 以及这个任务当中的难点 和注意事项'
   },
   '指令序列': {
-    group: '开发调试',
+    group: 'analyze_plan',
     label: '指令序列',
     template: '我的环境是Linux和windows 我现在需要 %s , 帮我生成尽可能完整的指令序列  并且提醒其中的可能出现的错误 , 如果没有指出 默认安装了相关的命令工具'
   },
     '有问题:: 官方文档 sdk文档 ': {
-    group: '开发调试',
+    group: 'search',
     label: '有问题:: 官方文档 sdk文档 ',
     template: '帮我寻找官方文档或者相关sdk的文档,或者官方论坛 %s'
   },
   '记忆上面的文件': {
-    group: '开发调试',
+    group: 'search',
     label: '记忆上面的文件',
     template: '%s 记住上面的内容,后续我将想你提问, 回复收到 '
-  }
+  },
+   '提示词': {
+    group: 'text_file_gen',
+    label: '提示词',
+    template: '我需要 %s , 请你帮我生成一个高质量的提示词和给出一些创意点, 以便我可以更好的使用chatgpt ,使用\%\s 作为占位符 '
+  },
 };

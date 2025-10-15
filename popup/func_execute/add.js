@@ -8,7 +8,8 @@ const scriptFiles = [
   { name: 'leecode 100 导出的案例', file: 'example_func2.js' },
     { name: 'div Copy', file: 'div_copy_wrapper.js' },
   { name: 'img Copy', file: 'div_Img_wrapper.js' },
-    { name: 'boss_job', file: 'boss_job.js' }
+    { name: 'boss_job', file: 'boss_job.js' },
+    { name: 'InputHistory', file: '元素dom/input.js' },
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
