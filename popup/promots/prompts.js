@@ -126,4 +126,9 @@ const PROMPT_TEMPLATES = {
     label: '提示词',
     template: '我需要 %s , 请你帮我生成一个高质量的提示词和给出一些创意点, 以便我可以更好的使用chatgpt ,使用\%\s 作为占位符 '
   },
+     '识别器设计模式': {
+    group: 'custom_design',
+    label: '识别器设计模式',
+    template: '现在有一个方法go签名 ,我将使用设计模式进行优化 参考下面的案例设计模式 添加识别器 然后对入参创建一个map string [string] 进行冗余 \n案例: func ParseConfigFromFile(filePath string) (*Config, error) {}  \n处理之后生成: type Recognizer interface {\n	RecognizeHandler(filePath string) (Handler, error)\n}\n\ntype Handler func(filePath string, msg AdapterMessage) (*Config, error)\ntype AdapterMessage map[string]string\n\n// UniversalRecognizer 通用识别器\ntype UniversalRecognizer struct{}\n\n// NewUniversalRecognizer 创建新的通用识别器\nfunc NewUniversalRecognizer() *UniversalRecognizer {\n	return &UniversalRecognizer{}\n}\n\n// RecognizeHandler 识别处理器\nfunc (r *UniversalRecognizer) RecognizeHandler(filePath string) (Handler, error) {\n	\n	default:\n		return nil, fmt.Errorf("unsupported file format: %", ext)\n	}\n}\n\n请对: %s 进行类似设计模式的优化 '
+  },
 };
