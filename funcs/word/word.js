@@ -36,6 +36,7 @@ function sendLikeRequest(word) {
 let currentWordData = null; // 存储当前正在测试的单词数据
 let inputElement = null; // 存储输入框 DOM 元素
 let translationBox = null; // 存储翻译框 DOM 元素
+let likeButtonElement = null; // 存储收藏按钮 DOM 元素，用于键盘触发时的状态更新
 
 // ** 单词训练模式状态 **
 let isTrainerModeActive = false;
@@ -159,6 +160,33 @@ function handleWordInput() {
     }
 }
 
+/**
+ * 执行收藏请求并更新按钮状态
+ */
+async function performLikeAction() {
+    if (!currentWordData || !likeButtonElement) return;
+
+    // 确保只执行一次
+    if (likeButtonElement.disabled) return;
+
+    likeButtonElement.disabled = true;
+    likeButtonElement.textContent = "⭐ 收藏中...";
+    
+    // 发送收藏请求
+    const resp = await sendLikeRequest(currentWordData.en);
+    
+    if (resp.success) {
+        likeButtonElement.textContent = "👍 已收藏";
+        likeButtonElement.style.color = "#32cd32"; // 成功变绿
+        likeButtonElement.style.borderColor = "#32cd32";
+    } else {
+        likeButtonElement.textContent = "❌ 收藏失败";
+        likeButtonElement.style.color = "red";
+        likeButtonElement.style.borderColor = "red";
+        console.error("收藏失败:", resp.error || resp.status);
+    }
+}
+
 
 /**
  * 显示翻译和短语信息框 (已修改，新增收藏按钮)
@@ -193,6 +221,9 @@ function showTranslation(wordData) {
     likeButton.style.borderRadius = "5px";
     likeButton.style.background = "#333";
     likeButton.style.color = "#ffcc00";
+    
+    // 将按钮存储在全局变量中，以便键盘事件可以访问和修改它
+    likeButtonElement = likeButton; 
 
     headerDiv.appendChild(wordTitle);
     headerDiv.appendChild(likeButton);
@@ -238,23 +269,7 @@ function showTranslation(wordData) {
     document.body.appendChild(translationBox);
     
     // 监听收藏按钮点击事件
-    likeButton.addEventListener("click", async () => {
-        likeButton.disabled = true;
-        likeButton.textContent = "⭐ 收藏中...";
-        // 发送收藏请求
-        const resp = await sendLikeRequest(wordData.en);
-        
-        if (resp.success) {
-            likeButton.textContent = "👍 已收藏";
-            likeButton.style.color = "#32cd32"; // 成功变绿
-            likeButton.style.borderColor = "#32cd32";
-        } else {
-            likeButton.textContent = "❌ 收藏失败";
-            likeButton.style.color = "red";
-            likeButton.style.borderColor = "red";
-            console.error("收藏失败:", resp.error || resp.status);
-        }
-    });
+    likeButton.addEventListener("click", performLikeAction);
 }
 
 /**
@@ -264,6 +279,7 @@ function hideTranslation() {
     if (translationBox) {
         translationBox.remove();
         translationBox = null;
+        likeButtonElement = null; // 清除按钮引用
     }
 }
 
@@ -284,11 +300,11 @@ function exitTrainerMode() {
 
 
 /**
- * 全局键盘事件监听器 (启动/退出/下一轮)
+ * 全局键盘事件监听器 (启动/退出/收藏/下一轮)
  */
 document.addEventListener("keydown", (e) => {
     
-    // 1. Alt + L 启动/切换模式
+    // 1. Alt + L 启动/退出模式
     if (e.altKey && e.key.toLowerCase() === "l") {
         e.preventDefault(); // 阻止 Alt+L 可能触发的浏览器默认行为
         
@@ -312,14 +328,25 @@ document.addEventListener("keydown", (e) => {
             return;
         }
     }
+    
+    // 3. \ 键 收藏单词 (仅在翻译框显示时)
+    // 注意：在某些键盘布局上，`key` 为 `\` (反斜杠) 或 `|` (竖线)
+    if (isTrainerModeActive && translationBox && e.key === "\\") {
+        e.preventDefault(); // 阻止浏览器默认行为
+        performLikeAction();
+        return;
+    }
 
-    // 3. 训练模式激活时，任意键进入下一轮 (在翻译框显示时)
+    // 4. 训练模式激活时，任意键进入下一轮 (在翻译框显示时)
     // 检查是否有翻译框显示，且按下的不是修饰键或导航键
     const isModifierKey = e.altKey || e.ctrlKey || e.shiftKey || e.metaKey;
-    const isNavigationKey = e.key.length > 1 && e.key !== " " && e.key !== "Enter";
+    // 排除功能键、导航键、以及我们定义的收藏键
+    const isSpecialKey = e.key.length > 1 && e.key !== " " && e.key !== "Enter";
+    const isActionKey = e.key === "\\" || e.key.toLowerCase() === "l" && e.altKey;
+
     
-    if (isTrainerModeActive && translationBox && !isModifierKey && !isNavigationKey) {
-        // 如果输入框不是当前焦点，且不是在输入，则阻止默认行为
+    if (isTrainerModeActive && translationBox && !isModifierKey && !isSpecialKey && !isActionKey) {
+        // 如果输入框不是当前焦点，则阻止默认行为
         if (document.activeElement !== inputElement) {
             e.preventDefault(); // 阻止其他可能影响页面的默认行为
         } else if(inputElement && e.key === "Enter") {
@@ -334,4 +361,4 @@ document.addEventListener("keydown", (e) => {
     
 });
 
-console.log("✅ 英语学习脚本已加载！请使用 Alt + L 组合键启动/退出。按 'Esc' 退出。");
+console.log("✅ 英语学习脚本已加载！请使用 Alt + L 组合键启动/退出。按 'Esc' 退出。展示翻译后，按任意键（除 \ 外）进入下一轮，按 '\\' 收藏。");
