@@ -37,6 +37,7 @@ async function createInputBox() {
     let randomWord = { en: "unknown", zh: "", phrases: [], translations: [] };
 
     if (resp && resp.success && resp.data) {
+        // 获得异步结构的值
         const data = resp.data;
         randomWord.en = data.word || "unknown";
         // 提取翻译

@@ -107,9 +107,9 @@ const PROMPT_TEMPLATES = {
     template: '我现在需要 %s , 帮助我规划完成这个任务的步骤 以及这个任务当中的难点 和注意事项'
   },
   '指令序列': {
-    group: 'analyze_plan',
-    label: '指令序列',
-    template: '我的环境是Linux和windows 我现在需要 %s , 帮我生成尽可能完整的指令序列  并且提醒其中的可能出现的错误 , 如果没有指出 默认安装了相关的命令工具'
+    group: 'custom_design',
+    label: '指令序列(windows)',
+    template: '我的环境是windows 我现在需要 %s , 帮我生成尽可能完整的指令序列  并且提醒其中的可能出现的错误 , 如果没有指出 默认安装了相关的命令工具'
   },
     '有问题:: 官方文档 sdk文档 ': {
     group: 'search',
