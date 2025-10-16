@@ -20,11 +20,6 @@ let currentWordData = null; // 存储当前正在测试的单词数据
 let inputElement = null; // 存储输入框 DOM 元素
 let translationBox = null; // 存储翻译框 DOM 元素
 
-// ** 新增/修改：用于 Backspace 三击检测的状态 **
-let lastBackspaceTimes = []; // 存储最近的 Backspace 按下时间戳
-const BACKSPACE_TIMEOUT = 400; // 两次 Backspace 之间的最大间隔（毫秒）
-const TRIGGER_CLICKS = 3; // 触发次数
-
 // ** 单词训练模式状态 **
 let isTrainerModeActive = false;
 
@@ -89,7 +84,7 @@ async function createInputBox() {
     
     // 设置样式
     inputElement.style.position = "fixed";
-    // 随机位置（与原代码保持一致）
+    // 随机位置
     inputElement.style.left = Math.random() * (window.innerWidth - 220) + "px";
     inputElement.style.top = Math.random() * (window.innerHeight - 60) + "px";
     
@@ -203,51 +198,34 @@ function exitTrainerMode() {
     hideTranslation();
     currentWordData = null;
     isTrainerModeActive = false;
-    lastBackspaceTimes = []; // 重置三击状态
     console.log("❌ 英语学习脚本已退出模式。");
 }
 
-/**
- * 处理 Backspace 三击逻辑
- * @param {Event} e 键盘事件对象
- */
-function handleBackspaceTripleClick(e) {
-    const now = Date.now();
-    
-    // 1. 过滤掉超过时间间隔的旧记录
-    lastBackspaceTimes = lastBackspaceTimes.filter(time => now - time < BACKSPACE_TIMEOUT);
-    
-    // 2. 添加当前时间
-    lastBackspaceTimes.push(now);
-
-    // 3. 检查是否达到三击次数
-    if (lastBackspaceTimes.length >= TRIGGER_CLICKS) {
-        // 如果输入框没有聚焦（即不是在输入时按 Backspace），则启动模式
-        const activeEl = document.activeElement;
-        const isInputFocus = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
-
-        if (!isInputFocus && !isTrainerModeActive) {
-            e.preventDefault(); // 阻止 Backspace 的默认行为 (如浏览器历史回退)
-            isTrainerModeActive = true;
-            lastBackspaceTimes = []; // 清空状态，避免重复触发
-            console.log("🚀 Backspace 三击触发，进入英语学习模式！");
-            createInputBox(); // 启动第一轮
-            return true; // 触发成功
-        }
-        
-        // 即使在输入框聚焦，也要清空状态，以保证只有快速的三击才有效
-        // 并且避免在输入框中触发模式
-        lastBackspaceTimes = [];
-    }
-    return false; // 未触发
-}
-
+// ** 移除 Backspace 三击逻辑 **
 
 /**
  * 全局键盘事件监听器 (启动/退出/下一轮)
  */
 document.addEventListener("keydown", (e) => {
-    // 1. ESC 退出模式
+    
+    // 1. Alt + L 启动/切换模式
+    // 注意：同时按下 Alt 和 L (或 l)
+    if (e.altKey && e.key.toLowerCase() === "l") {
+        e.preventDefault(); // 阻止 Alt+L 可能触发的浏览器默认行为（例如：菜单栏快捷键）
+        
+        if (isTrainerModeActive) {
+            // 如果已经激活，Alt+L 视为退出
+            exitTrainerMode();
+        } else {
+            // 启动模式
+            isTrainerModeActive = true;
+            console.log("🚀 Alt+L 组合键触发，进入英语学习模式！");
+            createInputBox(); // 启动第一轮
+        }
+        return;
+    }
+    
+    // 2. ESC 退出模式
     if (e.key === "Escape") {
         if (isTrainerModeActive) {
             e.preventDefault(); // 阻止浏览器默认行为，如关闭全屏
@@ -256,32 +234,18 @@ document.addEventListener("keydown", (e) => {
         }
     }
 
-    // 2. Backspace 三击启动逻辑
-    if (e.key === "Backspace" && !isTrainerModeActive) {
-        // 尝试触发三击
-        if (handleBackspaceTripleClick(e)) {
-            // 如果成功启动，则在此处结束
-            return;
-        }
-    }
-
-
     // 3. 训练模式激活时，任意键进入下一轮 (在翻译框显示时)
-    // 检查是否有翻译框显示，且按下的不是功能键
-    // 注意：这里的判断逻辑是为了排除 Alt, Ctrl, Shift, Meta 等修饰键，以及它们自身的键名
-    if (isTrainerModeActive && translationBox && !e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && e.key.length === 1 && e.key.toLowerCase() !== "escape") {
-        e.preventDefault(); // 阻止其他可能影响页面的默认行为 (例如：按 'a' 会选中所有)
+    // 检查是否有翻译框显示，且按下的不是修饰键
+    const isModifierKey = e.altKey || e.ctrlKey || e.shiftKey || e.metaKey;
+    const isNavigationKey = e.key.length > 1 && e.key !== " " && e.key !== "Enter";
+    
+    if (isTrainerModeActive && translationBox && !isModifierKey && !isNavigationKey) {
+        e.preventDefault(); // 阻止其他可能影响页面的默认行为
         // 隐藏翻译框，并加载下一个单词
         createInputBox();
         return;
     }
     
-    // 针对用户可能按下的特殊键（例如：空格键 ' '），这些键长度不为 1，但可以用于进入下一轮
-    if (isTrainerModeActive && translationBox && (e.key === " " || e.key === "Enter")) {
-         e.preventDefault();
-         createInputBox();
-         return;
-    }
 });
 
-console.log("✅ 英语学习脚本已加载！请在页面任意位置快速连按 Backspace 键 3 次启动。按 'Esc' 退出。");
+console.log("✅ 英语学习脚本已加载！请快速连按 Alt + L 组合键启动/退出。按 'Esc' 退出。");
