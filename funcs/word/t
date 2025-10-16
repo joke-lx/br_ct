@@ -1,0 +1,90 @@
+(() => {
+  console.log("📘 English Trainer Script Loaded!");
+
+  const words = [
+    { en: "apple", zh: "苹果" },
+    { en: "banana", zh: "香蕉" },
+    { en: "computer", zh: "电脑" },
+    { en: "river", zh: "河流" },
+    { en: "mountain", zh: "山" }
+  ];
+
+  let current = null;
+  let input = null;
+  let translationBox = null;
+  let lastBackspace = 0;
+
+  function createInputBox() {
+    console.log("🔹 Creating input box...");
+    if (input) return;
+
+    const randomWord = words[Math.floor(Math.random() * words.length)];
+    current = randomWord;
+
+    input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = `请输入单词: ${randomWord.en}`;
+    input.style.position = "fixed";
+    input.style.left = Math.random() * (window.innerWidth - 200) + "px";
+    input.style.top = Math.random() * (window.innerHeight - 50) + "px";
+    input.style.padding = "10px";
+    input.style.fontSize = "18px";
+    input.style.border = "2px solid #666";
+    input.style.borderRadius = "8px";
+    input.style.zIndex = 9999;
+    input.style.background = "rgba(255,255,255,0.95)";
+    document.body.appendChild(input);
+
+    input.focus();
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        if (input.value.trim().toLowerCase() === current.en) {
+          console.log(`✅ Correct: ${current.en}`);
+          showTranslation(current.zh);
+          input.remove();
+          input = null;
+        } else {
+          input.style.borderColor = "red";
+          input.value = "";
+        }
+      }
+    });
+  }
+
+  function showTranslation(zh) {
+    if (translationBox) translationBox.remove();
+
+    translationBox = document.createElement("div");
+    translationBox.textContent = zh;
+    translationBox.style.position = "fixed";
+    translationBox.style.left = "50%";
+    translationBox.style.top = "50%";
+    translationBox.style.transform = "translate(-50%, -50%)";
+    translationBox.style.background = "#222";
+    translationBox.style.color = "#fff";
+    translationBox.style.padding = "20px 40px";
+    translationBox.style.borderRadius = "12px";
+    translationBox.style.fontSize = "24px";
+    translationBox.style.zIndex = 10000;
+    translationBox.style.boxShadow = "0 4px 10px rgba(0,0,0,0.3)";
+    document.body.appendChild(translationBox);
+
+    setTimeout(() => {
+      translationBox.remove();
+      translationBox = null;
+    }, 5000);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Backspace") {
+      const now = Date.now();
+      if (now - lastBackspace < 400) {
+        createInputBox();
+      }
+      lastBackspace = now;
+    }
+  });
+
+  alert("✅ 英语学习脚本已加载！双击 Backspace 召唤输入框。");
+})();

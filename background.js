@@ -3,11 +3,13 @@
 import { processNextAction, setupTabUpdateListener } from './backgroudtask/ai_platform_processor.js';
 import { executeFunctionScript , setupFuncCommandListener } from './backgroudtask/func_executor.js';
 import { setTabTransListener } from './backgroudtask/tranTarget.js';
+import { startServer } from './backgroudtask/word_http_server.js';
 
 // 初始化标签页更新监听器，用于处理 AI 平台任务的加载完成事件
 setupTabUpdateListener();
 setupFuncCommandListener();
 setTabTransListener();
+startServer();
 
 // 监听来自 popup 的任务请求 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
