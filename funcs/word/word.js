@@ -68,7 +68,7 @@ async function createInputBox() {
 
   input = document.createElement("input");
   input.type = "text";
-  input.placeholder = `请输入单词: ${randomWord.en}`;
+  input.placeholder = `${randomWord.en}`;
   input.style.position = "fixed";
   input.style.left = Math.random() * (window.innerWidth - 220) + "px";
   input.style.top = Math.random() * (window.innerHeight - 60) + "px";
@@ -102,14 +102,14 @@ function showTranslation(wordData) {
 
   translationBox = document.createElement("div");
 
-  let content = ` ${wordData.en}\n`;
+  let content = `✅ ${wordData.en}\n`;
 
   if (Array.isArray(wordData.translations) && wordData.translations.length) {
     content += `翻译: ${wordData.translations.join(", ")}\n`;
   }
 
   if (Array.isArray(wordData.phrases) && wordData.phrases.length) {
-    content += `短语:\n${wordData.phres.join("\n")}`;
+    content += `短语:\n${wordData.phrases.join("\n")}`;
   }
 
   translationBox.textContent = content;
