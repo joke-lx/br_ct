@@ -10,7 +10,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   (async () => {
     try {
-      const res = await fetch("http://localhost:8080/random-word", {
+      // const res = await fetch("http://localhost:8901/random-word", {
+      const res = await fetch("http://139.9.42.203:8901/random-word", {
         method: "GET",
         // 如果后端需要 cookie/credentials，可以考虑 credentials: 'include'
       });
