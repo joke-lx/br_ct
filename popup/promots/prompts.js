@@ -21,17 +21,17 @@ const PROMPT_TEMPLATES = {
     template: '%s 按照指定格式生成vue代码 <script setup lang = \'ts \'></script><template></template><style scoped></style>' 
   },
   '生成bat文件': {
-    group: 'code_gen',
+    group: 'custom_design',
     label: '生成bat文件',
     template: '内容: %s 要求: 只需要考虑windows系统  参考上面的概念或者从现成的案例当中获得上面文本当中的指令序列分组, 如果有文件的依赖 定义单独的bat来创建文件,把内容放到markdown的代码段当中,以及成功运行他们的前提条件和可能的报错 ,你只需要生成不同阶段的bat文件的内容即可, 把注意事项和相关的全部都放到bat文件的注释当中'
   },
     'swagger': {
-    group: 'code_gen',
+    group: 'custom_design',
     label: 'swagger接口文档',
     template: '内容: %s 要求: 生成swagger yml接口文档 ,可以适当进行合理推测 进行描述'
   },
   '大python文件': {
-    group: 'code_gen', 
+    group: 'custom_design', 
     label: '大python文件',
     template: '内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件和执行文件(bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释, 不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  '
   },
@@ -130,5 +130,10 @@ const PROMPT_TEMPLATES = {
     group: 'custom_design',
     label: '识别器设计模式',
     template: '现在有一个方法go签名 ,我将使用设计模式进行优化 参考下面的案例设计模式 添加识别器 然后对入参创建一个map string [string] 进行冗余 \n案例: func ParseConfigFromFile(filePath string) (*Config, error) {}  \n处理之后生成: type Recognizer interface {\n	RecognizeHandler(filePath string) (Handler, error)\n}\n\ntype Handler func(filePath string, msg AdapterMessage) (*Config, error)\ntype AdapterMessage map[string]string\n\n// UniversalRecognizer 通用识别器\ntype UniversalRecognizer struct{}\n\n// NewUniversalRecognizer 创建新的通用识别器\nfunc NewUniversalRecognizer() *UniversalRecognizer {\n	return &UniversalRecognizer{}\n}\n\n// RecognizeHandler 识别处理器\nfunc (r *UniversalRecognizer) RecognizeHandler(filePath string) (Handler, error) {\n	\n	default:\n		return nil, fmt.Errorf("unsupported file format: %", ext)\n	}\n}\n\n请对: %s 进行类似设计模式的优化 '
+  }, 
+      'channel设计模式': {
+    group: 'custom_design',
+    label: 'channel设计模式',
+    template:' package executor\n\nimport (\n	"context"\n	"errors"\n)\n\n// NewPoolExecutor 创建新的协程池执行器\nfunc NewPoolExecutor(workerCount, queueSize int) *PoolExecutor {\n	return &PoolExecutor{\n		workerCount: workerCount,\n		taskQueue:   make(chan Task, queueSize),\n		running:     false,\n	}\n}\n\n// SetHandler 设置任务处理函数\nfunc (e *PoolExecutor) SetHandler(handler TaskHandler) {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n	e.handler = handler\n}\n\nfunc (e *PoolExecutor) Submit(ctx context.Context, task Task) error {\n	select {\n	case e.taskQueue <- task:\n		return nil\n	case <-ctx.Done():\n		return ctx.Err()\n	}\n}\n\nfunc (e *PoolExecutor) Start(ctx context.Context) error {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n\n	if e.running {\n		return nil // 已经运行中\n	}\n\n	if e.handler == nil {\n		return ErrNoHandler // 没有设置处理函数\n	}\n\n	e.running = true\n\n	// 启动工作协程\n	for i := 0; i < e.workerCount; i++ {\n		e.wg.Add(1)\n		go e.worker(ctx, i)\n	}\n\n	return nil\n}\n\nfunc (e *PoolExecutor) Stop(ctx context.Context) error {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n\n	if !e.running {\n		return nil\n	}\n\n	e.running = false\n	close(e.taskQueue)\n	e.wg.Wait()\n\n	return nil\n}\n\nfunc (e *PoolExecutor) IsRunning() bool {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n	return e.running\n}\n\nfunc (e *PoolExecutor) worker(ctx context.Context, id int) {\n	defer e.wg.Done()\n\n	for task := range e.taskQueue {\n		// 使用处理函数处理任务\n		if e.handler != nil {\n			if err := e.handler(ctx, task); err != nil {\n				// todo 异常的兜底策略\n\n			}\n		}\n	}\n}\n\n// 错误定义\nvar (\n	ErrNoHandler = errors.New("未设置任务处理函数")\n)package executor\n\nimport (\n	"sync"\n)\n\nvar (\n	defaultExecutor Executor\n	once            sync.Once\n)\n\n// GetDefaultExecutor 获取默认执行器（单例）\nfunc GetDefaultExecutor() Executor {\n	once.Do(func() {\n		executor := NewPoolExecutor(10, 100) // 10个工作协程，队列大小100\n\n		defaultExecutor = executor\n	})\n	return defaultExecutor\n}\n\npackage executor\n\nimport (\n	"context"\n	"sync"\n)\n\n// Task 表示要执行的任务\ntype Task struct {\n	ID      string\n	Payload interface{}\n}\n\n// TaskHandler 任务处理函数类型\ntype TaskHandler func(ctx context.Context, task Task) error\n\n// Executor 执行器接口\ntype Executor interface {\n	// Submit 提交任务\n	Submit(ctx context.Context, task Task) error\n\n	// Start 启动执行器\n	Start(ctx context.Context) error\n\n	// Stop 停止执行器\n	Stop(ctx context.Context) error\n\n	// IsRunning 检查是否在运行\n	IsRunning() bool\n\n	// SetHandler 设置任务处理函数\n	SetHandler(handler TaskHandler)\n}\n\n// PoolExecutor 协程池执行器\ntype PoolExecutor struct {\n	workerCount int\n	taskQueue   chan Task\n	running     bool\n	wg          sync.WaitGroup\n	mu          sync.Mutex\n	handler     TaskHandler // 任务处理函数\n}\n参考这个包的单例+协程池+channel任务设计 对下面的函数进行包的封装 调用下面这个方法是通过submit具体任务进行异步处理,可以设计一个结果channel,需要重新封装的函数: %s '
   },
 };
