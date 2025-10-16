@@ -16,6 +16,23 @@ function requestWordFromBackend() {
     });
 }
 
+/**
+ * 向 background 请求收藏/点赞单词
+ * @param {string} word 要收藏的单词
+ */
+function sendLikeRequest(word) {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: "likeWord", word: word }, (resp) => {
+            if (chrome.runtime.lastError) {
+                console.error("Error sending like request:", chrome.runtime.lastError.message);
+                resolve({ success: false, error: "Runtime error" });
+                return;
+            }
+            resolve(resp);
+        });
+    });
+}
+
 let currentWordData = null; // 存储当前正在测试的单词数据
 let inputElement = null; // 存储输入框 DOM 元素
 let translationBox = null; // 存储翻译框 DOM 元素
@@ -130,12 +147,12 @@ function handleWordInput() {
         // 正在输入中，是正确的前缀，边框设为正常
         inputElement.style.borderColor = "#666";
     } else if (inputValue.length >= targetWord.length) {
-         // 输入长度达到或超过目标长度，但不正确，清空输入并提示错误
+          // 输入长度达到或超过目标长度，但不正确，清空输入并提示错误
         inputElement.style.borderColor = "red";
         inputElement.value = ""; // 清空，让用户重新输入
     } else if (inputValue.length > 0 && !targetWord.startsWith(inputValue)) {
-         // 输入了错误的字符，提示错误
-         inputElement.style.borderColor = "orange";
+          // 输入了错误的字符，提示错误
+          inputElement.style.borderColor = "orange";
     } else {
         // 输入为空
         inputElement.style.borderColor = "#666";
@@ -144,23 +161,67 @@ function handleWordInput() {
 
 
 /**
- * 显示翻译和短语信息框
+ * 显示翻译和短语信息框 (已修改，新增收藏按钮)
  */
 function showTranslation(wordData) {
     if (translationBox) translationBox.remove();
     
     translationBox = document.createElement("div");
-    let content = `✅ ${wordData.en}\n`;
     
+    // ----------------------------------------------------
+    // --- (1) 创建内容容器和收藏按钮 ---
+    // ----------------------------------------------------
+    const contentContainer = document.createElement("div");
+    
+    // 标题行包含单词和收藏按钮
+    const headerDiv = document.createElement("div");
+    headerDiv.style.display = "flex";
+    headerDiv.style.justifyContent = "space-between";
+    headerDiv.style.alignItems = "center";
+    
+    const wordTitle = document.createElement("span");
+    wordTitle.textContent = `✅ ${wordData.en}`;
+    wordTitle.style.fontWeight = "bold";
+    wordTitle.style.fontSize = "24px"; // 放大单词
+    
+    const likeButton = document.createElement("button");
+    likeButton.textContent = "⭐ 收藏"; // 使用星标或心形图标
+    likeButton.style.padding = "5px 10px";
+    likeButton.style.marginLeft = "20px";
+    likeButton.style.cursor = "pointer";
+    likeButton.style.border = "1px solid #ffcc00";
+    likeButton.style.borderRadius = "5px";
+    likeButton.style.background = "#333";
+    likeButton.style.color = "#ffcc00";
+
+    headerDiv.appendChild(wordTitle);
+    headerDiv.appendChild(likeButton);
+    contentContainer.appendChild(headerDiv);
+    
+    // ----------------------------------------------------
+    // --- (2) 翻译和短语内容 ---
+    // ----------------------------------------------------
+    let bodyContent = "";
     if (Array.isArray(wordData.translations) && wordData.translations.length) {
-        content += `翻译: ${wordData.translations.join(", ")}\n`;
+        bodyContent += `\n\n翻译: ${wordData.translations.join(", ")}`;
     }
     if (Array.isArray(wordData.phrases) && wordData.phrases.length) {
-        content += `短语:\n${wordData.phrases.join("\n")}`;
+        bodyContent += `\n\n短语:\n${wordData.phrases.join("\n")}`;
     }
 
-    translationBox.textContent = content;
-    translationBox.style.whiteSpace = "pre-line";
+    const bodyDiv = document.createElement("div");
+    bodyDiv.textContent = bodyContent;
+    bodyDiv.style.whiteSpace = "pre-line";
+    bodyDiv.style.marginTop = "10px";
+    bodyDiv.style.fontSize = "18px";
+    bodyDiv.style.lineHeight = "1.5";
+    
+    contentContainer.appendChild(bodyDiv);
+    translationBox.appendChild(contentContainer); // 将内容容器添加到 translationBox
+    
+    // ----------------------------------------------------
+    // --- (3) 样式和事件监听器 ---
+    // ----------------------------------------------------
     translationBox.style.position = "fixed";
     translationBox.style.left = "50%";
     translationBox.style.top = "50%";
@@ -172,9 +233,28 @@ function showTranslation(wordData) {
     translationBox.style.fontSize = "20px";
     translationBox.style.zIndex = 2147483647;
     translationBox.style.boxShadow = "0 4px 10px rgba(0,0,0,0.3)";
-    translationBox.id = "english-trainer-translation-box"; // 方便识别
+    translationBox.id = "english-trainer-translation-box"; 
     
     document.body.appendChild(translationBox);
+    
+    // 监听收藏按钮点击事件
+    likeButton.addEventListener("click", async () => {
+        likeButton.disabled = true;
+        likeButton.textContent = "⭐ 收藏中...";
+        // 发送收藏请求
+        const resp = await sendLikeRequest(wordData.en);
+        
+        if (resp.success) {
+            likeButton.textContent = "👍 已收藏";
+            likeButton.style.color = "#32cd32"; // 成功变绿
+            likeButton.style.borderColor = "#32cd32";
+        } else {
+            likeButton.textContent = "❌ 收藏失败";
+            likeButton.style.color = "red";
+            likeButton.style.borderColor = "red";
+            console.error("收藏失败:", resp.error || resp.status);
+        }
+    });
 }
 
 /**
@@ -202,7 +282,6 @@ function exitTrainerMode() {
     console.log("❌ 英语学习脚本已退出模式。");
 }
 
-// ** 移除 Backspace 三击逻辑 **
 
 /**
  * 全局键盘事件监听器 (启动/退出/下一轮)
@@ -210,9 +289,8 @@ function exitTrainerMode() {
 document.addEventListener("keydown", (e) => {
     
     // 1. Alt + L 启动/切换模式
-    // 注意：同时按下 Alt 和 L (或 l)
     if (e.altKey && e.key.toLowerCase() === "l") {
-        e.preventDefault(); // 阻止 Alt+L 可能触发的浏览器默认行为（例如：菜单栏快捷键）
+        e.preventDefault(); // 阻止 Alt+L 可能触发的浏览器默认行为
         
         if (isTrainerModeActive) {
             // 如果已经激活，Alt+L 视为退出
@@ -229,19 +307,26 @@ document.addEventListener("keydown", (e) => {
     // 2. ESC 退出模式
     if (e.key === "Escape") {
         if (isTrainerModeActive) {
-            e.preventDefault(); // 阻止浏览器默认行为，如关闭全屏
+            e.preventDefault(); // 阻止浏览器默认行为
             exitTrainerMode();
             return;
         }
     }
 
     // 3. 训练模式激活时，任意键进入下一轮 (在翻译框显示时)
-    // 检查是否有翻译框显示，且按下的不是修饰键
+    // 检查是否有翻译框显示，且按下的不是修饰键或导航键
     const isModifierKey = e.altKey || e.ctrlKey || e.shiftKey || e.metaKey;
     const isNavigationKey = e.key.length > 1 && e.key !== " " && e.key !== "Enter";
     
     if (isTrainerModeActive && translationBox && !isModifierKey && !isNavigationKey) {
-        e.preventDefault(); // 阻止其他可能影响页面的默认行为
+        // 如果输入框不是当前焦点，且不是在输入，则阻止默认行为
+        if (document.activeElement !== inputElement) {
+            e.preventDefault(); // 阻止其他可能影响页面的默认行为
+        } else if(inputElement && e.key === "Enter") {
+             // 如果在输入框中按回车，理论上应该提交，但我们这里只处理展示状态下的下一轮
+             return;
+        }
+
         // 隐藏翻译框，并加载下一个单词
         createInputBox();
         return;
@@ -249,4 +334,4 @@ document.addEventListener("keydown", (e) => {
     
 });
 
-console.log("✅ 英语学习脚本已加载！请快速连按 Alt + L 组合键启动/退出。按 'Esc' 退出。");
+console.log("✅ 英语学习脚本已加载！请使用 Alt + L 组合键启动/退出。按 'Esc' 退出。");
