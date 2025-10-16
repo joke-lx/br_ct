@@ -58,12 +58,12 @@ export function setupFuncCommandListener() {
   // 监听快捷键
   chrome.commands.onCommand.addListener((command) => {
     if (command === "execute_div_copy") {
-      executeFunctionScript("div_copy_wrapper.js", (response) => {
+      executeFunctionScript("元素dom/div_copy_wrapper.js", (response) => {
         console.log("快捷键执行结果:", response);
       });
     }
     if (command === "imgs_picker") {
-      executeFunctionScript("div_Img_wrapper.js", (response) => {
+      executeFunctionScript("元素dom/div_Img_wrapper.js", (response) => {
         console.log("快捷键执行结果:", response);
       });
     }

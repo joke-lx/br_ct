@@ -4,11 +4,11 @@
 // 假设我们有一个预定义的脚本列表，或者从后端获取
 // 在实际应用中，您可能需要更复杂的机制来动态发现文件
 const scriptFiles = [
-  { name: 'bili专栏导出的案例 ', file: 'example_func1.js' },
-  { name: 'leecode 100 导出的案例', file: 'example_func2.js' },
-    { name: 'div Copy', file: 'div_copy_wrapper.js' },
-  { name: 'img Copy', file: 'div_Img_wrapper.js' },
-    { name: 'boss_job', file: 'boss_job.js' },
+  { name: 'bili专栏导出的案例 ', file: '平台专属/bili/bili.js' },
+  { name: 'leecode100导出', file: '平台专属/leecode/leecode.js' },
+    { name: 'div Copy', file: '元素dom/div_copy_wrapper.js' },
+  { name: 'img Copy', file: '元素dom/div_Img_wrapper.js' },
+    { name: 'boss_job', file: '平台专属/boss直聘/boss_job.js' },
     { name: 'InputHistory', file: '元素dom/input.js' },
 ];
 
