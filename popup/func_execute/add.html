@@ -1,89 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <title>添加新任务</title>
-  <style>
-    body {
-      width: 400px;
-      padding: 20px;
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #ddd;
-    }
-    .header h1 {
-      font-size: 20px;
-      color: #333;
-    }
-    .back-button {
-      display: block;
-      width: 100%;
-      padding: 12px;
-      background-color: #6c757d;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 16px;
-      font-weight: 500;
-      cursor: pointer;
-      text-align: center;
-      text-decoration: none;
-      transition: background-color 0.2s;
-      margin-top: 20px;
-    }
-    .back-button:hover {
-      background-color: #5a6268;
-    }
-    .script-list {
-      margin-top: 20px;
-      border-top: 1px solid #ddd;
-      padding-top: 20px;
-    }
-    .script-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px;
-      background-color: white;
-      border-radius: 4px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      margin-bottom: 10px;
-    }
-    .script-item span {
-      flex-grow: 1;
-      font-weight: 500;
-    }
-    .execute-button {
-      padding: 8px 16px;
-      background-color: #0078d7;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    .execute-button:hover {
-      background-color: #106ebe;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <title>脚本库</title>
+  <link rel="stylesheet" href="add.css" />
 </head>
 <body>
-  <div class="header">
-    <h1>脚本库</h1>
-    <p>点击按钮在当前页面执行脚本。</p>
-  </div>
-  
-  <div class="script-list" id="script-list">
-    </div>
-  
-  <a href="../popup.html" class="back-button">返回主页</a>
-  
+
+
+  <div class="script-list" id="script-list"></div>
+
+  <a href="/popup/popup.html" class="back-button">返回主页</a>
+
   <script src="add.js"></script>
 </body>
 </html>

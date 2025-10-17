@@ -1,0 +1,120 @@
+/* 页面整体布局 */
+body {
+  width: 400px;
+  margin: 0;
+  padding: 20px;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background: linear-gradient(180deg, #f9fafb, #f1f3f6);
+  color: #333;
+}
+
+/* 顶部标题 */
+.header {
+  text-align: center;
+  margin-bottom: 25px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.header h1 {
+  font-size: 22px;
+  color: #0078d7;
+  margin-bottom: 6px;
+}
+
+.header p {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* 脚本列表容器 */
+.script-list {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 单个脚本卡片 */
+.script-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.script-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.script-item span {
+  font-weight: 500;
+  font-size: 15px;
+  color: #222;
+}
+
+/* 执行按钮 */
+.execute-button {
+  padding: 8px 16px;
+  background-color: #0078d7;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.execute-button:hover {
+  background-color: #106ebe;
+  transform: scale(1.05);
+}
+
+.execute-button:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+/* 返回主页按钮 */
+.back-button {
+  display: block;
+  text-align: center;
+  width: 100%;
+  padding: 12px;
+  background-color: #6c757d;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  margin-top: 25px;
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.back-button:hover {
+  background-color: #5a6268;
+  transform: scale(1.02);
+}
+
+/* 轻微进入动画 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.script-item {
+  animation: fadeInUp 0.3s ease forwards;
+}

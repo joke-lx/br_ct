@@ -1,23 +1,17 @@
-
-// popup/add.js
-
-// 假设我们有一个预定义的脚本列表，或者从后端获取
-// 在实际应用中，您可能需要更复杂的机制来动态发现文件
+// 预定义脚本列表
 const scriptFiles = [
-  // { name: 'bili专栏导出的案例 ', file: '平台专属/bili/bili.js' },
-  // { name: 'leecode100导出', file: '平台专属/leecode/leecode.js' },
-    { name: 'div Copy', file: '元素dom/div_copy_wrapper.js' },
+  { name: 'div Copy', file: '元素dom/div_copy_wrapper.js' },
   { name: 'img Copy', file: '元素dom/div_Img_wrapper.js' },
-    { name: 'boss_job', file: '平台专属/boss直聘/boss_job.js' },
-    { name: 'InputHistory', file: '元素dom/input.js' },
-    { name: 'oneRaw', file: '元素dom/oneRaw.js' },
-    
+  { name: 'boss_job', file: '平台专属/boss直聘/boss_job.js' },
+  { name: 'InputHistory', file: '元素dom/input.js' },
+  { name: 'oneRaw', file: '元素dom/oneRaw.js' },
+  { name: 'color', file: '元素dom/color_show.js' }
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
   const scriptList = document.getElementById('script-list');
 
-  // 动态创建脚本列表
+  // 动态生成脚本项
   scriptFiles.forEach(script => {
     const scriptItem = document.createElement('div');
     scriptItem.className = 'script-item';
@@ -28,33 +22,32 @@ document.addEventListener('DOMContentLoaded', () => {
     scriptList.appendChild(scriptItem);
   });
 
-  // 为每个“执行”按钮添加事件监听器
+  // 按钮事件监听
   scriptList.addEventListener('click', (event) => {
     if (event.target.classList.contains('execute-button')) {
       const scriptFile = event.target.dataset.file;
-      
-      // 禁用按钮以防重复点击
-      const originalText = event.target.textContent;
-      event.target.textContent = '执行中...';
-      event.target.disabled = true;
+      const button = event.target;
+      const originalText = button.textContent;
 
-      // 向 background.js 发送执行脚本的请求
-      chrome.runtime.sendMessage({
-        action: 'executeFunctionScript',
-        file: scriptFile
-      }, (response) => {
-        if (response && response.status === 'success') {
-        } else {
-          alert(`脚本 ${scriptFile} 执行失败: ${response?.message || '未知错误'}`);
+      button.textContent = '执行中...';
+      button.disabled = true;
+
+      chrome.runtime.sendMessage(
+        { action: 'executeFunctionScript', file: scriptFile },
+        (response) => {
+          if (response && response.status === 'success') {
+            console.log(`脚本 ${scriptFile} 执行成功`);
+          } else {
+            alert(`脚本 ${scriptFile} 执行失败: ${response?.message || '未知错误'}`);
+          }
+
+          button.textContent = originalText;
+          button.disabled = false;
+
+          // 成功后关闭 popup
+          window.close();
         }
-
-        // 恢复按钮状态
-        event.target.textContent = originalText;
-        event.target.disabled = false;
-        
-        // 成功后关闭 popup
-        window.close();
-      });
+      );
     }
   });
 });
