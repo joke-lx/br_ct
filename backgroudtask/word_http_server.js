@@ -1,19 +1,21 @@
 export function startServer() {
 // background.js (MV3 service worker)
 // 简单代理：接收 content script 的请求，向本地后端请求并返回结果。
-// 注意：manifest.json 中已经声明 host_permissions ["http://localhost:8080/*"]
+// 注意：manifest.json 中已经声明 host_permissions ["链接*"]
 
 console.log("background service worker started");
 
+// 可配置的域名前缀 - 可以轻松替换为云服务地址
+const domain = 'http://139.9.42.203:8901'; // 替换为你的云服务地址
+// 如果需要切换回本地测试，可以改为：'http://localhost:8901'
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-   const domain = 'http://localhost:8901'
-    
     // ------------------- (1) 随机单词处理 (原有) -------------------
     if (msg && msg.action === "fetchRandomWord") {
         (async () => {
             try {
-                // 确保使用正确的地址
-                const res = await fetch("http://localhost:8901/random-word", {
+                // 使用配置的域名地址
+                const res = await fetch(`${domain}/random-word`, {
                     method: "GET",
                 });
 
@@ -43,8 +45,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         (async () => {
             try {
                 const word = msg.word;
-                // 注意：对 URL 路径中的单词进行编码，防止特殊字符导致路径错误
-                const url = `http://localhost:8901/like/${encodeURIComponent(word)}`;
+                // 使用配置的域名地址
+                const url = `${domain}/like/${encodeURIComponent(word)}`;
                 
                 const res = await fetch(url, {
                     method: "POST", // 收藏操作通常是 POST 或 PUT
@@ -72,5 +74,3 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
 });
 }
-
-
