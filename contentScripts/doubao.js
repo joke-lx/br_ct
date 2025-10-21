@@ -19,7 +19,7 @@ function findElementBySelectors(selectors) {
       }
 
       if (element) {
-        console.log(`成功找到元素: ${selector.type} -> ${selector.value}`);
+        console.log(`成功成功找到元素: ${selector.type} -> ${selector.value}`);
         return element;
       }
     } catch (e) {
@@ -66,11 +66,19 @@ function triggerInputEvents(element) {
     const events = [
       new Event("input", { bubbles: true, cancelable: true }),
       new Event("change", { bubbles: true, cancelable: true }),
-      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter" }),
-      new KeyboardEvent("keyup", { bubbles: true, cancelable: true, key: "Enter" })
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key: "Enter",
+      }),
+      new KeyboardEvent("keyup", {
+        bubbles: true,
+        cancelable: true,
+        key: "Enter",
+      }),
     ];
 
-    events.forEach(event => element.dispatchEvent(event));
+    events.forEach((event) => element.dispatchEvent(event));
     console.log("输入事件触发成功");
     return true;
   } catch (e) {
@@ -103,7 +111,11 @@ function triggerClick(element) {
     console.warn("普通点击失败，尝试鼠标事件", e);
 
     try {
-      const mouseEvent = new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
+      const mouseEvent = new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+      });
       element.dispatchEvent(mouseEvent);
       console.log("鼠标事件点击成功");
       return true;
@@ -119,14 +131,18 @@ function triggerClick(element) {
 // ==========================================================
 const inputSelectors = [
   // Doubao textarea
-  { type: 'xpath', value: '//*[@id="chat-route-layout"]/div/main/div/div/div[2]/div/div/div[2]/div[2]/div[2]/div[1]/div[2]/div[2]/div[1]/div/textarea' },
-  { type: 'css', value: '#chat-route-layout textarea' }
+  {
+    type: "xpath",
+    value:
+      '//*[@id="chat-route-layout"]/div/main/div/div/div[2]/div/div/div[2]/div[2]/div[2]/div[1]/div[2]/div[2]/div[1]/div/textarea',
+  },
+  { type: "css", value: "#chat-route-layout textarea" },
 ];
 
 const buttonSelectors = [
   // Doubao 发送按钮
-  { type: 'xpath', value: '//*[@id="flow-end-msg-send"]' },
-  { type: 'css', value: '#flow-end-msg-send' }
+  { type: "xpath", value: '//*[@id="flow-end-msg-send"]' },
+  { type: "css", value: "#flow-end-msg-send" },
 ];
 
 // ==========================================================
@@ -140,7 +156,7 @@ async function sendChatMessage(message) {
     return false;
   }
 
-  if (!message || typeof message !== 'string' || message.trim() === '') {
+  if (!message || typeof message !== "string" || message.trim() === "") {
     console.error("消息内容无效");
     return false;
   }
@@ -150,11 +166,16 @@ async function sendChatMessage(message) {
 
   try {
     console.log("正在查找输入框...");
+
     const inputElement = await waitForElement(inputSelectors, 5000, 100);
     if (!inputElement) {
       console.error("未找到输入框，发送失败");
       return false;
     }
+
+    // 增加200ms等待，确保元素状态稳定
+    console.log("等待200ms后开始输入...");
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     console.log("开始输入文本内容...");
     inputElement.value = message.trim();
@@ -171,8 +192,9 @@ async function sendChatMessage(message) {
       return false;
     }
 
-    console.log("准备发送消息...");
-    await new Promise(resolve => setTimeout(resolve, 150));
+    // 增加200ms等待，确保输入已被处理
+    console.log("等待200ms后准备发送...");
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     if (triggerClick(buttonElement)) {
       console.log("消息发送成功");
@@ -193,31 +215,33 @@ async function sendChatMessage(message) {
 // ==========================================================
 //                     消息监听 & 环境检查
 // ==========================================================
-if (!window.location.hostname.includes('doubao')) {
-  console.warn('当前页面不是 Doubao，脚本未激活');
+if (!window.location.hostname.includes("doubao")) {
+  console.warn("当前页面不是 Doubao，脚本未激活");
 } else {
-  console.log('Doubao 内容脚本已加载并激活');
+  console.log("Doubao 内容脚本已加载并激活");
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "sendMessage") {
       console.log(`收到消息发送请求: "${request.message}"`);
 
-      sendChatMessage(request.message).then((success) => {
-        sendResponse({
-          status: success ? "success" : "failed",
-          platform: "doubao",
-          timestamp: Date.now()
+      sendChatMessage(request.message)
+        .then((success) => {
+          sendResponse({
+            status: success ? "success" : "failed",
+            platform: "doubao",
+            timestamp: Date.now(),
+          });
+          console.log(`消息处理完成，状态: ${success ? "success" : "failed"}`);
+        })
+        .catch((error) => {
+          console.error("消息处理异常", error);
+          sendResponse({
+            status: "error",
+            platform: "doubao",
+            error: error.message,
+            timestamp: Date.now(),
+          });
         });
-        console.log(`消息处理完成，状态: ${success ? "success" : "failed"}`);
-      }).catch((error) => {
-        console.error("消息处理异常", error);
-        sendResponse({
-          status: "error",
-          platform: "doubao",
-          error: error.message,
-          timestamp: Date.now()
-        });
-      });
 
       return true; // 异步响应
     }
@@ -232,4 +256,5 @@ if (!window.location.hostname.includes('doubao')) {
  * Doubao 聊天机器人内容脚本 - 完整版
  * 适配 Doubao 输入框和发送按钮
  * 保留完整错误处理、事件触发、点击备用方案、状态锁及异步消息监听
+ * 新增：输入前和点击前各增加200ms等待时间，提高操作稳定性
  */
