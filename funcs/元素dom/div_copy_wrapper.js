@@ -1,4 +1,33 @@
 function main() {
+  // 封装一个使用 document.execCommand 的回退函数
+  function fallbackCopyTextToClipboard(textToCopy, tooltipEl) {
+    const textArea = document.createElement("textarea");
+    textArea.value = textToCopy;
+
+    // 避免滚动到页面的底部，避免用户看到
+    textArea.style.position = "fixed";
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.opacity = "0"; // 隐藏
+
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select(); // 选中文本
+
+    try {
+      const successful = document.execCommand("copy");
+      if (successful) {
+        tooltipEl.innerText = "文本已复制到剪贴板！(Fallback)";
+      } else {
+        tooltipEl.innerText = "无法自动复制文本。请手动复制。";
+      }
+    } catch (err) {
+      tooltipEl.innerText = "无法自动复制文本。请手动复制。";
+    }
+
+    document.body.removeChild(textArea);
+  }
+
   (() => {
     // 创建高亮框
     const overlay = document.createElement("div");
@@ -48,12 +77,30 @@ function main() {
 
       // 处理：去掉连续空格和连续空行
       text = text
-        .replace(/[ \t]+/g, " ")   // 多个空格合并成一个
+        .replace(/[ \t]+/g, " ") // 多个空格合并成一个
         .replace(/\n\s*\n+/g, "\n"); // 多个空行合并成一个
 
-      navigator.clipboard.writeText(text).then(() => {
-        tooltip.innerText = "文本已复制到剪贴板！";
-      });
+      // *** 修复 BUG 的核心逻辑开始 ***
+      const clipboardAPI = navigator.clipboard && navigator.clipboard.writeText;
+
+      if (clipboardAPI) {
+        // 1. 优先使用 Clipboard API (需要安全上下文/HTTPS)
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            tooltip.innerText = "文本已复制到剪贴板！(API)";
+          })
+          .catch((err) => {
+            // 如果因权限等原因失败，回退
+            console.warn("Clipboard API 复制失败，尝试回退。", err);
+            fallbackCopyTextToClipboard(text, tooltip);
+          });
+      } else {
+        // 2. 如果 API 不存在 (如 HTTP 页面)，使用回退方案
+        console.warn("Clipboard API 不存在，使用 Fallback 方案。");
+        fallbackCopyTextToClipboard(text, tooltip);
+      }
+      // *** 修复 BUG 的核心逻辑结束 ***
 
       // 点击一次后立即清理
       cleanup();
