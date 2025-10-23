@@ -374,3 +374,14 @@ body {
   opacity: 1;
   transition-delay: 0.2s;
 }
+/* 拖放相关样式 */
+.message-input.dragover {
+  border-color: var(--primary-color);
+  background-color: rgba(67, 97, 238, 0.05);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.message-input.drop-error {
+  border-color: #e53e3e;
+  background-color: rgba(229, 62, 62, 0.05);
+}
