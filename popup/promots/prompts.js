@@ -1,144 +1,176 @@
 const PROMPT_TEMPLATES = {
   // code_gen类
-  '完整代码输出': {
-    group: 'code_gen',
-    label: '完整代码输出',
-    template: '%s\n\n要求：\n 输出完整的文件结构 输出完整的代码 输出完整的文件'
+  完整代码输出: {
+    group: "code_gen",
+    label: "完整代码输出",
+    template: "%s\n\n要求：\n 输出完整的文件结构 输出完整的代码 输出完整的文件",
   },
-    '异常日志': {
-    group: 'code_gen',
-    label: '异常日志',
-    template: '代码: %s\n\n 要求：异常及时抛出 并且尽可能打印出完整的异常上下文 具体相关传入的参数或者网络相关的错误'
+  异常日志: {
+    group: "code_gen",
+    label: "异常日志",
+    template:
+      "代码: %s\n\n 要求：异常及时抛出 并且尽可能打印出完整的异常上下文 具体相关传入的参数或者网络相关的错误",
   },
-  '不修饰': {
-    group: 'code_gen',
-    label: '不修饰',
-    template: '%s'
+  不修饰: {
+    group: "code_gen",
+    label: "不修饰",
+    template: "%s",
   },
-  'vue模板': {
-    group: 'code_gen',
-    label: 'vue模板',
-    template: '%s 按照指定格式生成vue代码 <script setup lang = \'ts \'></script><template></template><style scoped></style>' 
+  vue模板: {
+    group: "code_gen",
+    label: "vue模板",
+    template:
+      "%s 按照指定格式生成vue代码 <script setup lang = 'ts '></script><template></template><style scoped></style>",
   },
-  '生成bat文件': {
-    group: 'custom_design',
-    label: '生成bat文件',
-    template: '内容: %s 要求: 只需要考虑windows系统  参考上面的概念或者从现成的案例当中获得上面文本当中的指令序列分组, 如果有文件的依赖 定义单独的bat来创建文件,把内容放到markdown的代码段当中,以及成功运行他们的前提条件和可能的报错 ,你只需要生成不同阶段的bat文件的内容即可, 把注意事项和相关的全部都放到bat文件的注释当中'
+  生成bat文件: {
+    group: "custom_design",
+    label: "生成bat文件",
+    template:
+      "内容: %s 要求: 只需要考虑windows系统  参考上面的概念或者从现成的案例当中获得上面文本当中的指令序列分组, 如果有文件的依赖 定义单独的bat来创建文件,把内容放到markdown的代码段当中,以及成功运行他们的前提条件和可能的报错 ,你只需要生成不同阶段的bat文件的内容即可, 把注意事项和相关的全部都放到bat文件的注释当中",
   },
-    'swagger': {
-    group: 'custom_design',
-    label: 'swagger接口文档',
-    template: '内容: %s 要求: 生成swagger yml接口文档 ,可以适当进行合理推测 进行描述'
-  },
-    '可允许的最小版本代码 ': {
-    group: 'custom_design',
-    label: '可允许的最小版本代码',
-    template: '内容: %s 要求: 上面零散的文档 尽可能按照主题和相关的api,生成可以运行的最小单元的代码, 结合优秀的代码风格和设计模式 提供扩展点'
+  swagger: {
+    group: "custom_design",
+    label: "swagger接口文档",
+    template:
+      "内容: %s 要求: 生成swagger yml接口文档 ,可以适当进行合理推测 进行描述",
   },
   '大python文件': {
     group: 'custom_design', 
     label: '大python文件',
-    template: '内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件(如果有bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释,所有内容都写到唯一一份python代码当中,不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  '
+    template: '内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件和执行文件(bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释, 不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  '
   },
-
+  整理格式: {
+    group: "custom_design",
+    label: "整理格式",
+    template:
+      "内容: %s 要求: 帮我整理上面的内容 进行合理的分段 和格式优化  让内容更清晰 易读 ，比如表格或者代码标准的格式 ",
+  },
   // 思维分析类
-  '完整概念分析': {
-    group: 'analyze_plan',
-    label: '分析和手册',
-    template: '告诉我关于 %s 的相关的概念基础 最佳操作手册以及实践路线 为什么要这这个场景使用这个技术,有什么优势和思想, 底层原理解读  以及常见的误区和其中巧妙的设计'
+  完整概念分析: {
+    group: "analyze_plan",
+    label: "分析和手册",
+    template:
+      "告诉我关于 %s 的相关的概念基础 最佳操作手册以及实践路线 为什么要这这个场景使用这个技术,有什么优势和思想, 底层原理解读  以及常见的误区和其中巧妙的设计",
   },
-    // 思维分析类
-  '学习表格': {
-    group: 'analyze_plan',
-    label: '学习表格',
-    template: '告诉我关于 %s 的技术分层和技术方向,以及学习路线, 生成一个markdown表格, 包括 技术方向 技术名称 学习难度 以及学习资源链接 , 每个部分都生成任务清单的markdown表格 实现类似todolist的功能'
+  // 思维分析类
+  学习表格: {
+    group: "analyze_plan",
+    label: "学习表格",
+    template:
+      "告诉我关于 %s 的技术分层和技术方向,以及学习路线, 生成一个markdown表格, 包括 技术方向 技术名称 学习难度 以及学习资源链接 , 每个部分都生成任务清单的markdown表格 实现类似todolist的功能",
   },
-  '问题八股模拟': {
-    group: 'analyze_plan',
-    label: '问题八股模拟',
-    template: '你是行业资深专家, 你需要模拟面试官的角色, 你需要针对 %s 这个技术点,首先描述你希望考察的知识点,包含理论和实践,针对整个知识体系的完备性进行提问, 设计10个面试问题,分别从中等到困难,注意每个问题有完整的上下文和描述 保证问题的清晰'
+  问题八股模拟: {
+    group: "analyze_plan",
+    label: "问题八股模拟",
+    template:
+      "你是行业资深专家, 你需要模拟面试官的角色, 你需要针对 %s 这个技术点,首先描述你希望考察的知识点,包含理论和实践,针对整个知识体系的完备性进行提问, 设计10个面试问题,分别从中等到困难,注意每个问题有完整的上下文和描述 保证问题的清晰",
   },
-    '问题八股模拟_回答': {
-    group: 'analyze_plan',
-    label: '问题八股模拟_回答',
-    template: '请深度解释这个问题的答案 %s , 你需要给出尽可能成体系的完整的答案,所有回答都需要结合问题进行回答,最后进行每个条目进行简单总结'
+  上下文模块: {
+    group: "analyze_plan",
+    label: "上下文模块",
+    template:
+      "%s 具体在什么地方查看细节 或者帮助我更深层次理解这部分逻辑，或者给一些demo案例 帮助我理解这个设计方案的构成部分",
   },
-  '优化思路': {
-    group: 'analyze_plan',
-    label: '状态优化',
-    template: '当前的状态时 %s 我希望进行优化 给出我优化思路 优化流程或者优化方案 或者新的高级学习实践路线'
+  问题八股模拟_回答: {
+    group: "analyze_plan",
+    label: "问题八股模拟_回答",
+    template:
+      "请深度解释这个问题的答案 %s , 你需要给出尽可能成体系的完整的答案,所有回答都需要结合问题进行回答,最后进行每个条目进行简单总结",
   },
-  '设计思想哲学': {
-    group: 'analyze_plan',
-    label: '学习软件设计 :: 类比概念 ',
-    template: '告诉我 %s 的设计思想和哲学 在软件开发和系统设计领域的其他实践和思想落地 ,这种思想有什么好处 和限制  '
+  优化思路: {
+    group: "analyze_plan",
+    label: "状态优化",
+    template:
+      "当前的状态时 %s 我希望进行优化 给出我优化思路 优化流程或者优化方案 或者新的高级学习实践路线",
+  },
+  设计思想哲学: {
+    group: "analyze_plan",
+    label: "学习软件设计 :: 类比概念 ",
+    template:
+      "告诉我 %s 的设计思想和哲学 在软件开发和系统设计领域的其他实践和思想落地 ,这种思想有什么好处 和限制  ",
   },
 
   // 内容转译类
-    '相关网站搜索': {
-    group: 'search',
-    label: '相关网站搜索',
-    template: '内容 : "%s" 要求 : 帮我搜索相关的网站或者资源,或者github开源仓库,理论文档或者落地实现,尽可能满足用户的要求,对每个结果都进行简单的描述 '
+  相关网站搜索: {
+    group: "search",
+    label: "相关网站搜索",
+    template:
+      '内容 : "%s" 要求 : 帮我搜索相关的网站或者资源,或者github开源仓库,理论文档或者落地实现,尽可能满足用户的要求,对每个结果都进行简单的描述 ',
   },
-  '翻译': {
-    group: 'read',
-    label: '翻译',
-    template: '内容 : "%s" 以上内容是需要进行中英翻译或者重新整理格式  遵循基本的markdown格式 输出格式按照一句相对完整的英文 一句中文进行输出 按照编号进行呈现,并且每句都进行换行 , 不要翻译代码块 对于一些不好确定的翻译 在中文中进行括号标注 \n比如 1. hello \n 你好\n 2. world \n 世界  '
+  翻译: {
+    group: "read",
+    label: "翻译",
+    template:
+      '内容 : "%s" 以上内容是需要进行中英翻译或者重新整理格式  遵循基本的markdown格式 输出格式按照一句相对完整的英文 一句中文进行输出 按照编号进行呈现,并且每句都进行换行 , 不要翻译代码块 对于一些不好确定的翻译 在中文中进行括号标注 \n比如 1. hello \n 你好\n 2. world \n 世界  ',
   },
-  '目录读取': {
-    group: 'read',
-    label: '目录读取',
-    template: '%s 尝试输出所有文件夹和文件名的含义以及对应功能 整个项目的阅读顺序 难易程度 '
+  目录读取: {
+    group: "read",
+    label: "目录读取",
+    template:
+      "%s 尝试输出所有文件夹和文件名的含义以及对应功能 整个项目的阅读顺序 难易程度 ",
   },
-  '代码变量名的含义': {
-    group: 'read',
-    label: '代码变量名的含义',
-    template: '%s 尝试输出这段代码中所有变量名和方法名的含义 以及功能 基本的代码语境, 清晰的指出作用域 比如if当中使用的变量, 包括对堆栈的作用域存在的变量分析'
+  代码变量名的含义: {
+    group: "read",
+    label: "代码变量名的含义",
+    template:
+      "%s 尝试输出这段代码中所有变量名和方法名的含义 以及功能 基本的代码语境, 清晰的指出作用域 比如if当中使用的变量, 包括对堆栈的作用域存在的变量分析",
   },
-  '代码及文档': {
-    group: 'read',
-    label: '代码即文档',
-    template: '用户代码或文件: %s  要求: 尽可能对长方法进行解耦, 添加这种代码语言的标准注释 , 完善代码 比如尽快返回失败的思想 比如代码即文档的思想 使用设计模式进行优化 提高可扩展性 请生成: 完整的方案 完整的代码'
+  代码及文档: {
+    group: "read",
+    label: "代码即文档",
+    template:
+      "用户代码或文件: %s  要求: 尽可能对长方法进行解耦, 添加这种代码语言的标准注释 , 完善代码 比如尽快返回失败的思想 比如代码即文档的思想 使用设计模式进行优化 提高可扩展性 请生成: 完整的方案 完整的代码",
   },
   // search类
-  '帮助我修复bug': {
-    group: 'code_gen',
-    label: '帮助我修复bug',
-    template: '%s 帮助我完成bug的修复 分析产生这种问题的底层原理 给出修复思路 和修复方案 以及修复后的代码'
+  帮助我修复bug: {
+    group: "code_gen",
+    label: "帮助我修复bug",
+    template:
+      "%s 帮助我完成bug的修复 分析产生这种问题的底层原理 给出修复思路 和修复方案 以及修复后的代码",
   },
-  '步骤规划': {
-    group: 'analyze_plan',
-    label: '步骤规划',
-    template: '我现在需要 %s , 帮助我规划完成这个任务的步骤 以及这个任务当中的难点 和注意事项'
+  步骤规划: {
+    group: "analyze_plan",
+    label: "步骤规划",
+    template:
+      "我现在需要 %s , 帮助我规划完成这个任务的步骤 以及这个任务当中的难点 和注意事项",
   },
-  '指令序列': {
-    group: 'custom_design',
-    label: '指令序列(windows)',
-    template: '我的环境是windows 我现在需要 %s , 帮我生成尽可能完整的指令序列  并且提醒其中的可能出现的错误 , 如果没有指出 默认安装了相关的命令工具'
+  指令序列: {
+    group: "custom_design",
+    label: "指令序列(windows)",
+    template:
+      "我的环境是windows 我现在需要 %s , 帮我生成尽可能完整的指令序列  并且提醒其中的可能出现的错误 , 如果没有指出 默认安装了相关的命令工具",
   },
-    '有问题:: 官方文档 sdk文档 ': {
-    group: 'search',
-    label: '有问题:: 官方文档 sdk文档 ',
-    template: '帮我寻找官方文档或者相关sdk的文档,或者官方论坛 %s'
+  "有问题:: 官方文档 sdk文档 ": {
+    group: "search",
+    label: "有问题:: 官方文档 sdk文档 ",
+    template: "帮我寻找官方文档或者相关sdk的文档,或者官方论坛 %s",
   },
-  '记忆上面的文件': {
-    group: 'search',
-    label: '记忆上面的文件',
-    template: '%s 记住上面的内容,后续我将想你提问, 回复收到 '
+  记忆上面的文件: {
+    group: "search",
+    label: "记忆上面的文件",
+    template: "%s 记住上面的内容,后续我将想你提问, 回复收到 ",
   },
-   '提示词': {
-    group: 'text_file_gen',
-    label: '提示词',
-    template: '我需要 %s , 请你帮我生成一个高质量的提示词和给出一些创意点, 以便我可以更好的使用chatgpt ,使用\%\s 作为占位符 '
+  提示词: {
+    group: "text_file_gen",
+    label: "提示词",
+    template:
+      "我需要 %s , 请你帮我生成一个高质量的提示词和给出一些创意点, 以便我可以更好的使用chatgpt ,使用%s 作为占位符 ",
   },
-     '识别器设计模式': {
-    group: 'custom_design',
-    label: '识别器设计模式',
-    template: '现在有一个方法go签名 ,我将使用设计模式进行优化 参考下面的案例设计模式 添加识别器 然后对入参创建一个map string [string] 进行冗余 \n案例: func ParseConfigFromFile(filePath string) (*Config, error) {}  \n处理之后生成: type Recognizer interface {\n	RecognizeHandler(filePath string) (Handler, error)\n}\n\ntype Handler func(filePath string, msg AdapterMessage) (*Config, error)\ntype AdapterMessage map[string]string\n\n// UniversalRecognizer 通用识别器\ntype UniversalRecognizer struct{}\n\n// NewUniversalRecognizer 创建新的通用识别器\nfunc NewUniversalRecognizer() *UniversalRecognizer {\n	return &UniversalRecognizer{}\n}\n\n// RecognizeHandler 识别处理器\nfunc (r *UniversalRecognizer) RecognizeHandler(filePath string) (Handler, error) {\n	\n	default:\n		return nil, fmt.Errorf("unsupported file format: %", ext)\n	}\n}\n\n请对: %s 进行类似设计模式的优化 '
-  }, 
-      'channel设计模式': {
-    group: 'custom_design',
-    label: 'channel设计模式',
-    template:' package executor\n\nimport (\n	"context"\n	"errors"\n)\n\n// NewPoolExecutor 创建新的协程池执行器\nfunc NewPoolExecutor(workerCount, queueSize int) *PoolExecutor {\n	return &PoolExecutor{\n		workerCount: workerCount,\n		taskQueue:   make(chan Task, queueSize),\n		running:     false,\n	}\n}\n\n// SetHandler 设置任务处理函数\nfunc (e *PoolExecutor) SetHandler(handler TaskHandler) {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n	e.handler = handler\n}\n\nfunc (e *PoolExecutor) Submit(ctx context.Context, task Task) error {\n	select {\n	case e.taskQueue <- task:\n		return nil\n	case <-ctx.Done():\n		return ctx.Err()\n	}\n}\n\nfunc (e *PoolExecutor) Start(ctx context.Context) error {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n\n	if e.running {\n		return nil // 已经运行中\n	}\n\n	if e.handler == nil {\n		return ErrNoHandler // 没有设置处理函数\n	}\n\n	e.running = true\n\n	// 启动工作协程\n	for i := 0; i < e.workerCount; i++ {\n		e.wg.Add(1)\n		go e.worker(ctx, i)\n	}\n\n	return nil\n}\n\nfunc (e *PoolExecutor) Stop(ctx context.Context) error {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n\n	if !e.running {\n		return nil\n	}\n\n	e.running = false\n	close(e.taskQueue)\n	e.wg.Wait()\n\n	return nil\n}\n\nfunc (e *PoolExecutor) IsRunning() bool {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n	return e.running\n}\n\nfunc (e *PoolExecutor) worker(ctx context.Context, id int) {\n	defer e.wg.Done()\n\n	for task := range e.taskQueue {\n		// 使用处理函数处理任务\n		if e.handler != nil {\n			if err := e.handler(ctx, task); err != nil {\n				// todo 异常的兜底策略\n\n			}\n		}\n	}\n}\n\n// 错误定义\nvar (\n	ErrNoHandler = errors.New("未设置任务处理函数")\n)package executor\n\nimport (\n	"sync"\n)\n\nvar (\n	defaultExecutor Executor\n	once            sync.Once\n)\n\n// GetDefaultExecutor 获取默认执行器（单例）\nfunc GetDefaultExecutor() Executor {\n	once.Do(func() {\n		executor := NewPoolExecutor(10, 100) // 10个工作协程，队列大小100\n\n		defaultExecutor = executor\n	})\n	return defaultExecutor\n}\n\npackage executor\n\nimport (\n	"context"\n	"sync"\n)\n\n// Task 表示要执行的任务\ntype Task struct {\n	ID      string\n	Payload interface{}\n}\n\n// TaskHandler 任务处理函数类型\ntype TaskHandler func(ctx context.Context, task Task) error\n\n// Executor 执行器接口\ntype Executor interface {\n	// Submit 提交任务\n	Submit(ctx context.Context, task Task) error\n\n	// Start 启动执行器\n	Start(ctx context.Context) error\n\n	// Stop 停止执行器\n	Stop(ctx context.Context) error\n\n	// IsRunning 检查是否在运行\n	IsRunning() bool\n\n	// SetHandler 设置任务处理函数\n	SetHandler(handler TaskHandler)\n}\n\n// PoolExecutor 协程池执行器\ntype PoolExecutor struct {\n	workerCount int\n	taskQueue   chan Task\n	running     bool\n	wg          sync.WaitGroup\n	mu          sync.Mutex\n	handler     TaskHandler // 任务处理函数\n}\n参考这个包的单例+协程池+channel任务设计 对下面的函数进行包的封装 调用下面这个方法是通过submit具体任务进行异步处理,可以设计一个结果channel,需要重新封装的函数: %s '
+  识别器设计模式: {
+    group: "custom_design",
+    label: "识别器设计模式",
+    template:
+      '现在有一个方法go签名 ,我将使用设计模式进行优化 参考下面的案例设计模式 添加识别器 然后对入参创建一个map string [string] 进行冗余 \n案例: func ParseConfigFromFile(filePath string) (*Config, error) {}  \n处理之后生成: type Recognizer interface {\n	RecognizeHandler(filePath string) (Handler, error)\n}\n\ntype Handler func(filePath string, msg AdapterMessage) (*Config, error)\ntype AdapterMessage map[string]string\n\n// UniversalRecognizer 通用识别器\ntype UniversalRecognizer struct{}\n\n// NewUniversalRecognizer 创建新的通用识别器\nfunc NewUniversalRecognizer() *UniversalRecognizer {\n	return &UniversalRecognizer{}\n}\n\n// RecognizeHandler 识别处理器\nfunc (r *UniversalRecognizer) RecognizeHandler(filePath string) (Handler, error) {\n	\n	default:\n		return nil, fmt.Errorf("unsupported file format: %", ext)\n	}\n}\n\n请对: %s 进行类似设计模式的优化 ',
+  },
+  channel设计模式: {
+    group: "custom_design",
+    label: "channel设计模式_基于任务机制的消费",
+    template:
+      ' package executor\n\nimport (\n	"context"\n	"errors"\n)\n\n// NewPoolExecutor 创建新的协程池执行器\nfunc NewPoolExecutor(workerCount, queueSize int) *PoolExecutor {\n	return &PoolExecutor{\n		workerCount: workerCount,\n		taskQueue:   make(chan Task, queueSize),\n		running:     false,\n	}\n}\n\n// SetHandler 设置任务处理函数\nfunc (e *PoolExecutor) SetHandler(handler TaskHandler) {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n	e.handler = handler\n}\n\nfunc (e *PoolExecutor) Submit(ctx context.Context, task Task) error {\n	select {\n	case e.taskQueue <- task:\n		return nil\n	case <-ctx.Done():\n		return ctx.Err()\n	}\n}\n\nfunc (e *PoolExecutor) Start(ctx context.Context) error {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n\n	if e.running {\n		return nil // 已经运行中\n	}\n\n	if e.handler == nil {\n		return ErrNoHandler // 没有设置处理函数\n	}\n\n	e.running = true\n\n	// 启动工作协程\n	for i := 0; i < e.workerCount; i++ {\n		e.wg.Add(1)\n		go e.worker(ctx, i)\n	}\n\n	return nil\n}\n\nfunc (e *PoolExecutor) Stop(ctx context.Context) error {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n\n	if !e.running {\n		return nil\n	}\n\n	e.running = false\n	close(e.taskQueue)\n	e.wg.Wait()\n\n	return nil\n}\n\nfunc (e *PoolExecutor) IsRunning() bool {\n	e.mu.Lock()\n	defer e.mu.Unlock()\n	return e.running\n}\n\nfunc (e *PoolExecutor) worker(ctx context.Context, id int) {\n	defer e.wg.Done()\n\n	for task := range e.taskQueue {\n		// 使用处理函数处理任务\n		if e.handler != nil {\n			if err := e.handler(ctx, task); err != nil {\n				// todo 异常的兜底策略\n\n			}\n		}\n	}\n}\n\n// 错误定义\nvar (\n	ErrNoHandler = errors.New("未设置任务处理函数")\n)package executor\n\nimport (\n	"sync"\n)\n\nvar (\n	defaultExecutor Executor\n	once            sync.Once\n)\n\n// GetDefaultExecutor 获取默认执行器（单例）\nfunc GetDefaultExecutor() Executor {\n	once.Do(func() {\n		executor := NewPoolExecutor(10, 100) // 10个工作协程，队列大小100\n\n		defaultExecutor = executor\n	})\n	return defaultExecutor\n}\n\npackage executor\n\nimport (\n	"context"\n	"sync"\n)\n\n// Task 表示要执行的任务\ntype Task struct {\n	ID      string\n	Payload interface{}\n}\n\n// TaskHandler 任务处理函数类型\ntype TaskHandler func(ctx context.Context, task Task) error\n\n// Executor 执行器接口\ntype Executor interface {\n	// Submit 提交任务\n	Submit(ctx context.Context, task Task) error\n\n	// Start 启动执行器\n	Start(ctx context.Context) error\n\n	// Stop 停止执行器\n	Stop(ctx context.Context) error\n\n	// IsRunning 检查是否在运行\n	IsRunning() bool\n\n	// SetHandler 设置任务处理函数\n	SetHandler(handler TaskHandler)\n}\n\n// PoolExecutor 协程池执行器\ntype PoolExecutor struct {\n	workerCount int\n	taskQueue   chan Task\n	running     bool\n	wg          sync.WaitGroup\n	mu          sync.Mutex\n	handler     TaskHandler // 任务处理函数\n}\n参考这个包的单例+协程池+channel任务设计 对下面的函数进行包的封装 调用下面这个方法是通过submit具体任务进行异步处理,可以设计一个结果channel,需要重新封装的函数: %s ',
+  },
+  结构体的Option设计模式: {
+    group: "custom_design",
+    label: "结构体的Option设计模式",
+    template: `你是一个Go语言代码生成专家。\n请根据我提供的结构体定义，生成一个完整的Go示例，使用【Functional Options Pattern】构建该结构体。\n\n要求：\n1. 使用可变参数options（Option func(*Struct) error）实现；\n2. 提供默认配置函数（defaultStruct）；\n3. 提供构造函数 NewXxx(opts ...Option)；\n4. 提供必要的 WithXxx() option 函数；\n5. 提供 Validate() 方法；\n6. 在 main() 中生成两个示例；\n7. 输出完整Go文件。\n\n输入结构体： %s`,
   },
 };
