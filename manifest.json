@@ -17,6 +17,11 @@
     "default_popup": "popup/popup.html",
     "default_title": "AI Assistant"
   },
+  "options_ui": {
+    "page": "/popup/options/options.html",
+    "open_in_tab": true
+  },
+
   "permissions": [
     "tabs",
     "storage",
@@ -25,19 +30,17 @@
     "notifications",
     "commands"
   ],
-  "host_permissions": [
-    "*://*/*"
-  ],
+  "host_permissions": ["*://*/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
-   "commands": {
+  "commands": {
     "execute_div_copy": {
       "suggested_key": { "default": "Alt+C" },
       "description": "执行 div Copy 脚本"
     },
-     "imgs_picker": {
+    "imgs_picker": {
       "suggested_key": { "default": "Alt+D" },
       "description": "执行 div Copy 脚本"
     }
@@ -45,7 +48,11 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["tripleSpace/tripleSpace.js","funcs/goto/goto.js","funcs/word/word.js"],
+      "js": [
+        "tripleSpace/tripleSpace.js",
+        "funcs/goto/goto.js",
+        "funcs/word/word.js"
+      ],
       "css": ["tripleSpace/tripleSpace.css"],
       "run_at": "document_idle"
     }
