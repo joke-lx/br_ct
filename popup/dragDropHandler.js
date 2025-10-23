@@ -54,7 +54,7 @@ function unhighlight() {
 /**
  * 处理拖放事件
  */
-function handleDrop(e) {
+async function handleDrop(e) {
   const messageInput = document.getElementById("message-input");
   const dt = e.dataTransfer;
 
@@ -67,156 +67,178 @@ function handleDrop(e) {
   }
 
   const fileContents = [];
-  let totalFiles = 0;
-  let processedFiles = 0;
+  const processingPromises = [];
 
   // 处理每个拖放的项目
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
 
-    // 尝试获取文件系统条目 (使用Chrome支持的webkitGetAsEntry)
-    let entry;
-    if (item.webkitGetAsEntry) {
-      entry = item.webkitGetAsEntry();
-    } else if (typeof item.getAsEntry === "function") {
-      entry = item.getAsEntry();
-    }
+    // 创建一个Promise来处理每个项目
+    const itemPromise = new Promise((resolve) => {
+      // 尝试获取文件系统条目 (使用Chrome支持的webkitGetAsEntry)
+      let entry;
+      if (item.webkitGetAsEntry) {
+        entry = item.webkitGetAsEntry();
+      } else if (typeof item.getAsEntry === "function") {
+        entry = item.getAsEntry();
+      }
 
-    // 如果是文件夹，递归处理
-    if (entry && entry.isDirectory) {
-      totalFiles++;
-      handleDirectoryEntry(entry, "", fileContents, () => {
-        processedFiles++;
-        if (processedFiles === totalFiles) {
-          appendFileContentsToInput(messageInput, fileContents);
-        }
-      });
-    } else {
-      // 如果是文件，直接获取文件并读取内容
-      totalFiles++;
-      const file = item.getAsFile();
-      if (file) {
-        readFileContent(file, "", fileContents, () => {
-          processedFiles++;
-          if (processedFiles === totalFiles) {
-            appendFileContentsToInput(messageInput, fileContents);
-          }
-        });
+      // 如果是文件夹，递归处理
+      if (entry && entry.isDirectory) {
+        handleDirectoryEntryWithPromise(entry, "", fileContents)
+          .then(resolve)
+          .catch((error) => {
+            console.error("处理目录失败:", error);
+            resolve();
+          });
       } else {
-        processedFiles++;
-        if (processedFiles === totalFiles) {
-          appendFileContentsToInput(messageInput, fileContents);
+        // 如果是文件，直接获取文件并读取内容
+        const file = item.getAsFile();
+        if (file) {
+          readFileContentWithPromise(file, "", fileContents)
+            .then(resolve)
+            .catch((error) => {
+              console.error("读取文件失败:", error);
+              resolve();
+            });
+        } else {
+          resolve();
         }
       }
-    }
+    });
+
+    processingPromises.push(itemPromise);
+  }
+
+  // 等待所有项目处理完成
+  try {
+    await Promise.all(processingPromises);
+    appendFileContentsToInput(messageInput, fileContents);
+  } catch (error) {
+    console.error("处理拖放项目时出错:", error);
+    messageInput.classList.add("drop-error");
   }
 }
 
 /**
- * 递归处理目录条目
+ * 使用Promise递归处理目录条目
  */
-function handleDirectoryEntry(entry, path, fileContents, callback) {
-  const reader = entry.createReader();
-  const newPath = path ? `${path}/${entry.name}` : entry.name;
-  let entriesProcessed = 0;
-  let totalEntries = 0;
-  let isProcessing = false;
+function handleDirectoryEntryWithPromise(entry, path, fileContents) {
+  return new Promise((resolve) => {
+    const reader = entry.createReader();
+    const newPath = path ? `${path}/${entry.name}` : entry.name;
+    const allEntries = [];
 
-  function processEntries() {
-    reader.readEntries(
-      (entries) => {
-        if (entries.length === 0) {
-          // 所有条目处理完毕
-          if (callback) callback();
-          return;
-        }
-
-        totalEntries += entries.length;
-        entries.forEach((entry) => {
-          if (entry.isDirectory) {
-            // 如果是子目录，递归处理
-            handleDirectoryEntry(entry, newPath, fileContents, () => {
-              entriesProcessed++;
-              if (entriesProcessed === totalEntries) {
-                // 确保回调只被调用一次
-                if (!isProcessing) {
-                  isProcessing = true;
-                  if (callback) callback();
-                }
-              }
-            });
-          } else {
-            // 如果是文件，读取内容
-            entry.file((file) => {
-              readFileContent(file, newPath, fileContents, () => {
-                entriesProcessed++;
-                if (entriesProcessed === totalEntries) {
-                  // 确保回调只被调用一次
-                  if (!isProcessing) {
-                    isProcessing = true;
-                    if (callback) callback();
-                  }
-                }
-              });
-            });
+    // 递归读取所有条目
+    function readAllEntries() {
+      reader.readEntries(
+        (entries) => {
+          if (entries.length === 0) {
+            // 所有条目已读取完毕，开始处理
+            processEntries(allEntries).then(resolve);
+            return;
           }
-        });
 
-        // 继续读取剩余条目
-        processEntries();
-      },
-      (error) => {
-        console.error("读取目录失败:", error);
-        if (callback) callback();
-      }
-    );
-  }
+          // 添加到条目列表
+          allEntries.push(...entries);
 
-  processEntries();
+          // 继续读取更多条目
+          readAllEntries();
+        },
+        (error) => {
+          console.error("读取目录条目失败:", error);
+          resolve();
+        }
+      );
+    }
+
+    // 处理所有读取到的条目
+    async function processEntries(entries) {
+      const promises = entries.map((entry) => {
+        if (entry.isDirectory) {
+          // 递归处理子目录
+          return handleDirectoryEntryWithPromise(entry, newPath, fileContents);
+        } else {
+          // 读取文件内容
+          return new Promise((fileResolve) => {
+            entry.file(
+              (file) => {
+                readFileContentWithPromise(file, newPath, fileContents)
+                  .then(fileResolve)
+                  .catch((error) => {
+                    console.error("读取文件内容失败:", error);
+                    fileResolve();
+                  });
+              },
+              (error) => {
+                console.error("获取文件失败:", error);
+                fileResolve();
+              }
+            );
+          });
+        }
+      });
+
+      // 等待所有条目处理完成
+      await Promise.all(promises);
+    }
+
+    // 开始读取条目
+    readAllEntries();
+  });
 }
 
 /**
- * 读取文件内容
+ * 使用Promise读取文件内容
  */
-function readFileContent(file, path, fileContents, callback) {
-  const reader = new FileReader();
-  const fullPath = path ? `${path}/${file.name}` : file.name;
+function readFileContentWithPromise(file, path, fileContents) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    const fullPath = path ? `${path}/${file.name}` : file.name;
 
-  // 根据文件大小限制读取策略
-  if (file.size > 10 * 1024 * 1024) {
-    // 大于10MB的文件
-    // 对于大文件，只读取前100KB内容和文件信息
-    const blob = file.slice(0, 100 * 1024);
-    reader.onload = function (e) {
-      const content = e.target.result;
-      fileContents.push({
-        path: fullPath,
-        content: `${content}\n\n[文件过大，仅显示前100KB内容]`,
-        size: file.size,
-      });
-      if (callback) callback();
-    };
-    reader.readAsText(blob, "utf-8");
-  } else {
-    // 对于小文件，读取全部内容
-    reader.onload = function (e) {
-      const content = e.target.result;
-      fileContents.push({
-        path: fullPath,
-        content: content,
-        size: file.size,
-      });
-      if (callback) callback();
-    };
-    reader.onerror = function () {
-      fileContents.push({
-        path: fullPath,
-        content: "[无法读取文件内容]",
-      });
-      if (callback) callback();
-    };
-    reader.readAsText(file, "utf-8");
-  }
+    // 根据文件大小限制读取策略
+    if (file.size > 10 * 1024 * 1024) {
+      // 大于10MB的文件
+      // 对于大文件，只读取前100KB内容和文件信息
+      const blob = file.slice(0, 100 * 1024);
+      reader.onload = function (e) {
+        const content = e.target.result;
+        fileContents.push({
+          path: fullPath,
+          content: `${content}\n\n[文件过大，仅显示前100KB内容]`,
+          size: file.size,
+        });
+        resolve();
+      };
+      reader.onerror = function () {
+        fileContents.push({
+          path: fullPath,
+          content: "[无法读取文件内容]",
+        });
+        resolve();
+      };
+      reader.readAsText(blob, "utf-8");
+    } else {
+      // 对于小文件，读取全部内容
+      reader.onload = function (e) {
+        const content = e.target.result;
+        fileContents.push({
+          path: fullPath,
+          content: content,
+          size: file.size,
+        });
+        resolve();
+      };
+      reader.onerror = function () {
+        fileContents.push({
+          path: fullPath,
+          content: "[无法读取文件内容]",
+        });
+        resolve();
+      };
+      reader.readAsText(file, "utf-8");
+    }
+  });
 }
 
 /**
@@ -228,7 +250,7 @@ function appendFileContentsToInput(inputElement, fileContents) {
     return;
   }
 
-  let contentText = "\n\n=== 拖放文件内容 ===\n";
+  let contentText = "\n\n=== 相关的文件内容 ===\n";
 
   fileContents.forEach((item) => {
     contentText += `\n[文件: ${item.path}]\n`;
