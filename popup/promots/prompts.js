@@ -30,10 +30,15 @@ const PROMPT_TEMPLATES = {
     label: 'swagger接口文档',
     template: '内容: %s 要求: 生成swagger yml接口文档 ,可以适当进行合理推测 进行描述'
   },
+    '可允许的最小版本代码 ': {
+    group: 'custom_design',
+    label: '可允许的最小版本代码',
+    template: '内容: %s 要求: 上面零散的文档 尽可能按照主题和相关的api,生成可以运行的最小单元的代码, 结合优秀的代码风格和设计模式 提供扩展点'
+  },
   '大python文件': {
     group: 'custom_design', 
     label: '大python文件',
-    template: '内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件和执行文件(bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释, 不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  '
+    template: '内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件(如果有bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释,所有内容都写到唯一一份python代码当中,不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  '
   },
 
   // 思维分析类

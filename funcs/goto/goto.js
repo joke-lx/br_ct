@@ -34,7 +34,7 @@ const menuData = {
     {
       name: '📄 网站跳转4',
       children: [
-        { name: 'b站', url: 'https://www.bilibili.com', children: [] },
+        { name: 'tongyi', url: 'https://bailian.console.aliyun.com', children: [] },
         { name: '知乎', url: 'https://www.zhihu.com', children: [] },
         { name: '抖音', url: 'https://www.douyin.com', children: [] },
       ]
