@@ -24,6 +24,87 @@
       #dynamic-inputs-container {
         margin-top: 10px;
       }
+
+      /* 历史面板样式 */
+      #history-panel {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80%;
+        max-width: 600px;
+        max-height: 70vh;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        display: none;
+        overflow-y: auto;
+      }
+
+      .history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+      }
+
+      .history-header h3 {
+        margin: 0;
+      }
+
+      .close-history-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+      }
+
+      .history-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .history-content {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+
+      .copy-btn {
+        background: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+
+      .copy-btn:hover {
+        background: #3a7bc8;
+      }
+
+      .history-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 999;
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -47,31 +128,26 @@
           <div class="icon-wrapper" data-platform-icon="元">元</div>
           <div class="platform-label">元宝</div>
         </label>
-
         <label class="platform-icon-option">
           <input type="checkbox" data-platform="gemini" />
           <div class="icon-wrapper" data-platform-icon="G">G</div>
           <div class="platform-label">Gemini</div>
         </label>
-
         <label class="platform-icon-option">
           <input type="checkbox" data-platform="chatgpt" />
           <div class="icon-wrapper" data-platform-icon="C">C</div>
           <div class="platform-label">ChatGPT</div>
         </label>
-
         <label class="platform-icon-option">
           <input type="checkbox" data-platform="claude" />
           <div class="icon-wrapper" data-platform-icon="A">A</div>
           <div class="platform-label">Claude</div>
         </label>
-
         <label class="platform-icon-option">
           <input type="checkbox" data-platform="doubao" />
           <div class="icon-wrapper" data-platform-icon="D">D</div>
           <div class="platform-label">豆包</div>
         </label>
-
         <label class="platform-icon-option">
           <input type="checkbox" data-platform="glm" />
           <div class="icon-wrapper" data-platform-icon="智">智</div>
@@ -94,9 +170,19 @@
       </div>
     </div>
 
-    <!-- 发送按钮 -->
+    <!-- 按钮组 -->
     <div class="button-group">
       <button class="send-button" id="send-button">发送消息</button>
+      <button class="history-button" id="toggle-history-btn">显示历史</button>
+    </div>
+
+    <!-- 历史记录面板 -->
+    <div id="history-panel">
+      <div class="history-header">
+        <h3>输入块历史记录</h3>
+        <button class="close-history-btn" id="close-history-btn">×</button>
+      </div>
+      <div id="history-list"></div>
     </div>
 
     <!-- 引用脚本 -->

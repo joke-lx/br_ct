@@ -1,10 +1,9 @@
 import { populateOptimizer } from "../promots/promptsUI.js";
-
 const OPTIMIZER_KEY = "selectedOptimizer";
 const MAX_HISTORY = 5;
-
 let elements = {};
 let dynamicInputs = []; // 存储动态输入框
+let historyPanel = null; // 历史记录面板
 
 /** 初始化弹窗 */
 function initializePopup() {
@@ -16,19 +15,24 @@ function initializePopup() {
     selectAllButton: document.getElementById("select-all"),
     promptOptimizerSelect: document.getElementById("prompt-optimizer-select"),
     dynamicInputsContainer: document.getElementById("dynamic-inputs"),
-    historySelect: document.getElementById("history-select"),
+    historyPanel: document.getElementById("history-panel"),
+    historyList: document.getElementById("history-list"),
+    closeHistoryBtn: document.getElementById("close-history-btn"),
+    toggleHistoryBtn: document.getElementById("toggle-history-btn"),
   };
 
   populateOptimizer(elements.promptOptimizerSelect);
   setupOptimizerInputSync();
   loadStoredData();
+
+  // 初始化历史面板
+  elements.historyPanel.style.display = "none";
 }
 
 /** 监听优化器选择变化，生成对应输入框 */
 function setupOptimizerInputSync() {
   const selectedValue =
     elements.promptOptimizerSelect.querySelector(".selected-value");
-
   elements.promptOptimizerSelect.addEventListener("change", (e) => {
     const key = e.detail.value;
     const template = PROMPT_TEMPLATES[key];
@@ -52,7 +56,7 @@ function renderDynamicInputs(template) {
     dynamicInputs.push(textarea);
   } else {
     placeholders.forEach((ph, i) => {
-      const textarea = createInputBox(`输入（按照顺序进行映射） `);
+      const textarea = createInputBox(`输入${i + 1}（对应 ${ph}）`);
       elements.dynamicInputsContainer.appendChild(textarea);
       dynamicInputs.push(textarea);
     });
@@ -72,20 +76,20 @@ function createInputBox(placeholder) {
   };
 
   textarea.addEventListener("input", adjustHeight);
-
   // 页面加载后自动调整一次（如果有默认内容）
   setTimeout(adjustHeight, 0);
 
   return textarea;
 }
+
 /** 加载存储数据（优化器选择 + 平台状态 + 历史消息） */
 function loadStoredData() {
   chrome.storage.sync.get(
-    [OPTIMIZER_KEY, "platformStates", "agentHistory"],
+    [OPTIMIZER_KEY, "platformStates", "blockHistory"],
     (result) => {
       loadOptimizer(result[OPTIMIZER_KEY]);
       restorePlatformStates(result.platformStates);
-      populateAgentHistory(result.agentHistory || {});
+      populateBlockHistory(result.blockHistory || {});
     }
   );
 }
@@ -150,49 +154,106 @@ function savePlatformStates() {
   chrome.storage.sync.set({ platformStates: states });
 }
 
-/** 渲染每个智能体历史记录 */
-function populateAgentHistory(agentHistory) {
-  elements.historySelect.innerHTML = `<option value="">选择历史消息</option>`;
-  Object.entries(agentHistory).forEach(([agent, messages]) => {
-    messages.forEach((msg) => {
-      const opt = document.createElement("option");
-      opt.value = msg;
-      opt.textContent = `[${agent}] ${
-        msg.length > 40 ? msg.slice(0, 40) + "..." : msg
-      }`;
-      elements.historySelect.appendChild(opt);
+/** 渲染每个输入块的历史记录 */
+function populateBlockHistory(blockHistory) {
+  elements.historyList.innerHTML = "";
+
+  // 将历史记录按时间排序（最新在前）
+  const allHistory = [];
+  Object.entries(blockHistory).forEach(([blockIndex, entries]) => {
+    entries.forEach((content, index) => {
+      allHistory.push({
+        blockIndex,
+        content,
+        timestamp: new Date().getTime() - index, // 模拟时间戳，最新记录在前
+      });
     });
   });
 
-  // 选择历史消息
-  elements.historySelect.addEventListener("change", () => {
-    if (elements.historySelect.value) {
-      dynamicInputs[0].value = elements.historySelect.value;
-    }
+  // 按时间倒序排序
+  allHistory.sort((a, b) => b.timestamp - a.timestamp);
+
+  // 只显示最新的MAX_HISTORY条记录
+  const recentHistory = allHistory.slice(0, MAX_HISTORY);
+
+  recentHistory.forEach((historyItem) => {
+    const historyItemEl = document.createElement("div");
+    historyItemEl.className = "history-item";
+
+    // 创建历史记录内容
+    const content = document.createElement("div");
+    content.className = "history-content";
+    content.textContent = `[块${parseInt(historyItem.blockIndex) + 1}] ${
+      historyItem.content.length > 40
+        ? historyItem.content.slice(0, 40) + "..."
+        : historyItem.content
+    }`;
+    content.title = historyItem.content; // 鼠标悬停显示完整内容
+
+    // 创建复制按钮
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "copy-btn";
+    copyBtn.textContent = "复制";
+    copyBtn.onclick = () => {
+      navigator.clipboard
+        .writeText(historyItem.content)
+        .then(() => {
+          copyBtn.textContent = "已复制!";
+          setTimeout(() => {
+            copyBtn.textContent = "复制";
+          }, 1500);
+        })
+        .catch((err) => {
+          console.error("复制失败:", err);
+          copyBtn.textContent = "失败";
+          setTimeout(() => {
+            copyBtn.textContent = "复制";
+          }, 1500);
+        });
+    };
+
+    historyItemEl.appendChild(content);
+    historyItemEl.appendChild(copyBtn);
+    elements.historyList.appendChild(historyItemEl);
   });
 }
 
 /** 添加历史记录 */
-function addToAgentHistory(message) {
+function addToBlockHistory() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get("agentHistory", (result) => {
-      const agentHistory = result.agentHistory || {};
-      const selectedPlatforms = Array.from(elements.platformCheckboxes)
-        .filter((cb) => cb.checked)
-        .map((cb) => cb.dataset.platform);
+    chrome.storage.sync.get("blockHistory", (result) => {
+      const blockHistory = result.blockHistory || {};
 
-      selectedPlatforms.forEach((agent) => {
-        if (!agentHistory[agent]) agentHistory[agent] = [];
-        agentHistory[agent] = agentHistory[agent].filter(
-          (msg) => msg !== message
-        );
-        agentHistory[agent].unshift(message);
-        if (agentHistory[agent].length > MAX_HISTORY) {
-          agentHistory[agent] = agentHistory[agent].slice(0, MAX_HISTORY);
+      // 保存每个输入块的内容
+      dynamicInputs.forEach((input, index) => {
+        const content = input.value.trim();
+        if (content) {
+          const blockKey = `block${index}`;
+          if (!blockHistory[blockKey]) blockHistory[blockKey] = [];
+
+          // 移除重复内容
+          blockHistory[blockKey] = blockHistory[blockKey].filter(
+            (item) => item !== content
+          );
+
+          // 添加到开头（最新记录在前）
+          blockHistory[blockKey].unshift(content);
+
+          // 限制每个块的历史记录数量
+          if (blockHistory[blockKey].length > MAX_HISTORY) {
+            blockHistory[blockKey] = blockHistory[blockKey].slice(
+              0,
+              MAX_HISTORY
+            );
+          }
         }
       });
 
-      chrome.storage.sync.set({ agentHistory }, () => resolve());
+      chrome.storage.sync.set({ blockHistory }, () => {
+        // 更新历史面板
+        populateBlockHistory(blockHistory);
+        resolve();
+      });
     });
   });
 }
@@ -201,12 +262,10 @@ function startSending() {
   const selectedValue =
     elements.promptOptimizerSelect.querySelector(".selected-value");
   const templateContent = selectedValue.dataset.template || "%s";
-
   let message = templateContent;
 
   // 依次替换模板中所有占位符
   const placeholders = Array.from(message.matchAll(/%s\d*/g)).map((m) => m[0]);
-
   placeholders.forEach((ph, i) => {
     const inputValue = dynamicInputs[i]?.value.trim() || ph;
     message = message.replace(ph, inputValue);
@@ -224,16 +283,29 @@ function startSending() {
   elements.sendButton.disabled = true;
   elements.sendButton.textContent = "发送中...";
 
-  addToAgentHistory(message).then(() => {
+  // 保存所有输入块内容到历史记录
+  addToBlockHistory().then(() => {
     const actionsQueue = selectedPlatforms.map((platform) => ({
       platform,
       message,
     }));
+
     chrome.runtime.sendMessage(
       { action: "processTaskQueue", queue: actionsQueue },
       () => window.close()
     );
   });
+}
+
+/** 切换历史面板显示状态 */
+function toggleHistoryPanel() {
+  if (elements.historyPanel.style.display === "none") {
+    elements.historyPanel.style.display = "block";
+    elements.toggleHistoryBtn.textContent = "隐藏历史";
+  } else {
+    elements.historyPanel.style.display = "none";
+    elements.toggleHistoryBtn.textContent = "显示历史";
+  }
 }
 
 /** 设置事件监听器 */
@@ -243,6 +315,11 @@ function setupEventListeners() {
     cb.addEventListener("change", savePlatformStates)
   );
   elements.sendButton.addEventListener("click", startSending);
+  elements.toggleHistoryBtn.addEventListener("click", toggleHistoryPanel);
+  elements.closeHistoryBtn.addEventListener("click", () => {
+    elements.historyPanel.style.display = "none";
+    elements.toggleHistoryBtn.textContent = "显示历史";
+  });
 }
 
 export { initializePopup, setupEventListeners, startSending };
