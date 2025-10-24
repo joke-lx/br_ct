@@ -4,7 +4,7 @@ import {
   setupEventListeners,
   loadStoredData,
 } from "./popupUtils.js";
-import { setupDragDropEvents } from "../dragDropHandler.js";
+import { setupDragDropEvents } from "./dragDropHandler.js";
 
 document.addEventListener("DOMContentLoaded", function () {
   // 初始化弹窗
