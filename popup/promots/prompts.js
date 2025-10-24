@@ -34,17 +34,10 @@ const PROMPT_TEMPLATES = {
     template:
       "内容: %s 要求: 生成swagger yml接口文档 ,可以适当进行合理推测 进行描述",
   },
-  大python文件: {
-    group: "custom_design",
-    label: "大python文件",
-    template:
-      "内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件和执行文件(bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释, 不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  ",
-  },
-  大python文件: {
-    group: "custom_design",
-    label: "大python文件",
-    template:
-      "内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件和执行文件(bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释, 不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  ",
+  '大python文件': {
+    group: 'custom_design', 
+    label: '大python文件',
+    template: '内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件和执行文件(bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释, 不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  '
   },
   整理格式: {
     group: "custom_design",
