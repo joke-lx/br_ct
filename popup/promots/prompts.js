@@ -180,4 +180,9 @@ const PROMPT_TEMPLATES = {
     label: "结构体的Option设计模式",
     template: `你是一个Go语言代码生成专家。\n请根据我提供的结构体定义，生成一个完整的Go示例，使用【Functional Options Pattern】构建该结构体。\n\n要求：\n1. 使用可变参数options（Option func(*Struct) error）实现；\n2. 提供默认配置函数（defaultStruct）；\n3. 提供构造函数 NewXxx(opts ...Option)；\n4. 提供必要的 WithXxx() option 函数；\n5. 提供 Validate() 方法；\n6. 在 main() 中生成两个示例；\n7. 输出完整Go文件。\n\n输入结构体： %s`,
   },
+  mermain图表: {
+    group: "custom_design",
+    label: "mermaid图表",
+    template: `帮我生成mermaid图表代码, 你的任务是参考下面的文本 生成相关的mermaid图表文本 :  %s `,
+  },
 };
