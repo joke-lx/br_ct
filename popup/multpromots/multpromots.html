@@ -31,46 +31,75 @@
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        width: 80%;
-        max-width: 600px;
-        max-height: 70vh;
-        background: white;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        padding: 15px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        width: 85%;
+        max-width: 700px;
+        max-height: 75vh;
+        background: #ffffff;
+        border: 1px solid #e1e5e9;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
         z-index: 1000;
         display: none;
         overflow-y: auto;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
       }
 
       .history-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 15px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 10px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #f0f2f5;
+        padding-bottom: 15px;
       }
 
       .history-header h3 {
         margin: 0;
+        color: #2c3e50;
+        font-size: 18px;
+        font-weight: 600;
       }
 
       .close-history-btn {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
         cursor: pointer;
-        color: #666;
+        color: #6c757d;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .close-history-btn:hover {
+        background: #e9ecef;
+        color: #495057;
+        border-color: #adb5bd;
       }
 
       .history-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 0;
-        border-bottom: 1px solid #f0f0f0;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        background: #fafbfc;
+        transition: all 0.2s ease;
+      }
+
+      .history-item:hover {
+        background: #f1f3f4;
+        border-color: #d1d5db;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
       }
 
       .history-content {
@@ -79,20 +108,37 @@
         text-overflow: ellipsis;
         white-space: nowrap;
         cursor: pointer;
+        color: #374151;
+        font-size: 14px;
+        line-height: 1.4;
+        margin-right: 12px;
+      }
+
+      .history-content:hover {
+        color: #1f2937;
       }
 
       .copy-btn {
-        background: #4a90e2;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
-        border-radius: 4px;
-        padding: 4px 8px;
+        border-radius: 6px;
+        padding: 6px 12px;
         cursor: pointer;
-        font-size: 0.85rem;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        min-width: 60px;
       }
 
       .copy-btn:hover {
-        background: #3a7bc8;
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+      }
+
+      .copy-btn:active {
+        transform: translateY(0);
       }
 
       .history-overlay {
@@ -101,9 +147,36 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.3);
+        background: rgba(0, 0, 0, 0.4);
         z-index: 999;
         display: none;
+        backdrop-filter: blur(2px);
+      }
+
+      /* 历史按钮样式 - 与发送按钮保持一致 */
+      .history-button {
+        flex: 1;
+        width: 100%;
+        padding: 11px;
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.25s ease;
+      }
+
+      .history-button:hover {
+        background-color: #5a6268;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+      }
+
+      .history-button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
     </style>
   </head>
@@ -111,8 +184,11 @@
     <div class="header">
       <h1>AI Assistant</h1>
       <div class="header-nav-menu">
-        <a href="popup.html" class="header-nav-item active">主页</a>
-        <a href="./func_execute/add.html" class="header-nav-item">脚本库</a>
+        <a href="../popup.html" class="header-nav-item active">主页</a>
+        <a href="../func_execute/add.html" class="header-nav-item">脚本库</a>
+        <a href="../promots/multpromots.html" class="header-nav-item"
+          >多提示词</a
+        >
       </div>
     </div>
 
@@ -179,11 +255,14 @@
     <!-- 历史记录面板 -->
     <div id="history-panel">
       <div class="history-header">
-        <h3>输入块历史记录</h3>
+        <h3>历史记录</h3>
         <button class="close-history-btn" id="close-history-btn">×</button>
       </div>
       <div id="history-list"></div>
     </div>
+
+    <!-- 历史面板遮罩层 -->
+    <div class="history-overlay" id="history-overlay"></div>
 
     <!-- 引用脚本 -->
     <script src="../promots/multpromots.js"></script>

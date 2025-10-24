@@ -19,6 +19,7 @@ function initializePopup() {
     historyList: document.getElementById("history-list"),
     closeHistoryBtn: document.getElementById("close-history-btn"),
     toggleHistoryBtn: document.getElementById("toggle-history-btn"),
+    historyOverlay: document.getElementById("history-overlay"),
   };
 
   populateOptimizer(elements.promptOptimizerSelect);
@@ -27,6 +28,7 @@ function initializePopup() {
 
   // 初始化历史面板
   elements.historyPanel.style.display = "none";
+  elements.historyOverlay.style.display = "none";
 }
 
 /** 监听优化器选择变化，生成对应输入框 */
@@ -201,7 +203,9 @@ function populateBlockHistory(blockHistory) {
           copyBtn.textContent = "已复制!";
           setTimeout(() => {
             copyBtn.textContent = "复制";
-          }, 1500);
+            // 复制后自动关闭历史框
+            toggleHistoryPanel();
+          }, 800);
         })
         .catch((err) => {
           console.error("复制失败:", err);
@@ -218,28 +222,30 @@ function populateBlockHistory(blockHistory) {
   });
 }
 
-/** 添加历史记录 */
+/** 添加历史记录 - 只保存内容 */
 function addToBlockHistory() {
   return new Promise((resolve) => {
     chrome.storage.sync.get("blockHistory", (result) => {
       const blockHistory = result.blockHistory || {};
 
-      // 保存每个输入块的内容
+      // 只保存每个输入块的纯文本内容
       dynamicInputs.forEach((input, index) => {
         const content = input.value.trim();
         if (content) {
           const blockKey = `block${index}`;
-          if (!blockHistory[blockKey]) blockHistory[blockKey] = [];
+          if (!blockHistory[blockKey]) {
+            blockHistory[blockKey] = [];
+          }
 
           // 移除重复内容
           blockHistory[blockKey] = blockHistory[blockKey].filter(
             (item) => item !== content
           );
 
-          // 添加到开头（最新记录在前）
+          // 添加新内容到开头
           blockHistory[blockKey].unshift(content);
 
-          // 限制每个块的历史记录数量
+          // 限制历史记录数量
           if (blockHistory[blockKey].length > MAX_HISTORY) {
             blockHistory[blockKey] = blockHistory[blockKey].slice(
               0,
@@ -250,7 +256,6 @@ function addToBlockHistory() {
       });
 
       chrome.storage.sync.set({ blockHistory }, () => {
-        // 更新历史面板
         populateBlockHistory(blockHistory);
         resolve();
       });
@@ -301,9 +306,11 @@ function startSending() {
 function toggleHistoryPanel() {
   if (elements.historyPanel.style.display === "none") {
     elements.historyPanel.style.display = "block";
+    elements.historyOverlay.style.display = "block";
     elements.toggleHistoryBtn.textContent = "隐藏历史";
   } else {
     elements.historyPanel.style.display = "none";
+    elements.historyOverlay.style.display = "none";
     elements.toggleHistoryBtn.textContent = "显示历史";
   }
 }
@@ -316,10 +323,10 @@ function setupEventListeners() {
   );
   elements.sendButton.addEventListener("click", startSending);
   elements.toggleHistoryBtn.addEventListener("click", toggleHistoryPanel);
-  elements.closeHistoryBtn.addEventListener("click", () => {
-    elements.historyPanel.style.display = "none";
-    elements.toggleHistoryBtn.textContent = "显示历史";
-  });
+  elements.closeHistoryBtn.addEventListener("click", toggleHistoryPanel);
+
+  // 点击遮罩层关闭历史面板
+  elements.historyOverlay.addEventListener("click", toggleHistoryPanel);
 }
 
 export { initializePopup, setupEventListeners, startSending };
