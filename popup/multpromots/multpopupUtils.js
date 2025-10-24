@@ -71,10 +71,23 @@ function createInputBox(placeholder) {
   textarea.placeholder = placeholder;
   textarea.rows = 1; // 初始最小行
 
-  // 自动高度调整
+  // 确保初始样式匹配 CSS 中的 max-height 设置
+  textarea.style.overflowY = "hidden";
+  textarea.style.maxHeight = "200px"; // 与 CSS 保持一致的默认最大高度，若 CSS 修改请同步调整
+
+  // 自动高度调整：当内容高度超过 maxHeight 时，切换为显示滚动条
   const adjustHeight = () => {
-    textarea.style.height = "auto"; // 先重置
-    textarea.style.height = textarea.scrollHeight + "px"; // 根据内容调整
+    textarea.style.height = "auto"; // 先重置以获取 scrollHeight
+    const newHeight = textarea.scrollHeight;
+    const maxH = parseInt(getComputedStyle(textarea).maxHeight) || 200;
+
+    if (newHeight >= maxH) {
+      textarea.style.height = maxH + "px";
+      textarea.style.overflowY = "auto"; // 达到最大高度，允许滚动
+    } else {
+      textarea.style.height = newHeight + "px";
+      textarea.style.overflowY = "hidden"; // 未达到最大高度，隐藏滚动条
+    }
   };
 
   textarea.addEventListener("input", adjustHeight);
