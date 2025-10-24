@@ -197,17 +197,19 @@ function addToAgentHistory(message) {
   });
 }
 
-/** 发送消息逻辑 */
 function startSending() {
   const selectedValue =
     elements.promptOptimizerSelect.querySelector(".selected-value");
-  const templateKey = selectedValue.dataset.value;
   const templateContent = selectedValue.dataset.template || "%s";
 
   let message = templateContent;
-  dynamicInputs.forEach((input, i) => {
-    const key = i === 0 ? "%s" : `%s${i}`;
-    message = message.replaceAll(key, input.value.trim() || key);
+
+  // 依次替换模板中所有占位符
+  const placeholders = Array.from(message.matchAll(/%s\d*/g)).map((m) => m[0]);
+
+  placeholders.forEach((ph, i) => {
+    const inputValue = dynamicInputs[i]?.value.trim() || ph;
+    message = message.replace(ph, inputValue);
   });
 
   const selectedPlatforms = Array.from(elements.platformCheckboxes)
@@ -229,9 +231,7 @@ function startSending() {
     }));
     chrome.runtime.sendMessage(
       { action: "processTaskQueue", queue: actionsQueue },
-      () => {
-        window.close();
-      }
+      () => window.close()
     );
   });
 }
