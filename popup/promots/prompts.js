@@ -177,5 +177,10 @@ const PROMPT_TEMPLATES = {
     group: "custom_design",
     label: "mermaid图表",
     template: `帮我生成mermaid图表代码, 你的任务是参考下面的文本 生成相关的mermaid图表文本 :  %s `,
+  },  
+  SQL: {
+    group: "custom_design",
+    label: "SQL",
+    template: `内容:   %s 要求: 生成SQL语句 ,  每个SQL段使用====进行分割 对于查询条件 都是用@xxxxx变量来进行占位使用,减少硬编码,生成规范的sql语句文件 `,
   },
 };
