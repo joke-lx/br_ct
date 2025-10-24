@@ -1,4 +1,4 @@
-import { populateOptimizer } from "./promots/promptsUI.js";
+import { populateOptimizer } from "../promots/promptsUI.js";
 
 // popupUtils.js
 const HISTORY_KEY = "messageHistory";
