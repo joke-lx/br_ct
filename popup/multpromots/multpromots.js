@@ -3,7 +3,7 @@ import {
   initializePopup,
   setupEventListeners,
   loadStoredData,
-} from "../popup/popupUtils.js";
+} from "./multpopupUtils.js";
 import { setupDragDropEvents } from "../popup/dragDropHandler.js";
 
 document.addEventListener("DOMContentLoaded", function () {
