@@ -5,6 +5,26 @@
     <title>AI Assistant - 多端AI调度工具</title>
     <link rel="stylesheet" href="../promots/promptsUI.css" />
     <link rel="stylesheet" href="../popup/popup.css" />
+    <style>
+      /* 局部动态输入框样式 */
+      #dynamic-inputs-container .popup-inputs textarea {
+        width: 100%;
+        min-height: 24px;
+        max-height: 200px;
+        padding: 4px 6px;
+        box-sizing: border-box;
+        resize: vertical;
+        overflow-y: hidden;
+        font-size: 14px;
+        line-height: 1.4;
+        margin-bottom: 6px;
+        transition: height 0.1s ease;
+      }
+
+      #dynamic-inputs-container {
+        margin-top: 10px;
+      }
+    </style>
   </head>
   <body>
     <div class="header">
@@ -68,12 +88,11 @@
       </div>
     </div>
 
-    <!-- 动态输入区 -->
-    <div id="dynamic-inputs">
-      <!-- 自动根据模板生成多个输入框 -->
+    <div id="dynamic-inputs-container">
+      <div id="dynamic-inputs" class="popup-inputs">
+        <!-- JS 会自动生成输入框 -->
+      </div>
     </div>
-
- 
 
     <!-- 发送按钮 -->
     <div class="button-group">

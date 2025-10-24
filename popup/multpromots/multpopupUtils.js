@@ -59,15 +59,25 @@ function renderDynamicInputs(template) {
   }
 }
 
-/** 创建输入框 */
 function createInputBox(placeholder) {
   const textarea = document.createElement("textarea");
-  textarea.className = "message-input";
+  textarea.className = "message-input popup-input";
   textarea.placeholder = placeholder;
-  textarea.rows = 2;
+  textarea.rows = 1; // 初始最小行
+
+  // 自动高度调整
+  const adjustHeight = () => {
+    textarea.style.height = "auto"; // 先重置
+    textarea.style.height = textarea.scrollHeight + "px"; // 根据内容调整
+  };
+
+  textarea.addEventListener("input", adjustHeight);
+
+  // 页面加载后自动调整一次（如果有默认内容）
+  setTimeout(adjustHeight, 0);
+
   return textarea;
 }
-
 /** 加载存储数据（优化器选择 + 平台状态 + 历史消息） */
 function loadStoredData() {
   chrome.storage.sync.get(
