@@ -1,21 +1,6 @@
-// popup.js
-import {
-  initializePopup,
-  setupEventListeners,
-  loadStoredData,
-} from "./multpopupUtils.js";
-import { setupDragDropEvents } from "../popup/dragDropHandler.js";
+import { initializePopup, setupEventListeners } from "./multpopupUtils.js";
 
-document.addEventListener("DOMContentLoaded", function () {
-  // 初始化弹窗
+document.addEventListener("DOMContentLoaded", () => {
   initializePopup();
-
-  // 加载存储的数据
-  loadStoredData();
-
-  // 设置所有事件监听器
   setupEventListeners();
-
-  // 初始化指定输入框的拖放事件
-  setupDragDropEvents();
 });
