@@ -43,7 +43,12 @@
     "imgs_picker": {
       "suggested_key": { "default": "Alt+D" },
       "description": "执行 div Copy 脚本"
+    },
+    "copy2file": {
+      "suggested_key": { "default": "Alt+D" },
+      "description": "获得剪切板内容保存为文件"
     }
+    
   },
   "content_scripts": [
     {

@@ -66,6 +66,11 @@ export function setupFuncCommandListener() {
       executeFunctionScript("元素dom/div_Img_wrapper.js", (response) => {
         console.log("快捷键执行结果:", response);
       });
+    } 
+     if (command === "copy2file") {
+      executeFunctionScript("元素dom/copy2file.js", (response) => {
+        console.log("快捷键执行结果:", response);
+      });
     }
   });
 }
