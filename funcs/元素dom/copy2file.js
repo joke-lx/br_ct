@@ -30,7 +30,7 @@
                 console.log('剪贴板为空');
                 return;
             }
-
+// ???
             // 创建临时悬浮 div 显示前三行
             const previewDiv = document.createElement('div');
             previewDiv.style.position = 'fixed';
