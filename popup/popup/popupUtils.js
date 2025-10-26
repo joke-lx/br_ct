@@ -227,6 +227,9 @@ function savePlatformStates() {
  * 发送消息逻辑
  */
 function startSending() {
+  // 先触发一次 input 事件以确保最新的输入被保存
+  elements.messageInput.dispatchEvent(new Event('input'));
+  
   const originalMessage = elements.messageInput.value.trim();
   if (!originalMessage) {
     console.error("请输入消息内容");

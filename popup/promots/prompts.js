@@ -65,9 +65,9 @@ const PROMPT_TEMPLATES = {
     template:
       "你是行业资深专家, 你需要模拟面试官的角色, 你需要针对 %s 这个技术点,首先描述你希望考察的知识点,包含理论和实践,针对整个知识体系的完备性进行提问, 设计10个面试问题,分别从中等到困难,注意每个问题有完整的上下文和描述 保证问题的清晰",
   },
-  上下文模块: {
-    group: "analyze_plan",
-    label: "上下文模块",
+  学习某个模块: {
+    group: "read",
+    label: "学习某个模块",
     template:
       "%s 具体在什么地方查看细节 或者帮助我更深层次理解这部分逻辑，或者给一些demo案例 帮助我理解这个设计方案的构成部分",
   },
@@ -154,7 +154,7 @@ const PROMPT_TEMPLATES = {
     group: "text_file_gen",
     label: "提示词",
     template:
-      "我需要 %s , 请你帮我生成一个高质量的提示词和给出一些创意点, 以便我可以更好的使用chatgpt ,使用%s 作为占位符 ",
+      "目的参考: %s ,要求 我非常喜欢这种设计模式 我希望封装为提示词 让大模型下次能够快速根据指令生成这种结构的代码 并且保证提示词的精简 防止上下文的不足 提示词当中应该包含这种结构最明显的几种特征 方便大模型进行复现 , 生成一段大模型ai提示词",
   },
   识别器设计模式: {
     group: "custom_design",
@@ -182,5 +182,25 @@ const PROMPT_TEMPLATES = {
     group: "custom_design",
     label: "SQL",
     template: `内容:   %s 要求: 生成SQL语句 ,  每个SQL段使用====进行分割 对于查询条件 都是用@xxxxx变量来进行占位使用,减少硬编码,生成规范的sql语句文件 `,
+  },  
+  运维bug的配置归档: {
+    group: "custom_design",
+    label: "运维bug的配置归档",
+    template: `我执行的关键步骤:  %s 要求:  按照我的步骤, 我已经修改了这个bug, 请结合python和相关python库,生成高可用的python脚本来进行下次遇到这种问题的恢复, 把相关的提示全部都放到python脚本的注释当中,使用python的文档注释指出这种bug的原理`,
   },
+   maven多模块化: {
+    group: "custom_design",
+    label: "maven多模块化",
+    template: `相关信息:  %s 要求: 按照Spring-maven多模块高可用进行分层,如果存在spring-bean相关的逻辑 并且对spring使用@ConditionalOnProperty进行配置,支持配置bean的开关,默认是注入开启状态,并且提供spring.factories相关的配置,让Spring容器能够扫描` ,
+  },   
+  spring: {
+    group: "custom_design",
+    label: " spring",
+    template: `相关信息:  %s 要求: 我现在正在进行dao层单独的Iservice和service的分层,请在xxxService注入IxxxService,把当前Service和数据库查询语句构建的逻辑全部放到Iservice当中,使用private final IxxxService xxxService进行注入,保证逻辑的一致性,xxxService就不需要再使用接口,IxxxService使用mp标准的接口,输出完整的三个文件 IxxxService.java xxxServiceImpl.java 以及xxxService.java` ,
+  },   
+    go语言的显示单例模式: {
+    group: "custom_design",
+    label: " go语言的显示单例模式",
+    template: `用户输入:  %s 要求:指令：对上面的业务和逻辑进行代码的重构和分层模块化处理，采用以下设计模式：\n\n使用 单例模式（sync.Once） 实现全局唯一服务实例（如 GetInstance()）。\n\n使用 函数式可选参数（Option Pattern） 初始化配置（如 WithXxx()）。\n\n提供默认配置函数（defaultConfig()）。\n\n支持运行时 Reload() 方法以重新应用配置。\n\n保持结构清晰，注释完整，可扩展性强。\n\n输出要求：\n\n必须包含：Service 结构体、Config 结构体、Option 类型定义、GetInstance()、Reload()、defaultConfig()。\n\n逻辑完整可直接运行。补充: 1. getInstance使用log.Fatalf()进行错误处理,不需要返回error 2. 使用sync.Once进行单例模式调用 ,.3,提供一个service,把用户原始的结构体也进行封装,符合显式单例的设计模式  ` ,
+  },   
 };
