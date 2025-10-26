@@ -21,16 +21,17 @@
     "page": "/popup/options/options.html",
     "open_in_tab": true
   },
-
   "permissions": [
     "tabs",
     "storage",
     "scripting",
     "activeTab",
     "notifications",
-    "commands"
+    "commands",
+    "downloads",
+    "clipboardRead"
   ],
-  "host_permissions": ["*://*/*"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -45,10 +46,9 @@
       "description": "执行 div Copy 脚本"
     },
     "copy2file": {
-      "suggested_key": { "default": "Alt+D" },
+      "suggested_key": { "default": "Alt+F" },
       "description": "获得剪切板内容保存为文件"
     }
-    
   },
   "content_scripts": [
     {
