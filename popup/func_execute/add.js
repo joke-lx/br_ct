@@ -1,12 +1,16 @@
 // 预定义脚本列表
 const scriptFiles = [
   { name: "拾取元素,直接复制内容", file: "元素dom/div_copy_wrapper.js" },
-  { name: "通过传入dom的全部元素,间接复制内容", file: "元素dom/div_copy_input_dom.js" },
+  {
+    name: "通过传入dom的全部元素,间接复制内容",
+    file: "元素dom/div_copy_input_dom.js",
+  },
   { name: "拾取资源路径", file: "元素dom/div_Img_wrapper.js" },
   { name: "boss直聘的脚本", file: "平台专属/boss直聘/boss_job.js" },
   { name: "获得当前输入框的内容保存为文件", file: "元素dom/input.js" },
   { name: "转换成一行数据", file: "元素dom/oneRaw.js" },
   { name: "颜色色卡", file: "元素dom/color_show.js" },
+  { name: "剪切板抓暖文字", file: "元素dom/copy2file.js" },
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
