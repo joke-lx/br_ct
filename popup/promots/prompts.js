@@ -126,7 +126,7 @@ const PROMPT_TEMPLATES = {
     group: "code_gen",
     label: "帮助我修复bug",
     template:
-      "%s 帮助我完成bug的修复 分析产生这种问题的底层原理 给出修复思路 和修复方案 以及修复后的代码",
+      "%s ,要求: 你只需要给出修改方法,不需要解释相关原理,尽可能给出多种修复方案,不要存在过多解释, (如果用户在重复询问这个问题,判断这个问题难以落地解决,总结之前的对话,总结出用户学习过的内容,直接拒绝回答 让用户去休息,提供情绪价值)",
   },
   步骤规划: {
     group: "analyze_plan",
@@ -178,11 +178,22 @@ const PROMPT_TEMPLATES = {
     label: "mermaid图表",
     template: `帮我生成mermaid图表代码, 你的任务是参考下面的文本 生成相关的mermaid图表文本 :  %s `,
   },  
-  SQL: {
+  SQL抽取变量: {
     group: "custom_design",
-    label: "SQL",
+    label: "SQL抽取变量",
     template: `内容:   %s 要求: 生成SQL语句 ,  每个SQL段使用====进行分割 对于查询条件 都是用@xxxxx变量来进行占位使用,减少硬编码,生成规范的sql语句文件 `,
   },  
+ 数据库设计 : {
+  group: "custom_design",
+  label: "数据库设计",
+  template: `内容: %s  
+要求: 按照用户需要设计数据库，其中在用户的表当中有以下基本规范：  
+建表语句自带drop if exists,如果有抽象类型 优先使用status字段,前期验证原型阶段,减少使用not null的约束字段 
+id              bigint auto_increment comment '主键ID',  
+create_time     datetime default CURRENT_TIMESTAMP not null comment '创建时间',  
+update_time     datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'`
+},
+
   运维bug的配置归档: {
     group: "custom_design",
     label: "运维bug的配置归档",
