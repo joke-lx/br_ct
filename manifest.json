@@ -45,7 +45,7 @@
       "suggested_key": { "default": "Alt+D" },
       "description": "执行 div Copy 脚本"
     },
-    "copy2file": {
+    "copy_file": {
       "suggested_key": { "default": "Alt+F" },
       "description": "获得剪切板内容保存为文件"
     }

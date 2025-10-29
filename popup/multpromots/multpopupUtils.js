@@ -8,6 +8,7 @@ let historyPanel = null; // 历史记录面板
 /** 初始化弹窗 */
 function initializePopup() {
   elements = {
+    
     platformCheckboxes: document.querySelectorAll(
       '.platform-icon-option input[type="checkbox"]'
     ),
