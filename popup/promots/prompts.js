@@ -98,6 +98,13 @@ const PROMPT_TEMPLATES = {
     template:
       '内容 : "%s" 要求 : 帮我搜索相关的网站或者资源,或者github开源仓库,理论文档或者落地实现,尽可能满足用户的要求,对每个结果都进行简单的描述 ',
   },
+
+  快速回答: {
+    group: "search",
+    label: "快速回答",
+    template:
+      '内容 : "%s" 要求 :快速简洁回答 生成表格结构化的数据，不需要其他额外描述 ',
+  },
   翻译: {
     group: "read",
     label: "翻译",
@@ -129,11 +136,11 @@ const PROMPT_TEMPLATES = {
     template:
       "%s ,要求: 你只需要给出修改方法,不需要解释相关原理,尽可能给出多种修复方案,不要存在过多解释, (如果用户在重复询问这个问题,判断这个问题难以落地解决,总结之前的对话,总结出用户学习过的内容,直接拒绝回答 让用户去休息,提供情绪价值)",
   },
-  步骤规划: {
+  技术组合: {
     group: "analyze_plan",
-    label: "步骤规划",
+    label: "技术组合",
     template:
-      "我现在需要 %s , 帮助我规划完成这个任务的步骤 以及这个任务当中的难点 和注意事项",
+      "内容：%s 要求：快速简洁回答，使用表格格式化输出。对内容中的技术栈/条目进行分别对比，对底层的构成也进行对比和软件职责划分，提炼其核心特点和关键优势。整理出它们在不同应用场景下的技术组合或协同策略，并举例说明可能需要补充的其他相关技术。",
   },
   指令序列: {
     group: "custom_design",
@@ -183,13 +190,13 @@ const PROMPT_TEMPLATES = {
     group: "custom_design",
     label: "mermaid图表",
     template: `帮我生成mermaid图表代码, 你的任务是参考下面的文本 生成相关的mermaid图表文本 :  %s `,
-  },  
-    SQL抽取变量: {
-      group: "custom_design",
-      label: "SQL抽取变量",
-      template: `内容:   %s 要求: 生成SQL语句 ,  每个SQL段使用====进行分割 对于查询条件 都是用@xxxxx变量来进行占位使用,减少硬编码,生成规范的sql语句文件 `,
-    },  
-  数据库设计 : {
+  },
+  SQL抽取变量: {
+    group: "custom_design",
+    label: "SQL抽取变量",
+    template: `内容:   %s 要求: 生成SQL语句 ,  每个SQL段使用====进行分割 对于查询条件 都是用@xxxxx变量来进行占位使用,减少硬编码,生成规范的sql语句文件 `,
+  },
+  数据库设计: {
     group: "custom_design",
     label: "数据库设计",
     template: `内容: %s  
@@ -197,7 +204,7 @@ const PROMPT_TEMPLATES = {
   建表语句自带drop if exists,如果有抽象类型 优先使用status字段,前期验证原型阶段,减少使用not null的约束字段 
   id              bigint auto_increment comment '主键ID',  
   create_time     datetime default CURRENT_TIMESTAMP not null comment '创建时间',  
-  update_time     datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'`
+  update_time     datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'`,
   },
 
   运维bug的配置归档: {
