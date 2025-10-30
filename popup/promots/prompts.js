@@ -34,10 +34,11 @@ const PROMPT_TEMPLATES = {
     template:
       "内容: %s 要求: 生成swagger yml接口文档 ,可以适当进行合理推测 进行描述",
   },
-  '大python文件': {
-    group: 'custom_design', 
-    label: '大python文件',
-    template: '内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件和执行文件(bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释, 不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  '
+  大python文件: {
+    group: "custom_design",
+    label: "大python文件",
+    template:
+      "内容: %s 要求: 只需要考虑windows系统   编写唯一一份python脚本  一键生成上面的所有需要的目录文件和执行文件(bat文件 chcp 65001 >nul 保持对中文的支持)  只需要创建对应的文件 和目录结构, 以及必要的注释, 不要执行被生成的命令,如果有冗余的信息或者提醒 以及指令的含义 写入到readme.md当中  ",
   },
   整理格式: {
     group: "custom_design",
@@ -119,7 +120,7 @@ const PROMPT_TEMPLATES = {
     group: "read",
     label: "代码即文档",
     template:
-      "用户代码或文件: %s  要求: 尽可能对长方法进行解耦, 添加这种代码语言的标准注释 , 完善代码 比如尽快返回失败的思想 比如代码即文档的思想 使用设计模式进行优化 提高可扩展性 请生成: 完整的方案 完整的代码",
+      "用户代码或文件: %s  要求: 不要修改全部的逻辑和功能，只需要对有特殊的地方添加丰富的注释,并且有根据上下文提供简单的功能进行简单的描述，给出简单的案例 。进行CodeReview，对于错误异常处理混乱，代码耦合度过高的地方添加// todo注释，指出需要优化的地方，其他地方保持代码和逻辑不变，整体的解释文档大于todo",
   },
   // search类
   帮助我修复bug: {
@@ -173,34 +174,39 @@ const PROMPT_TEMPLATES = {
     label: "结构体的Option设计模式",
     template: `你是一个Go语言代码生成专家。\n请根据我提供的结构体定义，生成一个完整的Go示例，使用【Functional Options Pattern】构建该结构体。\n\n要求：\n1. 使用可变参数options（Option func(*Struct) error）实现；\n2. 提供默认配置函数（defaultStruct）；\n3. 提供构造函数 NewXxx(opts ...Option)；\n4. 提供必要的 WithXxx() option 函数；\n5. 提供 Validate() 方法；\n6. 在 main() 中生成两个示例；\n7. 输出完整Go文件。\n\n输入结构体： %s`,
   },
+  go语言cobra初始化: {
+    group: "custom_design",
+    label: "go语言cobra初始化",
+    template: `需求： %s 要求： 使用cobra满足脚本的编写 包含以下要点：1.变量使用var(xxx1 , xxx2  )定义 2. 包含一个var rootCmd = &cobra.Command{}进行相关的初始化,3.func (f *FlagSet) StringVarP(p *string, name, shorthand string, value string, usage string)等相关方法 进行绑定 包含必要的默认值，方便快速启动 `,
+  },
   mermain图表: {
     group: "custom_design",
     label: "mermaid图表",
     template: `帮我生成mermaid图表代码, 你的任务是参考下面的文本 生成相关的mermaid图表文本 :  %s `,
-  },  
+  },
   SQL: {
     group: "custom_design",
     label: "SQL",
     template: `内容:   %s 要求: 生成SQL语句 ,  每个SQL段使用====进行分割 对于查询条件 都是用@xxxxx变量来进行占位使用,减少硬编码,生成规范的sql语句文件 `,
-  },  
+  },
   运维bug的配置归档: {
     group: "custom_design",
     label: "运维bug的配置归档",
     template: `我执行的关键步骤:  %s 要求:  按照我的步骤, 我已经修改了这个bug, 请结合python和相关python库,生成高可用的python脚本来进行下次遇到这种问题的恢复, 把相关的提示全部都放到python脚本的注释当中,使用python的文档注释指出这种bug的原理`,
   },
-   maven多模块化: {
+  maven多模块化: {
     group: "custom_design",
     label: "maven多模块化",
-    template: `相关信息:  %s 要求: 按照Spring-maven多模块高可用进行分层,如果存在spring-bean相关的逻辑 并且对spring使用@ConditionalOnProperty进行配置,支持配置bean的开关,默认是注入开启状态,并且提供spring.factories相关的配置,让Spring容器能够扫描` ,
-  },   
+    template: `相关信息:  %s 要求: 按照Spring-maven多模块高可用进行分层,如果存在spring-bean相关的逻辑 并且对spring使用@ConditionalOnProperty进行配置,支持配置bean的开关,默认是注入开启状态,并且提供spring.factories相关的配置,让Spring容器能够扫描`,
+  },
   spring: {
     group: "custom_design",
     label: " spring",
-    template: `相关信息:  %s 要求: 我现在正在进行dao层单独的Iservice和service的分层,请在xxxService注入IxxxService,把当前Service和数据库查询语句构建的逻辑全部放到Iservice当中,使用private final IxxxService xxxService进行注入,保证逻辑的一致性,xxxService就不需要再使用接口,IxxxService使用mp标准的接口,输出完整的三个文件 IxxxService.java xxxServiceImpl.java 以及xxxService.java` ,
-  },   
-    go语言的显示单例模式: {
+    template: `相关信息:  %s 要求: 我现在正在进行dao层单独的Iservice和service的分层,请在xxxService注入IxxxService,把当前Service和数据库查询语句构建的逻辑全部放到Iservice当中,使用private final IxxxService xxxService进行注入,保证逻辑的一致性,xxxService就不需要再使用接口,IxxxService使用mp标准的接口,输出完整的三个文件 IxxxService.java xxxServiceImpl.java 以及xxxService.java`,
+  },
+  go语言的显示单例模式: {
     group: "custom_design",
     label: " go语言的显示单例模式",
-    template: `用户输入:  %s 要求:指令：对上面的业务和逻辑进行代码的重构和分层模块化处理，采用以下设计模式：\n\n使用 单例模式（sync.Once） 实现全局唯一服务实例（如 GetInstance()）。\n\n使用 函数式可选参数（Option Pattern） 初始化配置（如 WithXxx()）。\n\n提供默认配置函数（defaultConfig()）。\n\n支持运行时 Reload() 方法以重新应用配置。\n\n保持结构清晰，注释完整，可扩展性强。\n\n输出要求：\n\n必须包含：Service 结构体、Config 结构体、Option 类型定义、GetInstance()、Reload()、defaultConfig()。\n\n逻辑完整可直接运行。补充: 1. getInstance使用log.Fatalf()进行错误处理,不需要返回error 2. 使用sync.Once进行单例模式调用 ,.3,提供一个service,把用户原始的结构体也进行封装,符合显式单例的设计模式  ` ,
-  },   
+    template: `用户输入:  %s 要求:指令：对上面的业务和逻辑进行代码的重构和分层模块化处理，采用以下设计模式：\n\n使用 单例模式（sync.Once） 实现全局唯一服务实例（如 GetInstance()）。\n\n使用 函数式可选参数（Option Pattern） 初始化配置（如 WithXxx()）。\n\n提供默认配置函数（defaultConfig()）。\n\n支持运行时 Reload() 方法以重新应用配置。\n\n保持结构清晰，注释完整，可扩展性强。\n\n输出要求：\n\n必须包含：Service 结构体、Config 结构体、Option 类型定义、GetInstance()、Reload()、defaultConfig()。\n\n逻辑完整可直接运行。补充: 1. getInstance使用log.Fatalf()进行错误处理,不需要返回error 2. 使用sync.Once进行单例模式调用 ,.3,提供一个service,把用户原始的结构体也进行封装,符合显式单例的设计模式  `,
+  },
 };
