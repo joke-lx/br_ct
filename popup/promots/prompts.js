@@ -183,32 +183,23 @@ const PROMPT_TEMPLATES = {
     group: "custom_design",
     label: "mermaid图表",
     template: `帮我生成mermaid图表代码, 你的任务是参考下面的文本 生成相关的mermaid图表文本 :  %s `,
-<<<<<<< HEAD
-  },
-  SQL: {
-=======
   },  
-  SQL抽取变量: {
->>>>>>> c4dc9f1eab02a3e987a29e16c1d4609c8e8ff0cf
+    SQL抽取变量: {
+      group: "custom_design",
+      label: "SQL抽取变量",
+      template: `内容:   %s 要求: 生成SQL语句 ,  每个SQL段使用====进行分割 对于查询条件 都是用@xxxxx变量来进行占位使用,减少硬编码,生成规范的sql语句文件 `,
+    },  
+  数据库设计 : {
     group: "custom_design",
-    label: "SQL抽取变量",
-    template: `内容:   %s 要求: 生成SQL语句 ,  每个SQL段使用====进行分割 对于查询条件 都是用@xxxxx变量来进行占位使用,减少硬编码,生成规范的sql语句文件 `,
-<<<<<<< HEAD
+    label: "数据库设计",
+    template: `内容: %s  
+  要求: 按照用户需要设计数据库，其中在用户的表当中有以下基本规范：  
+  建表语句自带drop if exists,如果有抽象类型 优先使用status字段,前期验证原型阶段,减少使用not null的约束字段 
+  id              bigint auto_increment comment '主键ID',  
+  create_time     datetime default CURRENT_TIMESTAMP not null comment '创建时间',  
+  update_time     datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'`
   },
-=======
-  },  
- 数据库设计 : {
-  group: "custom_design",
-  label: "数据库设计",
-  template: `内容: %s  
-要求: 按照用户需要设计数据库，其中在用户的表当中有以下基本规范：  
-建表语句自带drop if exists,如果有抽象类型 优先使用status字段,前期验证原型阶段,减少使用not null的约束字段 
-id              bigint auto_increment comment '主键ID',  
-create_time     datetime default CURRENT_TIMESTAMP not null comment '创建时间',  
-update_time     datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'`
-},
 
->>>>>>> c4dc9f1eab02a3e987a29e16c1d4609c8e8ff0cf
   运维bug的配置归档: {
     group: "custom_design",
     label: "运维bug的配置归档",
