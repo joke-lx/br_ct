@@ -1,27 +1,16 @@
-const btn = document.getElementById('saveClipboardBtn');
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const intervalInput = document.getElementById("interval");
 
-btn.addEventListener('click', async () => {
-    try {
-        const text = await navigator.clipboard.readText();
+startBtn.addEventListener("click", () => {
+    const interval = parseInt(intervalInput.value) * 1000;
+    chrome.runtime.sendMessage({action: "startCarousel", interval}, response => {
+        console.log(response.status);
+    });
+});
 
-        // 生成 Blob URL
-        const blob = new Blob([text], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-
-        // 调用 chrome.downloads 下载
-        chrome.downloads.download({
-            url: url,
-            filename: 'my_clipboard.txt',
-            saveAs: true
-        }, (downloadId) => {
-            if (chrome.runtime.lastError) {
-                alert('下载失败: ' + chrome.runtime.lastError.message);
-            } else {
-                alert('下载成功！downloadId: ' + downloadId);
-            }
-            URL.revokeObjectURL(url);
-        });
-    } catch (err) {
-        alert('读取剪贴板失败: ' + err.message);
-    }
+stopBtn.addEventListener("click", () => {
+    chrome.runtime.sendMessage({action: "stopCarousel"}, response => {
+        console.log(response.status);
+    });
 });
