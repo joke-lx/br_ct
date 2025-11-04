@@ -135,6 +135,12 @@ const PROMPT_TEMPLATES = {
     template:
       "用户代码或文件: %s  要求: 不要修改全部的逻辑和功能，只需要对有特殊的地方添加丰富的注释,并且有根据上下文提供简单的功能进行简单的描述，给出简单的案例 。进行CodeReview，对于错误异常处理混乱，代码耦合度过高的地方添加// todo注释，指出需要优化的地方，其他地方保持代码和逻辑不变，整体的解释文档大于todo",
   },
+  代码优化todo: {
+    group: "read",
+    label: "代码优化todo",
+    template:
+      "用户代码或文件: %s  要求: 不要修改原本代码，按照用户的要求，添加优化建议和TODO注释，对于todo的内容，添加详细的关键方法的注释，指出可以替换成什么api，所有feature都是用注释和todo的方式添加，不要修改源代码比如：//TODO： xxxxx \n //参考： A.xxxx()",
+  },
   // search类
   帮助我修复bug: {
     group: "code_gen",
@@ -196,6 +202,11 @@ const PROMPT_TEMPLATES = {
     group: "custom_design",
     label: "mermaid图表",
     template: `帮我生成mermaid图表代码, 你的任务是参考下面的文本 生成相关的mermaid图表文本 :  %s `,
+  },
+  dot格式: {
+    group: "custom_design",
+    label: "dot格式",
+    template: `内容： %s ,要求 ： 编写代码根据代码输出，把相关设计数据结构之后，通过依赖相关的分析，转换成dot格式，支持Graphviz的文本输出`,
   },
   SQL抽取变量: {
     group: "custom_design",
