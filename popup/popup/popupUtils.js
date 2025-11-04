@@ -9,6 +9,73 @@ const MAX_HISTORY = 5;
 let elements = {};
 
 /**
+ * 复制文本到剪切板
+ */
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    // 如果现代API失败，使用传统的execCommand方法作为备选
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      textArea.style.top = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand("copy");
+      document.body.removeChild(textArea);
+      return successful;
+    } catch (fallbackErr) {
+      console.error("复制到剪切板失败:", fallbackErr);
+      return false;
+    }
+  }
+}
+
+/**
+ * 显示临时提示信息
+ */
+function showTempMessage(message, duration = 2000) {
+  // 创建提示元素
+  let messageEl = document.getElementById("temp-message");
+  if (!messageEl) {
+    messageEl = document.createElement("div");
+    messageEl.id = "temp-message";
+    messageEl.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 6px;
+      z-index: 10000;
+      font-size: 14px;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    `;
+    document.body.appendChild(messageEl);
+  }
+
+  messageEl.textContent = message;
+  messageEl.style.opacity = "1";
+  messageEl.style.display = "block";
+
+  // 自动隐藏
+  setTimeout(() => {
+    messageEl.style.opacity = "0";
+    setTimeout(() => {
+      messageEl.style.display = "none";
+    }, 300);
+  }, duration);
+}
+
+/**
  * 初始化弹窗，获取并缓存 DOM 元素
  */
 function initializePopup() {
@@ -226,13 +293,14 @@ function savePlatformStates() {
 /**
  * 发送消息逻辑
  */
-function startSending() {
+async function startSending() {
   // 先触发一次 input 事件以确保最新的输入被保存
-  elements.messageInput.dispatchEvent(new Event('input'));
-  
+  elements.messageInput.dispatchEvent(new Event("input"));
+
   const originalMessage = elements.messageInput.value.trim();
   if (!originalMessage) {
     console.error("请输入消息内容");
+    showTempMessage("请输入消息内容");
     return;
   }
 
@@ -256,7 +324,25 @@ function startSending() {
 
   if (selectedPlatforms.length === 0) {
     console.error("请至少选择一个平台");
+    showTempMessage("请至少选择一个平台");
     return;
+  }
+
+  // 检查文本长度，如果超过400则复制到剪切板
+  if (finalMessage.length > 400) {
+    elements.sendButton.disabled = true;
+    elements.sendButton.textContent = "复制中...";
+
+    const copySuccess = await copyToClipboard(finalMessage);
+
+    if (copySuccess) {
+      showTempMessage(`内容已复制到剪切板（${finalMessage.length}字符）`);
+    } else {
+      showTempMessage("复制失败，但将继续发送");
+    }
+
+    // 短暂延迟让用户看到提示
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   elements.sendButton.disabled = true;
@@ -288,4 +374,6 @@ export {
   setupEventListeners,
   loadStoredData,
   startSending,
+  copyToClipboard,
+  showTempMessage,
 };
