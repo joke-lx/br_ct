@@ -66,11 +66,17 @@ const PROMPT_TEMPLATES = {
     template:
       "你是行业资深专家, 你需要模拟面试官的角色, 你需要针对 %s 这个技术点,首先描述你希望考察的知识点,包含理论和实践,针对整个知识体系的完备性进行提问, 设计10个面试问题,分别从中等到困难,注意每个问题有完整的上下文和描述 保证问题的清晰",
   },
-  学习某个模块: {
+  CODE_模块: {
     group: "read",
-    label: "学习某个模块",
+    label: "CODE_模块",
     template:
       "%s 具体在什么地方查看细节 或者帮助我更深层次理解这部分逻辑，或者给一些demo案例 帮助我理解这个设计方案的构成部分",
+  },
+  CODE_CR: {
+    group: "read",
+    label: "CODE_CR",
+    template:
+      "内容： %s 要求：进行详细的阅读，列出这种设计的好处，以及这种思想的迁移和复用，每个独特的设计单独进行举例",
   },
   问题八股模拟_回答: {
     group: "analyze_plan",
@@ -181,10 +187,10 @@ const PROMPT_TEMPLATES = {
     label: "结构体的Option设计模式",
     template: `你是一个Go语言代码生成专家。\n请根据我提供的结构体定义，生成一个完整的Go示例，使用【Functional Options Pattern】构建该结构体。\n\n要求：\n1. 使用可变参数options（Option func(*Struct) error）实现；\n2. 提供默认配置函数（defaultStruct）；\n3. 提供构造函数 NewXxx(opts ...Option)；\n4. 提供必要的 WithXxx() option 函数；\n5. 提供 Validate() 方法；\n6. 在 main() 中生成两个示例；\n7. 输出完整Go文件。\n\n输入结构体： %s`,
   },
-  go语言cobra初始化: {
+  go变量脚本: {
     group: "custom_design",
-    label: "go语言cobra初始化",
-    template: `需求： %s 要求： 使用cobra满足脚本的编写 包含以下要点：1.变量使用var(xxx1 , xxx2  )定义 2. 包含一个var rootCmd = &cobra.Command{}进行相关的初始化,3.func (f *FlagSet) StringVarP(p *string, name, shorthand string, value string, usage string)等相关方法 进行绑定 包含必要的默认值，方便快速启动 `,
+    label: "go变量脚本",
+    template: `需求： %s 要求: 使用flag包，把相关var参数支持flag绑定，并且提供默认值，支持直接运行，提高兼容性`,
   },
   mermain图表: {
     group: "custom_design",
