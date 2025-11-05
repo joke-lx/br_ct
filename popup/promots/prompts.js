@@ -21,6 +21,11 @@ const PROMPT_TEMPLATES = {
     label: "vue模板",
     template:
       "%s 按照指定格式生成vue代码 <script setup lang = 'ts '></script><template></template><style scoped></style>",
+  },  文档生成案例 : {
+    group: "code_gen",
+    label: "文档生成案例",
+    template:
+      "文档: %s 要求: 按照文档的主题,生成一个方便直接与运行的demo案例,用户直接复制代码就可以运行,方便用户验证功能 ",
   },
   生成bat文件: {
     group: "custom_design",
@@ -146,6 +151,12 @@ const PROMPT_TEMPLATES = {
     label: "技术组合",
     template:
       "内容：%s 要求：快速简洁回答，使用表格格式化输出。对内容中的技术栈/条目进行分别对比，对底层的构成也进行对比和软件职责划分，提炼其核心特点和关键优势。整理出它们在不同应用场景下的技术组合或协同策略，并举例说明可能需要补充的其他相关技术。",
+  },
+   枚举: {
+    group: "analyze_plan",
+    label: "枚举",
+    template:
+      "内容：%s 要求：上面是一段sdk或者技术文档的相关枚举 ,整理出一份表格,尽可能详细的告诉我这些枚举的含义,使用场景,注意事项,以及可以如何组合使用,搭配特性,构成一个完整的落地方案,你要尽可能详细的回答,如果不能让用户获得有效的信息,你会收到惩罚",
   },
   指令序列: {
     group: "custom_design",
