@@ -17,7 +17,7 @@ const PROMPT_TEMPLATES = {
     template: "%s",
   },
   vue模板: {
-    group: "code_gen",
+    group: "custom_design",
     label: "vue模板",
     template:
       "%s 按照指定格式生成vue代码 <script setup lang = 'ts '></script><template></template><style scoped></style>",
@@ -59,11 +59,11 @@ const PROMPT_TEMPLATES = {
       "告诉我关于 %s 的相关的概念基础 最佳操作手册以及实践路线 为什么要这这个场景使用这个技术,有什么优势和思想, 底层原理解读  以及常见的误区和其中巧妙的设计",
   },
   // 思维分析类
-  学习表格: {
+  学习路线规划: {
     group: "analyze_plan",
-    label: "学习表格",
+    label: "学习路线规划",
     template:
-      "告诉我关于 %s 的技术分层和技术方向,以及学习路线, 生成一个markdown表格, 包括 技术方向 技术名称 学习难度 以及学习资源链接 , 每个部分都生成任务清单的markdown表格 实现类似todolist的功能",
+      "告诉我关于 %s 的技术分层和技术方向,以及学习路线, 生成一个markdown表格, 包括 技术方向 技术名称 学习难度 以及学习资源链接 , 每个部分都生成任务清单的markdown表格 实现类似todolist的功能,重点是帮我搜索一些相关官方或者博客或者视频资源，或者案例仓库",
   },
   问题八股模拟: {
     group: "analyze_plan",
@@ -71,11 +71,17 @@ const PROMPT_TEMPLATES = {
     template:
       "你是行业资深专家, 你需要模拟面试官的角色, 你需要针对 %s 这个技术点,首先描述你希望考察的知识点,包含理论和实践,针对整个知识体系的完备性进行提问, 设计10个面试问题,分别从中等到困难,注意每个问题有完整的上下文和描述 保证问题的清晰",
   },
-  学习某个模块: {
+  CODE_模块: {
     group: "read",
-    label: "学习某个模块",
+    label: "CODE_模块",
     template:
       "%s 具体在什么地方查看细节 或者帮助我更深层次理解这部分逻辑，或者给一些demo案例 帮助我理解这个设计方案的构成部分",
+  },
+  CODE_GOOD: {
+    group: "read",
+    label: "CODE_GOOD",
+    template:
+      "内容： %s  要求 ：告诉我相关的设计思想和哲学 在软件开发和系统设计领域的其他实践和思想落地 ,这种思想有什么好处 和限制  进行详细的阅读，列出这种设计的好处，以及这种思想的迁移和复用，每个独特的设计单独进行demo代码举例",
   },
   问题八股模拟_回答: {
     group: "analyze_plan",
@@ -83,19 +89,18 @@ const PROMPT_TEMPLATES = {
     template:
       "请深度解释这个问题的答案 %s , 你需要给出尽可能成体系的完整的答案,所有回答都需要结合问题进行回答,最后进行每个条目进行简单总结",
   },
-  优化思路: {
+  高级优化: {
     group: "analyze_plan",
-    label: "状态优化",
+    label: "高级优化",
     template:
-      "当前的状态时 %s 我希望进行优化 给出我优化思路 优化流程或者优化方案 或者新的高级学习实践路线",
+      "当前的状态时 %s ， 我希望进行优化，不要介绍基础的概念 给出我优化思路 优化流程或者优化方案 或者新的高级学习实践路线",
   },
-  设计思想哲学: {
+  数据结构分析: {
     group: "analyze_plan",
-    label: "学习软件设计 :: 类比概念 ",
+    label: "数据结构分析",
     template:
-      "告诉我 %s 的设计思想和哲学 在软件开发和系统设计领域的其他实践和思想落地 ,这种思想有什么好处 和限制  ",
+      "内容： %s  要求 ： 深入分析这个数据结构的设计原理 和底层实现，比如支持功能的最小范围所需要的字段， 以及在实际应用中的优势和劣势 ，并且把这个结构体或类提供的相关方法抽取成单独的接口文件，每个接口上面进行详细的举例和描述，进行彻底详细的注释，实现接口即文档的思想，一个接口的方法需要包含： 基本功能描述，入参出参含义以及其中可能使用到的堆栈和扩展点",
   },
-
   // 内容转译类
   相关网站搜索: {
     group: "search",
@@ -103,13 +108,13 @@ const PROMPT_TEMPLATES = {
     template:
       '内容 : "%s" 要求 : 帮我搜索相关的网站或者资源,或者github开源仓库,理论文档或者落地实现,尽可能满足用户的要求,对每个结果都进行简单的描述 ',
   },
-    快速回答: {
+  快速回答: {
     group: "search",
     label: "快速回答",
     template:
       '内容 : "%s" 要求 : 快速回答,不需要多过描述,直接输出答案,或者表格答案,进行结构化的简洁回答',
   },
-    语言: {
+  语言: {
     group: "search",
     label: "语言",
     template:
@@ -133,11 +138,17 @@ const PROMPT_TEMPLATES = {
     template:
       "%s 尝试输出这段代码中所有变量名和方法名的含义 以及功能 基本的代码语境, 清晰的指出作用域 比如if当中使用的变量, 包括对堆栈的作用域存在的变量分析",
   },
-  代码及文档: {
+  代码即文档: {
     group: "read",
     label: "代码即文档",
     template:
-      "用户代码或文件: %s  要求: 不要修改全部的逻辑和功能，只需要对有特殊的地方添加丰富的注释,并且有根据上下文提供简单的功能进行简单的描述，给出简单的案例 。进行CodeReview，对于错误异常处理混乱，代码耦合度过高的地方添加// todo注释，指出需要优化的地方，其他地方保持代码和逻辑不变，整体的解释文档大于todo",
+      "用户代码或文件: %s  要求: 不要修改全部的逻辑和功能，完全保留之前的代码，只需要对有特殊的地方添加丰富的注释,并且有根据上下文提供简单的功能进行简单的描述，给出简单的案例 。进行CodeReview，对于错误异常处理混乱，代码耦合度过高的地方添加// todo注释，指出需要优化的地方，其他地方保持代码和逻辑不变，整体的解释文档大于todo",
+  },
+  代码优化todo: {
+    group: "read",
+    label: "代码优化todo",
+    template:
+      "用户代码或文件: %s  要求: 不要修改原本代码，按照用户的要求，添加优化建议和TODO注释，对于todo的内容，添加详细的关键方法的注释，指出可以替换成什么api，所有feature都是用注释和todo的方式添加，不要修改源代码比如：//TODO： xxxxx \n //参考： A.xxxx()",
   },
   // search类
   帮助我修复bug: {
@@ -197,15 +208,20 @@ const PROMPT_TEMPLATES = {
     label: "结构体的Option设计模式",
     template: `你是一个Go语言代码生成专家。\n请根据我提供的结构体定义，生成一个完整的Go示例，使用【Functional Options Pattern】构建该结构体。\n\n要求：\n1. 使用可变参数options（Option func(*Struct) error）实现；\n2. 提供默认配置函数（defaultStruct）；\n3. 提供构造函数 NewXxx(opts ...Option)；\n4. 提供必要的 WithXxx() option 函数；\n5. 提供 Validate() 方法；\n6. 在 main() 中生成两个示例；\n7. 输出完整Go文件。\n\n输入结构体： %s`,
   },
-  go语言cobra初始化: {
+  go变量脚本: {
     group: "custom_design",
-    label: "go语言cobra初始化",
-    template: `需求： %s 要求： 使用cobra满足脚本的编写 包含以下要点：1.变量使用var(xxx1 , xxx2  )定义 2. 包含一个var rootCmd = &cobra.Command{}进行相关的初始化,3.func (f *FlagSet) StringVarP(p *string, name, shorthand string, value string, usage string)等相关方法 进行绑定 包含必要的默认值，方便快速启动 `,
+    label: "go变量脚本",
+    template: `需求： %s 要求: 使用flag包，把相关var参数支持flag绑定，并且提供默认值，支持直接运行，提高兼容性`,
   },
   mermain图表: {
     group: "custom_design",
     label: "mermaid图表",
     template: `帮我生成mermaid图表代码, 你的任务是参考下面的文本 生成相关的mermaid图表文本 :  %s `,
+  },
+  dot格式: {
+    group: "custom_design",
+    label: "dot格式",
+    template: `内容： %s ,要求 ： 编写代码根据代码输出，把相关设计数据结构之后，通过依赖相关的分析，转换成dot格式，支持Graphviz的文本输出`,
   },
   SQL抽取变量: {
     group: "custom_design",

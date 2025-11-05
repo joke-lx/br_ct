@@ -32,29 +32,6 @@ function main() {
           return;
         }
 
-<<<<<<< HEAD
-        try {
-            const text = await navigator.clipboard.readText();
-            if (!text) {
-                console.log('剪贴板为空');
-                return;
-            }
-// ???
-            // 创建临时悬浮 div 显示前三行
-            const previewDiv = document.createElement('div');
-            previewDiv.style.position = 'fixed';
-            previewDiv.style.top = '60px';
-            previewDiv.style.left = '20px';
-            previewDiv.style.zIndex = 10000;
-            previewDiv.style.background = 'rgba(0, 0, 0, 0.7)';
-            previewDiv.style.color = '#fff';
-            previewDiv.style.padding = '10px';
-            previewDiv.style.borderRadius = '8px';
-            previewDiv.style.fontFamily = 'monospace';
-            previewDiv.style.whiteSpace = 'pre-line';
-            previewDiv.style.maxWidth = '400px';
-            previewDiv.style.pointerEvents = 'none';
-=======
         // 创建临时悬浮 div 显示前三行
         const previewDiv = document.createElement("div");
         previewDiv.style.position = "fixed";
@@ -73,7 +50,6 @@ function main() {
         const lines = text.split(/\r?\n/).slice(0, 3);
         previewDiv.textContent = lines.join("\n");
         document.body.appendChild(previewDiv);
->>>>>>> 6daf502c4b896271e7a00d3e5a4a310a880fc928
 
         // 3 秒后自动移除预览
         setTimeout(() => previewDiv.remove(), 3000);
