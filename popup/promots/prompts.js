@@ -16,12 +16,19 @@ const PROMPT_TEMPLATES = {
     label: "不修饰",
     template: "%s",
   },
+  接口功能: {
+    group: "code_gen",
+    label: "接口功能",
+    template:
+      "代码: %s\n\n 要求：按照要求或者案例生成接口代码，不需要任何实现，保证接口的可靠可用，解决业务问题的完整性，可以生成多个接口来解决复杂问题，可以使用类或者结构体对接口进行组合，比如高可用Client/Manager/Controll/Server，成员都是用接口或者用于数据存储的结构体（比如config）",
+  },
   vue模板: {
     group: "custom_design",
     label: "vue模板",
     template:
       "%s 按照指定格式生成vue代码 <script setup lang = 'ts '></script><template></template><style scoped></style>",
-  },  文档生成案例 : {
+  },
+  文档生成案例: {
     group: "code_gen",
     label: "文档生成案例",
     template:
@@ -163,7 +170,7 @@ const PROMPT_TEMPLATES = {
     template:
       "内容：%s 要求：快速简洁回答，使用表格格式化输出。对内容中的技术栈/条目进行分别对比，对底层的构成也进行对比和软件职责划分，提炼其核心特点和关键优势。整理出它们在不同应用场景下的技术组合或协同策略，并举例说明可能需要补充的其他相关技术。",
   },
-   枚举: {
+  枚举: {
     group: "analyze_plan",
     label: "枚举",
     template:
@@ -180,7 +187,7 @@ const PROMPT_TEMPLATES = {
     template:
       "我的环境是windows 我现在需要 %s , 帮我生成尽可能完整的指令序列  并且提醒其中的可能出现的错误 , 如果没有指出 默认安装了相关的命令工具",
   },
-    docker运行: {
+  docker运行: {
     group: "custom_design",
     label: "docker运行",
     template:
