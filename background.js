@@ -2,7 +2,7 @@
 // 使用 ES Modules 导入功能
 import { processNextAction, setupTabUpdateListener } from './backgroudtask/ai_platform_processor.js';
 import { executeFunctionScript , setupFuncCommandListener } from './backgroudtask/func_executor.js';
-import { setTabTransListener } from './backgroudtask/tranTarget.js';
+import { setTabTransListener } from './backgroudtask/gotoServer.js';
 import { startServer } from './backgroudtask/word_http_server.js';
 // import { setupClipboardToFileListener } from './backgroudtask/clipboard2file.js';
 import { startCarousel } from './backgroudtask/startCarousel.js';

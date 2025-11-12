@@ -1,46 +1,48 @@
-// ========== 菜单配置数据 ==========
-const menuData = {
+// ========== 菜单配置数据从后台脚本获取 ==========
+let menuData = {
   name: '菜单',
   isRoot: true,
-  children: [
-    {
-      name: '📄 feed',
-      children: [
-        { name: 'IT老齐', url: 'https://www.itlaoqi.com/chapter.html?sid=143&cid=3292', children: [] },
-        { name: 'NOTION', url: 'https://www.notion.so/a23ee5b49d7d474ebf9d3e3094441088', children: [] },
-        { name: 'B站', url: 'https://www.bilibili.com', children: [] },
-        { name: 'github', url: 'https://github.com/', children: [] },
-        { name: 'gitee', url: 'https://gitee.com/', children: [] },
-      ]
-    },
-    {
-      name: '📄 面包',
-      children: [
-        { name: '上海演唱会', url: 'https://www.bilibili.com/video/BV1L48qzsESK?spm_id_from=333.788.videopod.sections', children: [] },
-        { name: '宁波演唱会', url: 'https://www.bilibili.com/video/BV1pca3zPECZ/?spm_id_from=333.337.search-card.all.click&vd_source=b00eb5ad0e31d2629f81cb48d7fab1f2', children: [] },
-        { name: '北京演唱会', url: 'https://www.bilibili.com/video/BV13hSzYfEfD?spm_id_from=333.788.videopod.sections&vd_source=b00eb5ad0e31d2629f81cb48d7fab1f2', children: [] },
-        { name: '广州演唱会', url: 'https://www.bilibili.com/video/BV1g2oiYqEiM?spm_id_from=333.788.videopod.sections&vd_source=b00eb5ad0e31d2629f81cb48d7fab1f2', children: [] },
-        { name: '成都演唱会', url: 'https://www.bilibili.com/video/BV1dUjkzqEUj/?spm_id_from=333.788.videopod.sections', children: [] },
-      ]
-    },
-    {
-      name: '📄 网站跳转3',
-      children: [
-        { name: 'gitee_api', url: 'https://gitee.com/api/v5/swagger', children: [] },
-        { name: '高德地图', url: 'https://ditu.amap.com/', children: [] },
-        { name: '抖音', url: 'https://www.douyin.com', children: [] },
-      ]
-    },
-    {
-      name: '📄 网站跳转4',
-      children: [
-        { name: 'tongyi', url: 'https://bailian.console.aliyun.com', children: [] },
-        { name: '知乎', url: 'https://www.zhihu.com', children: [] },
-        { name: '抖音', url: 'https://www.douyin.com', children: [] },
-      ]
-    }
-  ]
+  children: []
 };
+
+// 从后台脚本获取菜单数据
+function loadMenuData() {
+  chrome.runtime.sendMessage({ action: 'getMenuData' }, (response) => {
+    if (response && response.status === 'ok' && response.data) {
+      menuData = response.data;
+      console.log('Menu data loaded:', menuData);
+    } else {
+      console.error('Failed to load menu data:', response);
+    }
+  });
+}
+
+// 获取历史记录数据
+function loadHistoryData() {
+  chrome.runtime.sendMessage({ action: 'getHistory', maxResults: 5 }, (response) => {
+    if (response && response.status === 'ok' && response.data) {
+      // 将历史记录添加到菜单数据中
+      const historyGroup = {
+        name: '🕒 历史记录',
+        children: response.data.map(item => ({
+          name: item.name,
+          url: item.url,
+          children: []
+        }))
+      };
+
+      menuData.children.unshift(historyGroup);
+      console.log('History data added to menu:', historyGroup);
+    } else {
+      console.error('Failed to load history data:', response);
+      // 如果历史记录加载失败，添加一个空的历史记录分组
+      menuData.children.unshift({
+        name: '🕒 历史记录',
+        children: []
+      });
+    }
+  });
+}
 // ===================================
 
 // content.js - 浏览器插件内容脚本
@@ -51,6 +53,10 @@ const menuData = {
     return;
   }
   window.circularMenuInjected = true;
+
+  // 初始化数据
+  loadMenuData();
+  loadHistoryData();
 
   // 注入样式
   const style = document.createElement('style');
@@ -197,7 +203,7 @@ const menuData = {
   mainCircle.addEventListener('mouseenter', () => {
     // 如果正在拖动或菜单已激活，则不执行任何操作
     if (isDragging || isActive) return;
-    
+
     isActive = true;
     mainCircle.classList.add('active');
     mainCircle.innerHTML = '✕';
@@ -287,7 +293,7 @@ const menuData = {
       submenuItem.style.top = `${center.y - 25 + y}px`;
       document.body.appendChild(submenuItem);
       activeSubmenus.push(submenuItem);
-      
+
       setTimeout(() => submenuItem.classList.add('show'), index * 50);
 
       // 点击事件：处理子菜单项
@@ -361,8 +367,8 @@ const menuData = {
         mainCircle.title = '悬浮激活菜单';
         clearMenuItems();
       }
-    }, 50); 
+    }, 50);
   });
 
-  console.log('圆形菜单插件已加载 (支持悬浮展开 + 点击关闭 + 拖动 + 位置记忆 + 自动展开 + 子菜单方向优化 + 网站跳转)');
+  console.log('圆形菜单插件已加载 (支持悬浮展开 + 点击关闭 + 拖动 + 位置记忆 + 自动展开 + 子菜单方向优化 + 网站跳转 + 历史记录)');
 })();
