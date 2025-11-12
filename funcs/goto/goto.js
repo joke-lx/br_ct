@@ -236,7 +236,9 @@ function loadHistoryData() {
     const angleStep = (Math.PI * 2) / items.length;
 
     items.forEach((item, index) => {
-      const angle = angleStep * index - Math.PI / 2;
+      // 向左旋转90度，让历史记录（第一个项目）显示在最左侧
+      // 原来的 - Math.PI / 2 是从顶部开始，现在改为从左侧开始
+      const angle = angleStep * index - Math.PI;
       const x = Math.cos(angle) * radius;
       const y = Math.sin(angle) * radius;
       const menuItem = document.createElement('div');
@@ -370,5 +372,5 @@ function loadHistoryData() {
     }, 50);
   });
 
-  console.log('圆形菜单插件已加载 (支持悬浮展开 + 点击关闭 + 拖动 + 位置记忆 + 自动展开 + 子菜单方向优化 + 网站跳转 + 历史记录)');
+  console.log('圆形菜单插件已加载 (支持悬浮展开 + 点击关闭 + 拖动 + 位置记忆 + 自动展开 + 子菜单方向优化 + 网站跳转 + 历史记录 + 左侧优先布局)');
 })();
