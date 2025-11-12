@@ -104,6 +104,15 @@ function initializePopup() {
 }
 
 /**
+ * 保存消息内容到本地存储
+ */
+function saveMessageContent(content) {
+  chrome.storage.sync.set({ lastMessage: content }, () => {
+    console.log("消息内容已保存到本地存储");
+  });
+}
+
+/**
  * 加载存储的数据
  */
 function loadStoredData() {
@@ -119,6 +128,7 @@ function loadStoredData() {
       // 恢复最后输入的消息
       if (result.lastMessage) {
         elements.messageInput.value = result.lastMessage;
+        console.log("已恢复历史输入内容");
       }
 
       // 恢复平台选择状态
@@ -174,9 +184,28 @@ function restorePlatformStates(platformStates) {
  * 设置所有事件监听器
  */
 function setupEventListeners() {
-  // 输入框内容变化时保存
+  // 输入框内容变化时实时保存（添加防抖优化）
+  let saveTimeout;
   elements.messageInput.addEventListener("input", () => {
-    chrome.storage.sync.set({ lastMessage: elements.messageInput.value });
+    // 清除之前的定时器
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+
+    // 设置新的定时器，延迟500ms保存，避免频繁操作
+    saveTimeout = setTimeout(() => {
+      saveMessageContent(elements.messageInput.value);
+    }, 500);
+  });
+
+  // 监听输入框失去焦点事件，立即保存
+  elements.messageInput.addEventListener("blur", () => {
+    saveMessageContent(elements.messageInput.value);
+  });
+
+  // 监听页面关闭前保存
+  window.addEventListener("beforeunload", () => {
+    saveMessageContent(elements.messageInput.value);
   });
 
   // 历史记录选择
@@ -373,6 +402,7 @@ export {
   initializePopup,
   setupEventListeners,
   loadStoredData,
+  saveMessageContent,
   startSending,
   copyToClipboard,
   showTempMessage,
