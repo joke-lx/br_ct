@@ -8,6 +8,11 @@ const MAX_HISTORY = 5;
 // DOM 元素缓存
 let elements = {};
 
+// 保存相关变量
+let saveTimeout;
+let lastSavedContent = '';
+let isSaving = false;
+
 /**
  * 复制文本到剪切板
  */
@@ -104,12 +109,37 @@ function initializePopup() {
 }
 
 /**
- * 保存消息内容到本地存储
+ * 保存消息内容到本地存储（优化版本）
  */
-function saveMessageContent(content) {
-  chrome.storage.sync.set({ lastMessage: content }, () => {
-    console.log("消息内容已保存到本地存储");
-  });
+async function saveMessageContent(content) {
+  // 避免重复保存相同内容
+  if (content === lastSavedContent) {
+    return;
+  }
+
+  // 如果正在保存，等待完成
+  if (isSaving) {
+    return new Promise((resolve) => {
+      const checkSaving = setInterval(() => {
+        if (!isSaving) {
+          clearInterval(checkSaving);
+          saveMessageContent(content).then(resolve);
+        }
+      }, 50);
+    });
+  }
+
+  isSaving = true;
+
+  try {
+    await chrome.storage.sync.set({ lastMessage: content });
+    lastSavedContent = content;
+    console.log("消息内容已保存到本地存储，长度:", content.length);
+  } catch (error) {
+    console.error("保存消息内容失败:", error);
+  } finally {
+    isSaving = false;
+  }
 }
 
 /**
@@ -128,7 +158,8 @@ function loadStoredData() {
       // 恢复最后输入的消息
       if (result.lastMessage) {
         elements.messageInput.value = result.lastMessage;
-        console.log("已恢复历史输入内容");
+        lastSavedContent = result.lastMessage;
+        console.log("已恢复历史输入内容，长度:", result.lastMessage.length);
       }
 
       // 恢复平台选择状态
@@ -184,28 +215,62 @@ function restorePlatformStates(platformStates) {
  * 设置所有事件监听器
  */
 function setupEventListeners() {
-  // 输入框内容变化时实时保存（添加防抖优化）
-  let saveTimeout;
+  // 输入框内容变化时实时保存（优化防抖机制）
   elements.messageInput.addEventListener("input", () => {
+    const currentContent = elements.messageInput.value;
+
     // 清除之前的定时器
     if (saveTimeout) {
       clearTimeout(saveTimeout);
     }
 
-    // 设置新的定时器，延迟500ms保存，避免频繁操作
-    saveTimeout = setTimeout(() => {
-      saveMessageContent(elements.messageInput.value);
-    }, 500);
+    // 根据文本长度动态调整保存延迟
+    const delay = currentContent.length > 1000 ? 300 : 500;
+
+    // 设置新的定时器，优化防抖延迟
+    saveTimeout = setTimeout(async () => {
+      await saveMessageContent(currentContent);
+    }, delay);
   });
 
   // 监听输入框失去焦点事件，立即保存
-  elements.messageInput.addEventListener("blur", () => {
-    saveMessageContent(elements.messageInput.value);
+  elements.messageInput.addEventListener("blur", async () => {
+    // 立即清除定时器并保存
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+      saveTimeout = null;
+    }
+    await saveMessageContent(elements.messageInput.value);
+  });
+
+  // 监听输入框获得焦点事件，确保内容同步
+  elements.messageInput.addEventListener("focus", async () => {
+    const result = await chrome.storage.sync.get("lastMessage");
+    if (result.lastMessage && result.lastMessage !== elements.messageInput.value) {
+      elements.messageInput.value = result.lastMessage;
+      lastSavedContent = result.lastMessage;
+    }
+  });
+
+  // 监听键盘快捷键（Ctrl+S 手动保存）
+  elements.messageInput.addEventListener("keydown", async (e) => {
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+      }
+      await saveMessageContent(elements.messageInput.value);
+      showTempMessage("内容已手动保存");
+    }
   });
 
   // 监听页面关闭前保存
-  window.addEventListener("beforeunload", () => {
-    saveMessageContent(elements.messageInput.value);
+  window.addEventListener("beforeunload", async () => {
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    await saveMessageContent(elements.messageInput.value);
   });
 
   // 历史记录选择
@@ -323,8 +388,12 @@ function savePlatformStates() {
  * 发送消息逻辑
  */
 async function startSending() {
-  // 先触发一次 input 事件以确保最新的输入被保存
-  elements.messageInput.dispatchEvent(new Event("input"));
+  // 确保最新的输入被保存
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
+  await saveMessageContent(elements.messageInput.value);
 
   const originalMessage = elements.messageInput.value.trim();
   if (!originalMessage) {
