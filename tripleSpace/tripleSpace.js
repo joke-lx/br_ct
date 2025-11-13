@@ -54,15 +54,28 @@ function createPopupInput() {
     const header = document.createElement("div");
     header.className = "popup-header";
 
-    const modeToggle = document.createElement("button");
-    modeToggle.textContent = currentMode === "message" ? "记录模式" : "消息模式";
-    modeToggle.className = "mode-toggle-btn";
-    modeToggle.title = currentMode === "message" ? "切换到记录模式" : "切换到消息模式";
-    
+    // 创建模式显示容器
+    const modeDisplay = document.createElement("div");
+    modeDisplay.className = "mode-display";
+
+    // 当前模式标签
+    const currentModeLabel = document.createElement("span");
+    currentModeLabel.className = "current-mode-label";
+    currentModeLabel.textContent = "当前模式：";
+
+    // 模式状态指示器
     const modeStatus = document.createElement("span");
     modeStatus.className = `status-indicator ${currentMode === "message" ? "status-message" : "status-record"}`;
     modeStatus.textContent = currentMode === "message" ? "消息" : "记录";
-    modeToggle.appendChild(modeStatus);
+
+    modeDisplay.appendChild(currentModeLabel);
+    modeDisplay.appendChild(modeStatus);
+
+    // 模式切换按钮
+    const modeToggle = document.createElement("button");
+    modeToggle.innerHTML = "🔄";
+    modeToggle.className = "mode-toggle-btn";
+    modeToggle.title = currentMode === "message" ? "切换到记录模式" : "切换到消息模式";
     
     const headerButtons = document.createElement("div");
     headerButtons.className = "header-buttons";
@@ -77,22 +90,23 @@ function createPopupInput() {
     closeBtn.className = "close-btn";
     closeBtn.title = "关闭窗口";
     
+    headerButtons.appendChild(modeToggle);
     headerButtons.appendChild(pinBtn);
     headerButtons.appendChild(closeBtn);
-    
-    header.appendChild(modeToggle);
+
+    header.appendChild(modeDisplay);
     header.appendChild(headerButtons);
     popup.appendChild(header);
 
     // 输入区
     const input = document.createElement("input");
     input.type = "text";
-    input.placeholder = "输入内容...";
+    input.placeholder = currentMode === "message" ? "输入要发送的消息..." : "输入要记录的内容...";
     popup.appendChild(input);
 
-    // 发送按钮
+    // 发送/记录按钮
     const sendBtn = document.createElement("button");
-    sendBtn.textContent = "发送";
+    sendBtn.textContent = currentMode === "message" ? "发送" : "记录";
     sendBtn.className = "send-btn";
     popup.appendChild(sendBtn);
 
@@ -280,15 +294,22 @@ function createPopupInput() {
     modeToggle.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
+        // 切换模式
         currentMode = currentMode === "message" ? "record" : "message";
-        modeToggle.textContent = currentMode === "message" ? "记录模式" : "消息模式";
+
+        // 更新按钮提示
         modeToggle.title = currentMode === "message" ? "切换到记录模式" : "切换到消息模式";
-        
+
         // 更新状态指示器
-        const statusIndicator = modeToggle.querySelector('.status-indicator');
-        statusIndicator.textContent = currentMode === "message" ? "消息" : "记录";
-        statusIndicator.className = `status-indicator ${currentMode === "message" ? "status-message" : "status-record"}`;
+        modeStatus.textContent = currentMode === "message" ? "消息" : "记录";
+        modeStatus.className = `status-indicator ${currentMode === "message" ? "status-message" : "status-record"}`;
+
+        // 更新输入框占位符
+        input.placeholder = currentMode === "message" ? "输入要发送的消息..." : "输入要记录的内容...";
+
+        // 更新发送按钮文本
+        sendBtn.textContent = currentMode === "message" ? "发送" : "记录";
     });
 
     // 固定按钮功能
