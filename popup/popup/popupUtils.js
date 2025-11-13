@@ -5,7 +5,7 @@ const HISTORY_KEY = "messageHistory";
 const OPTIMIZER_KEY = "selectedOptimizer";
 const MAX_HISTORY = 5;
 
-// DOM 元素缓存
+// DOM 元素缓存 , 先获得dom 然后绑定关系
 let elements = {};
 
 // 保存相关变量
@@ -466,13 +466,12 @@ async function startSending() {
 }
 
 export {
-  HISTORY_KEY,
-  OPTIMIZER_KEY,
   initializePopup,
   setupEventListeners,
   loadStoredData,
-  saveMessageContent,
-  startSending,
-  copyToClipboard,
-  showTempMessage,
 };
+// import {
+//   initializePopup,
+//   setupEventListeners,
+//   loadStoredData,
+// } from "./popupUtils.js";
