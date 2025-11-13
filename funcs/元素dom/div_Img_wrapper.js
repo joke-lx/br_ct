@@ -27,10 +27,11 @@ class ResourcePicker {
         const overlay = document.createElement("div");
         Object.assign(overlay.style, {
             position: "absolute",
-            border: "2px solid red",
-            background: "rgba(255,0,0,0.1)",
+            border: "2px solid #6c757d",
+            background: "rgba(108, 117, 125, 0.2)",
             pointerEvents: "none",
-            zIndex: "999999"
+            zIndex: "999999",
+            transition: "all 0.15s ease-in-out"
         });
         document.body.appendChild(overlay);
         return overlay;
@@ -40,13 +41,16 @@ class ResourcePicker {
         const tooltip = document.createElement("div");
         Object.assign(tooltip.style, {
             position: "fixed",
-            background: "black",
-            color: "white",
+            background: "#212529",
+            color: "#f8f9fa",
             fontSize: "12px",
-            padding: "2px 6px",
-            borderRadius: "3px",
+            padding: "6px 10px",
+            borderRadius: "6px",
             zIndex: "1000000",
-            pointerEvents: "none"
+            pointerEvents: "none",
+            fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
+            fontWeight: "500",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)"
         });
         document.body.appendChild(tooltip);
         return tooltip;
@@ -58,17 +62,21 @@ class ResourcePicker {
             position: "fixed",
             top: "10px",
             right: "10px",
-            width: "300px",
-            maxHeight: "90%",
+            width: "320px",
+            maxHeight: "90vh",
             overflowY: "auto",
-            background: "rgba(255, 255, 215, 0.95)",
-            border: "1px solid #ccc",
-            padding: "10px",
+            background: "#f8f9fa",
+            border: "1px solid #dee2e6",
+            borderRadius: "8px",
+            padding: "16px",
             zIndex: "1000001",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            fontFamily: "sans-serif",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
+            fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
+            fontSize: "14px",
+            color: "#212529",
             display: "block",
-            userSelect: "text"
+            userSelect: "text",
+            lineHeight: "1.5"
         });
         document.body.appendChild(container);
         return container;
@@ -223,33 +231,41 @@ class ResourcePicker {
      * 生成资源列表的 HTML 并更新容器 (预览模式)
      */
     _createResourceListHTML(resources) {
-        let html = '<h2 style="font-size: 16px; margin: 0 0 10px 0;">资源嗅探结果</h2>';
+        let html = '<h2 style="font-size: 18px; font-weight: 600; margin: 0 0 16px 0; color: #212529;">资源嗅探结果</h2>';
 
         const buttonText = this.isLocked ? "✅ 已锁定 (点击解锁)" : "🖱️ 实时预览 (点击锁定)";
-        const buttonStyle = this.isLocked ? "background: #4CAF50; color: white;" : "background: #f0f0f0;";
-        html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; ${buttonStyle}">${buttonText}</button>`;
-        html += `<button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>`;
-
+        const buttonStyle = this.isLocked ?
+            "background: #6c757d; color: #f8f9fa; border-color: #6c757d;" :
+            "background: #f8f9fa; color: #212529; border-color: #ced4da;";
+        html += `<button id="toggle-resource-picker" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease; ${buttonStyle}">${buttonText}</button>`;
+        html += `<button id="close-all-picker" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #dc3545; border-radius: 6px; cursor: pointer; background: #dc3545; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">完全关闭</button>`;
 
         if (this._hasNoResources(resources) && this.currentElement) {
-            html += `<h3 style="font-size: 14px; margin: 10px 0; color: #cc3300;">未检测到可下载资源。</h3>`;
-            html += `<p style="font-size: 12px; color: #666;">点击锁定后将显示该元素的**格式化原始 HTML 结构**。</p>`;
+            html += `<div style="background: #e9ecef; border-radius: 6px; padding: 12px; margin: 12px 0;">
+                <h3 style="font-size: 14px; margin: 0 0 8px 0; color: #495057; font-weight: 600;">未检测到可下载资源</h3>
+                <p style="font-size: 13px; margin: 0; color: #6c757d; line-height: 1.4;">点击锁定后将显示该元素的<strong>格式化原始 HTML 结构</strong></p>
+            </div>`;
         } else {
             const generateList = (title, items, limit) => {
-                let listHtml = `<h3 style="font-size: 14px; margin: 5px 0;">${title} (${items.length})</h3>`;
-                listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
+                let listHtml = `<div style="margin: 16px 0;">
+                    <h3 style="font-size: 15px; margin: 0 0 8px 0; color: #495057; font-weight: 600; border-bottom: 1px solid #e9ecef; padding-bottom: 4px;">${title} (${items.length})</h3>
+                    <ul style="list-style: none; padding: 0; margin: 0;">`;
                 if (items.length === 0) {
-                    listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
+                    listHtml += '<li style="color: #6c757d; font-size: 13px; padding: 4px 0; font-style: italic;">未找到资源</li>';
                 } else {
                     items.slice(0, limit).forEach(url => {
                         const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
-                        listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none;">${displayUrl}</a></li>`;
+                        listHtml += `<li style="font-size: 13px; margin-bottom: 4px; padding: 4px 0; border-bottom: 1px solid #f8f9fa;">
+                            <a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none; word-break: break-all; transition: color 0.2s ease;"
+                               onmouseover="this.style.color='#0056b3'; this.style.textDecoration='underline';"
+                               onmouseout="this.style.color='#007bff'; this.style.textDecoration='none';">${displayUrl}</a>
+                        </li>`;
                     });
                     if (items.length > limit) {
-                        listHtml += `<li style="font-size: 12px; color: #999;">... 还有 ${items.length - limit} 个未显示。</li>`;
+                        listHtml += `<li style="font-size: 13px; color: #6c757d; padding: 4px 0; font-style: italic;">... 还有 ${items.length - limit} 个未显示</li>`;
                     }
                 }
-                listHtml += '</ul>';
+                listHtml += '</ul></div>';
                 return listHtml;
             };
 
@@ -345,43 +361,105 @@ _generateSelectors(element) {
 }
 
 _bindPathButtonEvent(element) {
-  // 首先创建并插入样式
-
-
   const pathBtn = document.getElementById('get-paths-btn');
   if (pathBtn) {
     pathBtn.onclick = () => {
       const paths = this._generateSelectors(element);
-      // 使用样式类代替内联样式
-      let html = "<h3 class='paths-title'>多种路径</h3>";
-      html += "<ul class='paths-list'>";
-      
+
+      // 创建路径显示区域的HTML
+      let html = `
+        <div style="margin-top: 16px; border-top: 1px solid #e9ecef; padding-top: 16px;">
+          <h3 style="font-size: 15px; margin: 0 0 12px 0; color: #495057; font-weight: 600; border-bottom: 1px solid #e9ecef; padding-bottom: 6px;">多种选择器路径</h3>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+      `;
+
       for (const [key, value] of Object.entries(paths)) {
         const escapedKey = this._escapeHtml(key);
         const escapedValue = this._escapeHtml(value);
-        
-        // 使用样式类并移除内联样式
-        html += `<li>
-                  <strong>${escapedKey}:</strong> 
-                  <input type="text" class="path-input" value="${escapedValue}" readonly />
-                  <button class="copy-path-btn" data-value="${escapedValue}">复制</button>
-                 </li>`;
+
+        // 根据不同类型显示不同的标签颜色
+        let labelColor = '#6c757d';
+        let labelText = escapedKey.toUpperCase();
+
+        if (escapedKey === 'css') {
+          labelColor = '#007bff';
+          labelText = 'CSS';
+        } else if (escapedKey === 'jsPath') {
+          labelColor = '#28a745';
+          labelText = 'JS';
+        } else if (escapedKey === 'xpath') {
+          labelColor = '#fd7e14';
+          labelText = 'XPath';
+        } else if (escapedKey === 'fullXPath') {
+          labelColor = '#6f42c1';
+          labelText = 'Full XPath';
+        }
+
+        html += `
+          <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid ${labelColor};">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="background: ${labelColor}; color: #f8f9fa; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.5px;">${labelText}</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: stretch;">
+              <input
+                type="text"
+                value="${escapedValue}"
+                readonly
+                style="flex: 1; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; background: #ffffff; color: #495057; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 11px; line-height: 1.4; outline: none; cursor: text;"
+              />
+              <button
+                class="copy-path-btn"
+                data-value="${escapedValue}"
+                style="padding: 8px 12px; border: 1px solid #007bff; border-radius: 4px; background: #007bff; color: #f8f9fa; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; min-width: 60px;"
+                onmouseover="this.style.background='#0056b3'; this.style.borderColor='#0056b3';"
+                onmouseout="this.style.background='#007bff'; this.style.borderColor='#007bff';"
+              >复制</button>
+            </div>
+          </div>
+        `;
       }
-      
-      html += "</ul>";
+
+      html += `
+          </div>
+        </div>
+      `;
+
       this.container.insertAdjacentHTML("beforeend", html);
 
-      // 修改复制按钮的样式切换方式
+      // 绑定复制按钮事件
       this.container.querySelectorAll(".copy-path-btn").forEach(btn => {
         btn.onclick = () => {
           const value = btn.getAttribute("data-value");
           navigator.clipboard.writeText(value).then(() => {
-            btn.innerText = "已复制";
-            btn.classList.add('copied'); // 使用类切换样式
+            // 复制成功的视觉反馈
+            const originalText = btn.innerText;
+            const originalBg = btn.style.background;
+            const originalBorder = btn.style.borderColor;
+
+            btn.innerText = "✓ 已复制";
+            btn.style.background = '#28a745';
+            btn.style.borderColor = '#28a745';
+
             setTimeout(() => {
-              btn.innerText = "复制";
-              btn.classList.remove('copied');
-            }, 1200);
+              btn.innerText = originalText;
+              btn.style.background = originalBg;
+              btn.style.borderColor = originalBorder;
+            }, 1500);
+          }).catch(err => {
+            // 复制失败的视觉反馈
+            const originalText = btn.innerText;
+            const originalBg = btn.style.background;
+            const originalBorder = btn.style.borderColor;
+
+            btn.innerText = "✗ 复制失败";
+            btn.style.background = '#dc3545';
+            btn.style.borderColor = '#dc3545';
+
+            setTimeout(() => {
+              btn.innerText = originalText;
+              btn.style.background = originalBg;
+              btn.style.borderColor = originalBorder;
+            }, 1500);
           });
         };
       });
@@ -413,54 +491,37 @@ _escapeHtml(str) {
  _createFullResourceList(resources, tagName, element) {
     // 初始化 HTML 折叠状态（默认折叠）
     this.htmlCollapsed = true;
-    let html = `<h2 style="font-size: 16px; margin: 0 0 10px 0;">已锁定元素 <${tagName}> 的资源</h2>`;
+    let html = `<h2 style="font-size: 18px; font-weight: 600; margin: 0 0 16px 0; color: #212529;">已锁定元素 &lt;${tagName}&gt; 的资源</h2>`;
 
-    // 锁定/关闭按钮
-    html += `<button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #4CAF50; color: white;">✅ 已锁定 (点击解锁)</button>`;
-    html += `<button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>`;
-    html += `<button id="get-paths-btn" style="width:100%;padding:5px;margin-bottom:10px;
-              border:1px solid #ccc;cursor:pointer;background:#17a2b8;color:white;">
-              获得多种可能路径</button>`;
+    // 操作按钮组
+    html += `<div style="margin-bottom: 16px;">`;
+    html += `<button id="toggle-resource-picker" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #6c757d; border-radius: 6px; cursor: pointer; background: #6c757d; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">✅ 已锁定 (点击解锁)</button>`;
+    html += `<button id="close-all-picker" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #dc3545; border-radius: 6px; cursor: pointer; background: #dc3545; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">完全关闭</button>`;
+    html += `<button id="get-paths-btn" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #17a2b8; border-radius: 6px; cursor: pointer; background: #17a2b8; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">获得多种可能路径</button>`;
+    html += `</div>`;
 
-    // 检查是否所有资源都为 0（显示 HTML 结构，新增可折叠按钮）
-    if (this._hasNoResources(resources)) {
-        const formattedHtml = this._formatHTML(element.outerHTML);
-        // 新增可折叠按钮 + HTML 容器（默认隐藏内容）
-        html += `
-            <div class="html-collapse-container" style="margin-top: 10px;">
-                <button id="toggle-html-collapse" style="width: 100%; padding: 5px; margin-bottom: 5px; border: 1px solid #ccc; cursor: pointer; background: #e9ecef; color: #495057;">
-                    🔽 展开 HTML 结构 (共 ${formattedHtml.split('\n').length} 行)
-                </button>
-                <pre id="${this.htmlId}" style="white-space: pre-wrap; word-wrap: break-word; font-size: 10px; padding: 5px; border: 1px solid #ddd; background: #fff; max-height: 400px; overflow: auto; text-align: left; display: none;"></pre>
-            </div>
-        `;
-        
-        this.container.innerHTML = html;
-        
-        // 插入 HTML 内容（纯文本避免渲染）
-        const preElement = document.getElementById(this.htmlId);
-        if (preElement) {
-            preElement.textContent = formattedHtml;
-        }
-
-        // 绑定 HTML 折叠按钮事件
-        this._bindHtmlCollapseEvent();
-    } else {
+    // 总是显示资源列表（如果有资源的话）
+    if (!this._hasNoResources(resources)) {
         const generateFullList = (title, items) => {
-            let listHtml = `<h3 style="font-size: 14px; margin: 15px 0 5px 0;">${title} (${items.length})</h3>`;
-            listHtml += `<ul style="list-style: none; padding: 0; margin: 0;">`;
+            let listHtml = `<div style="margin: 16px 0;">
+                <h3 style="font-size: 15px; margin: 0 0 12px 0; color: #495057; font-weight: 600; border-bottom: 1px solid #e9ecef; padding-bottom: 6px;">${title} (${items.length})</h3>
+                <ul style="list-style: none; padding: 0; margin: 0;">`;
             if (items.length === 0) {
-                listHtml += '<li style="color: #666; font-size: 12px;">未找到资源。</li>';
+                listHtml += '<li style="color: #6c757d; font-size: 13px; padding: 6px 0; font-style: italic;">未找到资源</li>';
             } else {
                 items.forEach(url => {
                     const displayUrl = url.startsWith('[') ? url : (url.substring(url.lastIndexOf('/') + 1) || new URL(url).hostname);
-                    listHtml += `<li style="font-size: 12px; margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden;"><a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none; word-break: break-all;">${displayUrl}</a></li>`;
+                    listHtml += `<li style="font-size: 13px; margin-bottom: 6px; padding: 8px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #007bff;">
+                        <a href="${url.startsWith('[') ? '#' : url}" target="_blank" title="${url}" style="color: #007bff; text-decoration: none; word-break: break-all; transition: color 0.2s ease; font-weight: 500;"
+                           onmouseover="this.style.color='#0056b3'; this.style.textDecoration='underline';"
+                           onmouseout="this.style.color='#007bff'; this.style.textDecoration='none';">${displayUrl}</a>
+                    </li>`;
                 });
                 if (title.includes('图片')) {
-                    listHtml += '<p style="font-size: 11px; margin-top: 5px;">(请右键点击链接 -> 另存为)</p>';
+                    listHtml += '<p style="font-size: 12px; margin-top: 8px; color: #6c757d; font-style: italic;">💡 提示：请右键点击链接 → 另存为</p>';
                 }
             }
-            listHtml += '</ul>';
+            listHtml += '</ul></div>';
             return listHtml;
         };
 
@@ -468,10 +529,29 @@ _escapeHtml(str) {
         html += generateFullList('媒体文件 (VIDEO, AUDIO)', resources.media);
         html += generateFullList('其他链接 (A HREF)', resources.links);
         html += generateFullList('其他可下载资源 (LINK)', resources.other);
-        
-        this.container.innerHTML = html;
     }
 
+    // HTML 结构区域（始终显示）
+    const formattedHtml = this._formatHTML(element.outerHTML);
+    html += `
+        <div style="margin: 20px 0 0 0; border-top: 1px solid #e9ecef; padding-top: 16px;">
+            <button id="toggle-html-collapse" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #6c757d; border-radius: 6px; cursor: pointer; background: #f8f9fa; color: #495057; font-size: 14px; font-weight: 500; transition: all 0.2s ease; text-align: left;">
+                🔽 展开 HTML 结构 (共 ${formattedHtml.split('\n').length} 行)
+            </button>
+            <pre id="${this.htmlId}" style="white-space: pre-wrap; word-wrap: break-word; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 11px; padding: 12px; border: 1px solid #e9ecef; border-radius: 6px; background: #ffffff; max-height: 400px; overflow: auto; color: #495057; line-height: 1.4; display: none;"></pre>
+        </div>
+    `;
+
+    this.container.innerHTML = html;
+
+    // 插入 HTML 内容（纯文本避免渲染）
+    const preElement = document.getElementById(this.htmlId);
+    if (preElement) {
+        preElement.textContent = formattedHtml;
+    }
+
+    // 绑定事件
+    this._bindHtmlCollapseEvent();
     this._bindButtonEvents();
     this._bindPathButtonEvent(element);
 }
@@ -487,14 +567,20 @@ _bindHtmlCollapseEvent() {
     // 折叠/展开逻辑
     collapseBtn.onclick = () => {
         if (this.htmlCollapsed) {
-            // 展开：显示 HTML 内容 + 切换按钮文本
+            // 展开：显示 HTML 内容 + 切换按钮样式
             htmlContainer.style.display = 'block';
             collapseBtn.innerHTML = '🔼 折叠 HTML 结构 (共 ' + htmlContainer.textContent.split('\n').length + ' 行)';
+            collapseBtn.style.background = '#6c757d';
+            collapseBtn.style.color = '#f8f9fa';
+            collapseBtn.style.borderColor = '#6c757d';
             this.htmlCollapsed = false;
         } else {
-            // 折叠：隐藏 HTML 内容 + 切换按钮文本
+            // 折叠：隐藏 HTML 内容 + 切换按钮样式
             htmlContainer.style.display = 'none';
             collapseBtn.innerHTML = '🔽 展开 HTML 结构 (共 ' + htmlContainer.textContent.split('\n').length + ' 行)';
+            collapseBtn.style.background = '#f8f9fa';
+            collapseBtn.style.color = '#495057';
+            collapseBtn.style.borderColor = '#6c757d';
             this.htmlCollapsed = true;
         }
     };
@@ -542,9 +628,9 @@ _bindHtmlCollapseEvent() {
         this.overlay.style.left = rect.left + window.scrollX + "px";
         this.overlay.style.width = rect.width + "px";
         this.overlay.style.height = rect.height + "px";
-        this.overlay.style.border = "2px solid red";
-        this.overlay.style.background = "rgba(255,0,0,0.1)";
-        this.tooltip.style.top = rect.top - 24 + "px";
+        this.overlay.style.border = "2px solid #6c757d";
+        this.overlay.style.background = "rgba(108, 117, 125, 0.2)";
+        this.tooltip.style.top = rect.top - 30 + "px";
         this.tooltip.style.left = rect.left + "px";
         this.tooltip.innerText = `预览 <${el.tagName.toLowerCase()}>`;
 
@@ -570,8 +656,8 @@ _bindHtmlCollapseEvent() {
             document.removeEventListener("mousemove", this._onMove, true);
 
             // 切换到锁定样式
-            this.overlay.style.border = "4px solid blue";
-            this.overlay.style.background = "rgba(0,0,255,0.15)";
+            this.overlay.style.border = "3px solid #495057";
+            this.overlay.style.background = "rgba(73, 80, 87, 0.25)";
             this.tooltip.innerText = `已锁定 <${el.tagName.toLowerCase()}>`;
 
             // 锁定并生成完整列表/HTML
@@ -595,12 +681,12 @@ _bindHtmlCollapseEvent() {
         document.addEventListener("mousemove", this._onMove, true);
         document.addEventListener("click", this._onClick, true);
 
-        this.overlay.style.border = "2px solid red";
-        this.overlay.style.background = "rgba(255,0,0,0.1)";
+        this.overlay.style.border = "2px solid #6c757d";
+        this.overlay.style.background = "rgba(108, 117, 125, 0.2)";
 
         if (!this.currentElement) {
             // 初始启动界面
-            this.container.innerHTML = '<h2>资源嗅探工具</h2><p>将鼠标移动到页面元素上开始实时预览。</p><button id="toggle-resource-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #f0f0f0;">🖱️ 实时预览 (点击锁定)</button><button id="close-all-picker" style="width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; cursor: pointer; background: #dc3545; color: white;">完全关闭</button>';
+            this.container.innerHTML = '<h2 style="font-size: 18px; font-weight: 600; margin: 0 0 16px 0; color: #212529;">资源嗅探工具</h2><p style="color: #6c757d; margin-bottom: 16px; line-height: 1.5;">将鼠标移动到页面元素上开始实时预览。</p><button id="toggle-resource-picker" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 6px; cursor: pointer; background: #f8f9fa; color: #212529; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">🖱️ 实时预览 (点击锁定)</button><button id="close-all-picker" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #dc3545; border-radius: 6px; cursor: pointer; background: #dc3545; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">完全关闭</button>';
             this._bindButtonEvents();
         } else {
             const resources = this._gatherResources(this.currentElement);
