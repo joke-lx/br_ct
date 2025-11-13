@@ -81,7 +81,7 @@ function main(){
                     user-select: none;
                 }
                 #cpt-title { font-size: 16px; font-weight: 600; }
-                #cpt-toggle-btn {
+                #cpt-toggle-btn, #cpt-close-btn {
                     background: none;
                     border: none;
                     color: #f2f2f7;
@@ -93,6 +93,17 @@ function main(){
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                }
+                #cpt-close-btn {
+                    color: #ff453a;
+                    font-weight: bold;
+                    border-radius: 50%;
+                    transition: all 0.2s;
+                }
+                #cpt-close-btn:hover {
+                    background: #ff453a;
+                    color: white;
+                    transform: scale(1.1);
                 }
                 #cpt-body { padding: 16px; overflow-y: auto; }
                 #cpt-controls { display: flex; gap: 8px; margin-bottom: 16px; }
@@ -175,7 +186,10 @@ function main(){
             this.toolEl.innerHTML = `
                 <div id="cpt-header">
                     <span id="cpt-title">🎨 色彩搭配工具</span>
-                    <button id="cpt-toggle-btn">▼</button>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button id="cpt-toggle-btn">▼</button>
+                        <button id="cpt-close-btn">×</button>
+                    </div>
                 </div>
                 <div id="cpt-body">
                     <div id="cpt-controls">
@@ -194,6 +208,7 @@ function main(){
             this.headerEl = this.toolEl.querySelector('#cpt-header');
             this.bodyEl = this.toolEl.querySelector('#cpt-body');
             this.toggleBtn = this.toolEl.querySelector('#cpt-toggle-btn');
+            this.closeBtn = this.toolEl.querySelector('#cpt-close-btn');
             this.inputEl = this.toolEl.querySelector('#cpt-input');
             this.addBtn = this.toolEl.querySelector('#cpt-add-btn');
             this.exportBtn = this.toolEl.querySelector('#cpt-export-btn');
@@ -325,6 +340,10 @@ function main(){
                 this.toggleBtn.textContent = this.toolEl.classList.contains('collapsed') ? '▶' : '▼';
             });
 
+            this.closeBtn.addEventListener('click', () => {
+                this.cleanup();
+            });
+
             this.headerEl.addEventListener('mousedown', e => this.dragStart(e));
             document.addEventListener('mousemove', e => this.drag(e));
             document.addEventListener('mouseup', () => this.dragEnd());
@@ -394,6 +413,35 @@ function main(){
                 g: parseInt(result[2], 16),
                 b: parseInt(result[3], 16)
             } : null;
+        }
+
+        // --- 清理功能 ---
+        cleanup() {
+            // 移除工具元素
+            if (this.toolEl && this.toolEl.parentNode) {
+                this.toolEl.parentNode.removeChild(this.toolEl);
+            }
+
+            // 移除注入的样式表
+            const styleSheet = document.getElementById('color-palette-tool-styles');
+            if (styleSheet && styleSheet.parentNode) {
+                styleSheet.parentNode.removeChild(styleSheet);
+            }
+
+            // 清理对象引用
+            this.toolEl = null;
+            this.headerEl = null;
+            this.bodyEl = null;
+            this.toggleBtn = null;
+            this.closeBtn = null;
+            this.inputEl = null;
+            this.addBtn = null;
+            this.exportBtn = null;
+            this.importBtn = null;
+            this.colorsContainer = null;
+            this.colors = [];
+
+            console.log('%c🎨 色彩搭配工具已关闭', 'color: #ff453a; font-weight: bold; font-size: 14px;');
         }
     }
 
