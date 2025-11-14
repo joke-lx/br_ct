@@ -30,7 +30,7 @@ function findElementBySelectors(selectors) {
   return null;
 }
 
-// 等待元素出现，支持重试机制，默认 3 秒超时
+// 等待元素出现，支持重试机制，默认 5 秒超时
 async function waitForElement(selectors, timeout = 5000, retryInterval = 100) {
   const start = Date.now();
   let attemptCount = 0;
@@ -96,40 +96,79 @@ function triggerClick(element) {
 }
 
 // ==========================================================
-//                     通义千问 输入框 & 按钮选择器
+//          通义千问 输入框 & 按钮选择器 (已修复)
 // ==========================================================
 const inputSelectors = [
-  // 通义千问 textarea
-  { type: "css", value: "textarea.ant-input.css-12jjqpr.ant-input-outlined.textarea-iXt_xk.fade-in-WLNZxg.mobile" },
-  { 
-    type: "xpath", 
-    value: '//*[@id="tongyi-content-wrapper"]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[1]/div[1]/div[1]/textarea[1]' 
+  // ==========================================================
+  // 👇 【核心修复】优先使用更稳定、更通用的选择器
+  // ==========================================================
+  // 1. 最佳选择：在主容器内查找 textarea。这个选择器不依赖动态class和具体层级，最稳定。
+  {
+    type: "css",
+    value: "#tongyi-content-wrapper textarea",
   },
-  { 
-    type: "css", 
-    value: "#tongyi-content-wrapper > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > textarea:nth-of-type(1)" 
+  // 2. 备选方案：使用 Ant Design 的固定 class，也非常稳定。
+  {
+    type: "css",
+    value: "textarea.ant-input",
   },
-  { 
-    type: "xpath", 
-    value: '/html[1]/body[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[1]/div[1]/div[1]/textarea[1]' 
-  }
+  // 3. 备选方案：使用你提供的完整CSS路径（包含动态class），作为后备。
+  {
+    type: "css",
+    value:
+      "#tongyi-content-wrapper > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > textarea:nth-of-type(1)",
+  },
+  // 4. 备选方案：对应的完整XPath路径。
+  {
+    type: "xpath",
+    value:
+      '//*[@id="tongyi-content-wrapper"]/div[1]/div[2]/div[1]/div[2]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[1]/textarea[1]',
+  },
+  // 5. 绝对路径XPath（最不推荐，但作为最后保障）。
+  {
+    type: "xpath",
+    value:
+      "/html[1]/body[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/div[1]/div[2]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[1]/textarea[1]",
+  },
+
+  // ==========================================================
+  // 👇 旧的选择器（保留，但优先级最低）
+  // ==========================================================
+  {
+    type: "xpath",
+    value:
+      '//*[@id="tongyi-content-wrapper"]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[1]/div[1]/div[1]/textarea[1]',
+  },
+  {
+    type: "css",
+    value:
+      "#tongyi-content-wrapper > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > textarea:nth-of-type(1)",
+  },
+  {
+    type: "xpath",
+    value:
+      "/html[1]/body[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[1]/div[1]/div[1]/textarea[1]",
+  },
 ];
 
 const buttonSelectors = [
   // 通义千问 发送按钮
   { type: "css", value: "div.operateBtn-JsB9e2" },
-  { 
-    type: "xpath", 
-    value: '//*[@id="tongyi-content-wrapper"]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[2]/div[3]/div[2]' 
+  {
+    type: "xpath",
+    value:
+      '//*[@id="tongyi-content-wrapper"]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[2]/div[3]/div[2]',
   },
-  { 
-    type: "css", 
-    value: "#tongyi-content-wrapper > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(3) > div:nth-of-type(2)" 
+  {
+    type: "css",
+    value:
+      "#tongyi-content-wrapper > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(3) > div:nth-of-type(2)",
   },
-  { 
-    type: "xpath", 
-    value: '/html[1]/body[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[2]/div[3]/div[2]' 
-  }
+  {
+    type: "xpath",
+    value:
+      "/html[1]/body[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[2]/div[3]/div[2]",
+  },
 ];
 
 // ==========================================================
@@ -169,7 +208,7 @@ async function sendChatMessage(message) {
     // 2. 使用原生 value setter 设置内容（兼容 React 受控组件）
     const nativeSetter = Object.getOwnPropertyDescriptor(
       window.HTMLTextAreaElement.prototype,
-      'value'
+      "value"
     )?.set;
 
     const finalMessage = message.trim();
@@ -181,8 +220,12 @@ async function sendChatMessage(message) {
     }
 
     // 3. 派发标准 input 和 change 事件
-    inputElement.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
-    inputElement.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
+    inputElement.dispatchEvent(
+      new Event("input", { bubbles: true, cancelable: true })
+    );
+    inputElement.dispatchEvent(
+      new Event("change", { bubbles: true, cancelable: true })
+    );
 
     console.log("✅ 输入内容已成功注入并激活");
 
@@ -255,6 +298,8 @@ if (!window.location.hostname.includes("tongyi")) {
 /**
  * @fileoverview
  * 通义千问聊天机器人内容脚本 - 修复增强版
+ * ✅ 已解决：输入框选择器失效问题
+ * ✅ 方法：引入更稳定、更通用的选择器，并调整优先级
  * ✅ 已解决：输入后聚焦即清空的问题
  * ✅ 方法：先 click + focus 激活组件，再通过原生 value setter + input 事件注入内容
  * ✅ 兼容 React/Ant Design 受控输入框
