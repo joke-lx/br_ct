@@ -5,12 +5,12 @@ const HISTORY_KEY = "messageHistory";
 const OPTIMIZER_KEY = "selectedOptimizer";
 const MAX_HISTORY = 5;
 
-// DOM 元素缓存 , 先获得dom 然后绑定关系
+// DOM 元素缓存
 let elements = {};
 
 // 保存相关变量
 let saveTimeout;
-let lastSavedContent = '';
+let lastSavedContent = "";
 let isSaving = false;
 
 /**
@@ -109,7 +109,7 @@ function initializePopup() {
 }
 
 /**
- * 保存消息内容到本地存储（优化版本）
+ * 保存消息内容到本地存储（使用 local 存储解决配额问题）
  */
 async function saveMessageContent(content) {
   // 避免重复保存相同内容
@@ -132,7 +132,8 @@ async function saveMessageContent(content) {
   isSaving = true;
 
   try {
-    await chrome.storage.sync.set({ lastMessage: content });
+    // 使用 chrome.storage.local 替代 chrome.storage.sync
+    await chrome.storage.local.set({ lastMessage: content });
     lastSavedContent = content;
     console.log("消息内容已保存到本地存储，长度:", content.length);
   } catch (error) {
@@ -143,10 +144,11 @@ async function saveMessageContent(content) {
 }
 
 /**
- * 加载存储的数据
+ * 加载存储的数据（使用 local 存储）
  */
 function loadStoredData() {
-  chrome.storage.sync.get(
+  // 使用 chrome.storage.local 替代 chrome.storage.sync
+  chrome.storage.local.get(
     [
       "lastMessage",
       "platformStates",
@@ -245,8 +247,12 @@ function setupEventListeners() {
 
   // 监听输入框获得焦点事件，确保内容同步
   elements.messageInput.addEventListener("focus", async () => {
-    const result = await chrome.storage.sync.get("lastMessage");
-    if (result.lastMessage && result.lastMessage !== elements.messageInput.value) {
+    // 使用 chrome.storage.local
+    const result = await chrome.storage.local.get("lastMessage");
+    if (
+      result.lastMessage &&
+      result.lastMessage !== elements.messageInput.value
+    ) {
       elements.messageInput.value = result.lastMessage;
       lastSavedContent = result.lastMessage;
     }
@@ -254,7 +260,7 @@ function setupEventListeners() {
 
   // 监听键盘快捷键（Ctrl+S 手动保存）
   elements.messageInput.addEventListener("keydown", async (e) => {
-    if (e.ctrlKey && e.key === 's') {
+    if (e.ctrlKey && e.key === "s") {
       e.preventDefault();
       if (saveTimeout) {
         clearTimeout(saveTimeout);
@@ -284,7 +290,8 @@ function setupEventListeners() {
   // 优化器选择
   elements.promptOptimizerSelect.addEventListener("change", (e) => {
     const value = e.detail.value;
-    chrome.storage.sync.set({ [OPTIMIZER_KEY]: value });
+    // 使用 chrome.storage.local
+    chrome.storage.local.set({ [OPTIMIZER_KEY]: value });
   });
 
   // 平台复选框变化
@@ -354,18 +361,20 @@ function populateHistory(historySelect, history) {
 }
 
 /**
- * 添加消息到历史
+ * 添加消息到历史（使用 local 存储）
  */
 function addToHistory(message) {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(HISTORY_KEY, (result) => {
+    // 使用 chrome.storage.local
+    chrome.storage.local.get(HISTORY_KEY, (result) => {
       let history = result[HISTORY_KEY] || [];
       history = history.filter((item) => item !== message);
       history.unshift(message);
       if (history.length > MAX_HISTORY) {
         history = history.slice(0, MAX_HISTORY);
       }
-      chrome.storage.sync.set({ [HISTORY_KEY]: history }, () => {
+      // 使用 chrome.storage.local
+      chrome.storage.local.set({ [HISTORY_KEY]: history }, () => {
         populateHistory(elements.historySelect, history);
         resolve();
       });
@@ -374,14 +383,15 @@ function addToHistory(message) {
 }
 
 /**
- * 保存平台勾选状态
+ * 保存平台勾选状态（使用 local 存储）
  */
 function savePlatformStates() {
   const checkedStates = {};
   elements.platformCheckboxes.forEach((cb) => {
     checkedStates[cb.dataset.platform] = cb.checked;
   });
-  chrome.storage.sync.set({ platformStates: checkedStates });
+  // 使用 chrome.storage.local
+  chrome.storage.local.set({ platformStates: checkedStates });
 }
 
 /**
@@ -465,13 +475,4 @@ async function startSending() {
   });
 }
 
-export {
-  initializePopup,
-  setupEventListeners,
-  loadStoredData,
-};
-// import {
-//   initializePopup,
-//   setupEventListeners,
-//   loadStoredData,
-// } from "./popupUtils.js";
+export { initializePopup, setupEventListeners, loadStoredData };
