@@ -227,6 +227,11 @@ const PROMPT_TEMPLATES = {
     label: "购物建议",
     template:
       "相关信息: %s 要求： 帮我用户进行最高性价比的购买 有哪些坑 帮我列举一些问题，然后进行一些可直接复制的提问 用户去问商家",
+  },  包装src: {
+    group: "other",
+    label: "包装src",
+    template:
+      "代码: %s 要求: 对静态资源进行统一封装 保证其他逻辑的一致性 保证其他逻辑的一致性\n工具参数含义\n/**\n * 为静态资源添加统一前缀，用于nginx路由\n * @param {string} src - 原始静态资源路径\n * @returns {string} 带前缀的静态资源路径\n */\nexport function getResUrl(url) {\n const imageUrl = import.meta.env.VITE_PUBLIC_PREFIX + url\n return imageUrl;\n}\n在当前vue组件的脚本层进行导入\nimport { getResUrl} from \"@/utils/getResUrl.js\";\n对进行css当中url的重构 在template当中绑定定义css 实现和其他资源访问的一致性,把style放到template当中 \n使用 /* */ 注释掉原本的css url硬编码 \n对所有静态资源都进行封装 ,保证原本的vue组件当中静态资源都被getStaticResourceUrl 所封装\n使用:src进行动态绑定 \n注意: 1. 不要错误修改路由跳转\n2. 不需要其他任何解释 直接输出可以复制使用的完整代码"
   },
   识别器设计模式: {
     group: "custom_design",

@@ -101,6 +101,42 @@ export function processNextAction() {
 }
 
 /**
+ * 导出函数：关闭所有AI平台的标签页
+ */
+export function closeAllAITabs() {
+  chrome.tabs.query({}, (tabs) => {
+    const tabsToClose = [];
+
+    // 遍历所有标签页，找到AI平台的标签页
+    tabs.forEach(tab => {
+      const tabUrl = tab.url;
+      if (tabUrl) {
+        // 检查是否匹配任何AI平台URL
+        for (const platform in platformUrls) {
+          if (tabUrl.includes(platformUrls[platform])) {
+            tabsToClose.push(tab.id);
+            break;
+          }
+        }
+      }
+    });
+
+    if (tabsToClose.length > 0) {
+      console.log(`找到 ${tabsToClose.length} 个AI平台标签页，准备关闭`);
+      chrome.tabs.remove(tabsToClose, () => {
+        if (chrome.runtime.lastError) {
+          console.error("关闭标签页时出错:", chrome.runtime.lastError.message);
+        } else {
+          console.log("成功关闭所有AI平台标签页");
+        }
+      });
+    } else {
+      console.log("未找到AI平台标签页");
+    }
+  });
+}
+
+/**
  * 导出函数：监听标签页更新（用于新创建的 AI 平台标签页）
  */
 export function setupTabUpdateListener() {

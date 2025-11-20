@@ -90,6 +90,7 @@ function initializePopup() {
     ),
     messageInput: document.getElementById("message-input"),
     sendButton: document.getElementById("send-button"),
+    closeTabsButton: document.getElementById("close-tabs-button"),
     selectAllButton: document.getElementById("select-all"),
     historySelect: document.getElementById("history-select"),
     promptOptimizerSelect: document.getElementById("prompt-optimizer-select"),
@@ -313,6 +314,9 @@ function setupEventListeners() {
 
   // 发送按钮
   elements.sendButton.addEventListener("click", startSending);
+
+  // 关闭AI标签页按钮
+  elements.closeTabsButton.addEventListener("click", closeAllAITabs);
 }
 
 /**
@@ -392,6 +396,32 @@ function savePlatformStates() {
   });
   // 使用 chrome.storage.local
   chrome.storage.local.set({ platformStates: checkedStates });
+}
+
+/**
+ * 关闭所有AI标签页
+ */
+function closeAllAITabs() {
+  // 添加禁用样式类
+  elements.closeTabsButton.classList.add('disabled');
+  elements.closeTabsButton.textContent = "关闭中...";
+  elements.closeTabsButton.style.cursor = 'not-allowed';
+
+  chrome.runtime.sendMessage({ action: "closeAllAITabs" }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error("关闭AI标签页时出错:", chrome.runtime.lastError.message);
+      showTempMessage("关闭标签页失败");
+    } else {
+      showTempMessage("正在关闭AI标签页");
+    }
+
+    // 短暂延迟后重置按钮状态
+    setTimeout(() => {
+      elements.closeTabsButton.classList.remove('disabled');
+      elements.closeTabsButton.textContent = "关闭AI标签页";
+      elements.closeTabsButton.style.cursor = 'pointer';
+    }, 1500);
+  });
 }
 
 /**
