@@ -8,7 +8,7 @@ export const platformUrls = {
   claude: 'https://claude.ai',
   doubao: 'https://www.doubao.com/chat/',
   glm: "https://chatglm.cn/main/alltoolsdetail",
-  tongyi:"https://www.tongyi.com/qianwen"
+  tongyi:"https://www.qianwen.com"
 };
 
 /**

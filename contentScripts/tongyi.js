@@ -259,7 +259,7 @@ async function sendChatMessage(message) {
 // ==========================================================
 //                     消息监听 & 环境检查
 // ==========================================================
-if (!window.location.hostname.includes("tongyi")) {
+if (!window.location.hostname.includes("qianwen")) {
   console.warn("当前页面不是通义千问，脚本未激活");
 } else {
   console.log("通义千问内容脚本已加载并激活");
