@@ -106,9 +106,9 @@ body {
 .platform-selector {
   margin-bottom: 20px;
   background: white;
-  padding: 14px;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+
 }
 
 .platform-selector-header {
@@ -123,12 +123,14 @@ body {
   font-weight: 600;
   margin: 0;
   color: var(--text-color);
+    padding-left: 10px;
 }
 
 .header-buttons {
   display: flex;
   gap: 12px;
   align-items: center;
+    padding-right: 10px;
 }
 
 .select-all {
@@ -260,9 +262,9 @@ body {
 
 /* 自定义提示词下拉框 */
 .prompt-optimizer-selector {
-  position: relative;
-  width: 100%;
-  margin-bottom: 14px;
+    position: relative;
+    margin-bottom: 14px;
+    width: 395px;
 }
 
 .custom-select {
