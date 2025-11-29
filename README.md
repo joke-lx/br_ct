@@ -37,4 +37,4 @@ Bro Chat 是一个浏览器扩展，旨在为多个AI平台（包括Yuanbao和Ge
 4. 更新相关文档
 
 ## 许可证
-本项目采用MIT许可证，详情请参阅LICENSE文件。
+本项目采用MIT许可证，详情请参阅LICENSE文件。1
