@@ -26,7 +26,7 @@ const PROMPT_TEMPLATES = {
     group: "custom_design",
     label: "vue模板",
     template:
-      "%s 按照指定格式生成vue代码 <script setup lang = 'ts '></script><template></template><style scoped></style>",
+      "%s 按照指定格式生成vue代码 <script setup lang = 'js '></script><template></template><style scoped></style>",
   },
   文档生成案例: {
     group: "code_gen",

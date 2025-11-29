@@ -116,6 +116,7 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+    padding-top: 20px;
 }
 
 .platform-selector-header h3 {
