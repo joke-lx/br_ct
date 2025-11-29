@@ -280,10 +280,10 @@ body {
 
 .custom-select-options {
   position: absolute;
+  width: 415px;
   top: 100%;
   left: 0;
   right: 0;
-  max-height: 300px;
   overflow-y: auto;
   background: white;
   border: 1px solid var(--border-color);

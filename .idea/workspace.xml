@@ -7,7 +7,6 @@
     <list default="true" id="1f797681-6e21-42bc-94cd-d5f4827fa43b" name="更改" comment="微调样式">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/popup/popup/popup.css" beforeDir="false" afterPath="$PROJECT_DIR$/popup/popup/popup.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/popup/promots/prompts.js" beforeDir="false" afterPath="$PROJECT_DIR$/popup/promots/prompts.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -59,7 +58,7 @@
       <updated>1763200884699</updated>
       <workItem from="1763200885854" duration="7000" />
       <workItem from="1763311715697" duration="10000" />
-      <workItem from="1764388067628" duration="4142000" />
+      <workItem from="1764388067628" duration="4673000" />
     </task>
     <task id="LOCAL-00001" summary="微调样式">
       <option name="closed" value="true" />
@@ -69,7 +68,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764389230197</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="微调样式">
+      <option name="closed" value="true" />
+      <created>1764394140526</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1764394140526</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
