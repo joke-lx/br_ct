@@ -80,6 +80,7 @@ export function processNextAction() {
     }
 
     const currentAction = queue[0];
+    // 获得目的平台 注入
     const targetUrl = platformUrls[currentAction.platform];
 
     // 查询所有标签页，寻找目标平台的标签页
