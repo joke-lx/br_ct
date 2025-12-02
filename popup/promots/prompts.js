@@ -270,7 +270,7 @@ const PROMPT_TEMPLATES = {
   mermain图表: {
     group: "custom_design",
     label: "mermaid图表",
-    template: `帮我生成mermaid图表代码, 你的任务是参考下面的文本 生成相关的mermaid图表文本 :  %s `,
+    template: `帮我生成mermaid图表代码,使用flowchart语法生成清晰的结构图, 你的任务是参考下面的文本 生成相关的mermaid图表文本 :  %s `,
   },
   dot格式: {
     group: "custom_design",
@@ -282,9 +282,9 @@ const PROMPT_TEMPLATES = {
     label: "SQL抽取变量",
     template: `内容:   %s 要求: 生成SQL语句 ,  每个SQL段使用====进行分割 对于查询条件 都是用@xxxxx变量来进行占位使用,减少硬编码,生成规范的sql语句文件 `,
   },
-  数据库设计: {
+  Mysql数据库设计: {
     group: "custom_design",
-    label: "数据库设计",
+    label: "Mysql数据库设计",
     template: `内容: %s  
   要求: 按照用户需要设计数据库，其中在用户的表当中有以下基本规范：  
   建表语句自带drop if exists,如果有抽象类型 优先使用status字段,前期验证原型阶段,减少使用not null的约束字段 
