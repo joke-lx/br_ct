@@ -1,10 +1,32 @@
+// popupUtils.js - 核心popup功能模块
 import { populateOptimizer } from "../promots/promptsUI.js";
-
-// popupUtils.js
-const HISTORY_KEY = "messageHistory";
-const OPTIMIZER_KEY = "selectedOptimizer";
-const PLATFORM_VISIBILITY_KEY = "platformVisibilitySettings";
-const MAX_HISTORY = 5;
+import {
+  STORAGE_KEYS,
+  saveMessageContent,
+  savePlatformStates,
+  saveOptimizerSetting,
+  loadStoredData as loadData,
+  addToHistory
+} from "./modules/storage.js";
+import {
+  loadPlatformVisibilitySettings,
+  applyPlatformVisibilitySettings,
+  getVisiblePlatformCheckboxes,
+  areAllVisiblePlatformsChecked,
+  setupPlatformVisibilityMessageListener
+} from "./modules/platformVisibility.js";
+import {
+  copyToClipboard,
+  showTempMessage,
+  populateHistory as populateHistoryUI,
+  updateSelectAllText as updateSelectAllTextUI,
+  togglePlatformCheckbox,
+  setButtonLoadingState,
+  resetButtonState,
+  focusInputAndSetCursor,
+  validateMessageInput,
+  validatePlatformSelection
+} from "./modules/uiHelpers.js";
 
 // DOM 元素缓存
 let elements = {};
@@ -15,76 +37,42 @@ let lastSavedContent = "";
 let isSaving = false;
 
 /**
- * 复制文本到剪切板
+ * 防抖保存消息内容
  */
-async function copyToClipboard(text) {
+async function debouncedSaveMessage(content) {
+  // 避免重复保存相同内容
+  if (content === lastSavedContent) {
+    return;
+  }
+
+  // 如果正在保存，等待完成
+  if (isSaving) {
+    return new Promise((resolve) => {
+      const checkSaving = setInterval(() => {
+        if (!isSaving) {
+          clearInterval(checkSaving);
+          debouncedSaveMessage(content).then(resolve);
+        }
+      }, 50);
+    });
+  }
+
+  isSaving = true;
+
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch (err) {
-    // 如果现代API失败，使用传统的execCommand方法作为备选
-    try {
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      textArea.style.position = "fixed";
-      textArea.style.left = "-999999px";
-      textArea.style.top = "-999999px";
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      const successful = document.execCommand("copy");
-      document.body.removeChild(textArea);
-      return successful;
-    } catch (fallbackErr) {
-      console.error("复制到剪切板失败:", fallbackErr);
-      return false;
-    }
+    await saveMessageContent(content);
+    lastSavedContent = content;
+  } catch (error) {
+    console.error("保存消息内容失败:", error);
+  } finally {
+    isSaving = false;
   }
-}
-
-/**
- * 显示临时提示信息
- */
-function showTempMessage(message, duration = 2000) {
-  // 创建提示元素
-  let messageEl = document.getElementById("temp-message");
-  if (!messageEl) {
-    messageEl = document.createElement("div");
-    messageEl.id = "temp-message";
-    messageEl.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 6px;
-      z-index: 10000;
-      font-size: 14px;
-      pointer-events: none;
-      transition: opacity 0.3s;
-    `;
-    document.body.appendChild(messageEl);
-  }
-
-  messageEl.textContent = message;
-  messageEl.style.opacity = "1";
-  messageEl.style.display = "block";
-
-  // 自动隐藏
-  setTimeout(() => {
-    messageEl.style.opacity = "0";
-    setTimeout(() => {
-      messageEl.style.display = "none";
-    }, 300);
-  }, duration);
 }
 
 /**
  * 初始化弹窗，获取并缓存 DOM 元素
  */
-function initializePopup() {
+export async function initializePopup() {
   elements = {
     platformCheckboxes: document.querySelectorAll(
       '.platform-icon-option input[type="checkbox"]'
@@ -98,105 +86,58 @@ function initializePopup() {
   };
 
   // 自动聚焦输入框
-  if (elements.messageInput) {
-    setTimeout(() => {
-      elements.messageInput.focus();
-      const len = elements.messageInput.value.length;
-      elements.messageInput.setSelectionRange(len, len);
-    }, 100);
-  }
+  focusInputAndSetCursor(elements.messageInput);
 
   // 初始化优化器下拉框
   populateOptimizer(elements.promptOptimizerSelect);
 
   // 加载并应用平台可见性设置
-  loadPlatformVisibilitySettings();
+  await loadPlatformVisibilitySettings();
 }
 
 /**
- * 保存消息内容到本地存储（使用 local 存储解决配额问题）
+ * 加载存储的数据
  */
-async function saveMessageContent(content) {
-  // 避免重复保存相同内容
-  if (content === lastSavedContent) {
-    return;
-  }
-
-  // 如果正在保存，等待完成
-  if (isSaving) {
-    return new Promise((resolve) => {
-      const checkSaving = setInterval(() => {
-        if (!isSaving) {
-          clearInterval(checkSaving);
-          saveMessageContent(content).then(resolve);
-        }
-      }, 50);
-    });
-  }
-
-  isSaving = true;
-
+export async function loadStoredData() {
   try {
-    // 使用 chrome.storage.local 替代 chrome.storage.sync
-    await chrome.storage.local.set({ lastMessage: content });
-    lastSavedContent = content;
-    console.log("消息内容已保存到本地存储，长度:", content.length);
-  } catch (error) {
-    console.error("保存消息内容失败:", error);
-  } finally {
-    isSaving = false;
-  }
-}
+    const result = await loadData();
 
-/**
- * 加载存储的数据（使用 local 存储）
- */
-function loadStoredData() {
-  // 使用 chrome.storage.local 替代 chrome.storage.sync
-  chrome.storage.local.get(
-    [
-      "lastMessage",
-      "platformStates",
-      HISTORY_KEY,
-      OPTIMIZER_KEY,
-      "lastPromptTemplate",
-    ],
-    (result) => {
-      // 恢复最后输入的消息
-      if (result.lastMessage) {
-        elements.messageInput.value = result.lastMessage;
-        lastSavedContent = result.lastMessage;
-        console.log("已恢复历史输入内容，长度:", result.lastMessage.length);
-      }
+    // 恢复最后输入的消息
+    if (result[STORAGE_KEYS.LAST_MESSAGE]) {
+      elements.messageInput.value = result[STORAGE_KEYS.LAST_MESSAGE];
+      lastSavedContent = result[STORAGE_KEYS.LAST_MESSAGE];
+      console.log("已恢复历史输入内容，长度:", result[STORAGE_KEYS.LAST_MESSAGE].length);
+    }
 
-      // 恢复平台选择状态
-      if (result.platformStates) {
-        restorePlatformStates(result.platformStates);
-      }
+    // 恢复平台选择状态
+    if (result[STORAGE_KEYS.PLATFORM_STATES]) {
+      restorePlatformStates(result[STORAGE_KEYS.PLATFORM_STATES]);
+    }
 
-      // 恢复历史记录
-      if (result[HISTORY_KEY]) {
-        populateHistory(elements.historySelect, result[HISTORY_KEY]);
-      }
+    // 恢复历史记录
+    if (result[STORAGE_KEYS.HISTORY]) {
+      populateHistoryUI(elements.historySelect, result[STORAGE_KEYS.HISTORY]);
+    }
 
-      // 恢复优化器选择
-      if (result[OPTIMIZER_KEY]) {
-        elements.promptOptimizerSelect.value = result[OPTIMIZER_KEY];
-      }
+    // 恢复优化器选择
+    if (result[STORAGE_KEYS.OPTIMIZER]) {
+      elements.promptOptimizerSelect.value = result[STORAGE_KEYS.OPTIMIZER];
+    }
 
-      // 恢复提示词选择
-      if (result.lastPromptTemplate) {
-        const template = PROMPT_TEMPLATES[result.lastPromptTemplate];
-        if (template) {
-          const selectedValue =
-            elements.promptOptimizerSelect.querySelector(".selected-value");
-          selectedValue.textContent = template.label;
-          selectedValue.dataset.value = result.lastPromptTemplate;
-          selectedValue.dataset.template = template.template;
-        }
+    // 恢复提示词选择
+    if (result[STORAGE_KEYS.LAST_PROMPT_TEMPLATE]) {
+      const template = PROMPT_TEMPLATES[result[STORAGE_KEYS.LAST_PROMPT_TEMPLATE]];
+      if (template) {
+        const selectedValue =
+          elements.promptOptimizerSelect.querySelector(".selected-value");
+        selectedValue.textContent = template.label;
+        selectedValue.dataset.value = result[STORAGE_KEYS.LAST_PROMPT_TEMPLATE];
+        selectedValue.dataset.template = template.template;
       }
     }
-  );
+  } catch (error) {
+    console.error("加载存储数据失败:", error);
+  }
 }
 
 /**
@@ -204,34 +145,24 @@ function loadStoredData() {
  */
 function restorePlatformStates(platformStates) {
   elements.platformCheckboxes.forEach((cb) => {
-    const iconWrapper = cb
-      .closest(".platform-icon-option")
-      .querySelector(".icon-wrapper");
-
     if (platformStates.hasOwnProperty(cb.dataset.platform)) {
-      cb.checked = platformStates[cb.dataset.platform];
-      if (iconWrapper) {
-        iconWrapper.classList.toggle("checked", cb.checked);
-      }
+      togglePlatformCheckbox(cb, platformStates[cb.dataset.platform]);
     }
   });
-  updateSelectAllText();
+  updateSelectAllButton();
 }
 
 /**
  * 设置所有事件监听器
  */
-function setupEventListeners() {
+export function setupEventListeners() {
   // 监听来自options页面的平台可见性更新消息
-  chrome.runtime.onMessage.addListener((request) => {
-    if (request.action === 'platformVisibilityUpdated') {
-      applyPlatformVisibilitySettings(request.settings);
-      showTempMessage('平台显示设置已更新');
-    }
+  setupPlatformVisibilityMessageListener((settings) => {
+    showTempMessage('平台显示设置已更新');
+    updateSelectAllButton();
   });
 
-  // 原有的事件监听器
-  // 输入框内容变化时实时保存（优化防抖机制）
+  // 输入框内容变化时实时保存
   elements.messageInput.addEventListener("input", () => {
     const currentContent = elements.messageInput.value;
 
@@ -243,9 +174,9 @@ function setupEventListeners() {
     // 根据文本长度动态调整保存延迟
     const delay = currentContent.length > 1000 ? 300 : 500;
 
-    // 设置新的定时器，优化防抖延迟
+    // 设置新的定时器
     saveTimeout = setTimeout(async () => {
-      await saveMessageContent(currentContent);
+      await debouncedSaveMessage(currentContent);
     }, delay);
   });
 
@@ -256,19 +187,22 @@ function setupEventListeners() {
       clearTimeout(saveTimeout);
       saveTimeout = null;
     }
-    await saveMessageContent(elements.messageInput.value);
+    await debouncedSaveMessage(elements.messageInput.value);
   });
 
   // 监听输入框获得焦点事件，确保内容同步
   elements.messageInput.addEventListener("focus", async () => {
-    // 使用 chrome.storage.local
-    const result = await chrome.storage.local.get("lastMessage");
-    if (
-      result.lastMessage &&
-      result.lastMessage !== elements.messageInput.value
-    ) {
-      elements.messageInput.value = result.lastMessage;
-      lastSavedContent = result.lastMessage;
+    try {
+      const result = await loadData(STORAGE_KEYS.LAST_MESSAGE);
+      if (
+        result[STORAGE_KEYS.LAST_MESSAGE] &&
+        result[STORAGE_KEYS.LAST_MESSAGE] !== elements.messageInput.value
+      ) {
+        elements.messageInput.value = result[STORAGE_KEYS.LAST_MESSAGE];
+        lastSavedContent = result[STORAGE_KEYS.LAST_MESSAGE];
+      }
+    } catch (error) {
+      console.error("同步消息内容失败:", error);
     }
   });
 
@@ -280,7 +214,7 @@ function setupEventListeners() {
         clearTimeout(saveTimeout);
         saveTimeout = null;
       }
-      await saveMessageContent(elements.messageInput.value);
+      await debouncedSaveMessage(elements.messageInput.value);
       showTempMessage("内容已手动保存");
     }
   });
@@ -290,7 +224,7 @@ function setupEventListeners() {
     if (saveTimeout) {
       clearTimeout(saveTimeout);
     }
-    await saveMessageContent(elements.messageInput.value);
+    await debouncedSaveMessage(elements.messageInput.value);
   });
 
   // 历史记录选择
@@ -302,23 +236,25 @@ function setupEventListeners() {
   });
 
   // 优化器选择
-  elements.promptOptimizerSelect.addEventListener("change", (e) => {
+  elements.promptOptimizerSelect.addEventListener("change", async (e) => {
     const value = e.detail.value;
-    // 使用 chrome.storage.local
-    chrome.storage.local.set({ [OPTIMIZER_KEY]: value });
+    try {
+      await saveOptimizerSetting(value);
+    } catch (error) {
+      console.error("保存优化器设置失败:", error);
+    }
   });
 
   // 平台复选框变化
   elements.platformCheckboxes.forEach((cb) => {
-    cb.addEventListener("change", () => {
-      const iconWrapper = cb
-        .closest(".platform-icon-option")
-        .querySelector(".icon-wrapper");
-      if (iconWrapper) {
-        iconWrapper.classList.toggle("checked", cb.checked);
+    cb.addEventListener("change", async () => {
+      togglePlatformCheckbox(cb, cb.checked);
+      try {
+        await savePlatformStates(elements.platformCheckboxes);
+      } catch (error) {
+        console.error("保存平台状态失败:", error);
       }
-      savePlatformStates();
-      updateSelectAllText();
+      updateSelectAllButton();
     });
   });
 
@@ -333,162 +269,44 @@ function setupEventListeners() {
 }
 
 /**
- * 更新全选按钮文本
+ * 更新全选按钮
  */
-function updateSelectAllText() {
-  // 只考虑可见的平台复选框
-  const visibleCheckboxes = Array.from(elements.platformCheckboxes).filter(
-    (checkbox) => {
-      const option = checkbox.closest('.platform-icon-option');
-      return option && option.style.display !== 'none';
-    }
-  );
-
-  if (visibleCheckboxes.length === 0) {
-    elements.selectAllButton.textContent = "全选";
-    return;
-  }
-
-  const allChecked = visibleCheckboxes.every((checkbox) => checkbox.checked);
-  elements.selectAllButton.textContent = allChecked ? "取消全选" : "全选";
+function updateSelectAllButton() {
+  const buttonText = updateSelectAllTextUI(elements.platformCheckboxes);
+  elements.selectAllButton.textContent = buttonText;
 }
 
 /**
  * 切换全选/取消全选状态
  */
-function toggleSelectAll() {
-  // 只考虑可见的平台复选框
-  const visibleCheckboxes = Array.from(elements.platformCheckboxes).filter(
-    (checkbox) => {
-      const option = checkbox.closest('.platform-icon-option');
-      return option && option.style.display !== 'none';
-    }
-  );
+async function toggleSelectAll() {
+  const visibleCheckboxes = getVisiblePlatformCheckboxes(elements.platformCheckboxes);
 
   if (visibleCheckboxes.length === 0) {
     return;
   }
 
-  const allChecked = visibleCheckboxes.every((checkbox) => checkbox.checked);
+  const allChecked = areAllVisiblePlatformsChecked(visibleCheckboxes);
 
   // 只切换可见的复选框
   visibleCheckboxes.forEach((checkbox) => {
-    checkbox.checked = !allChecked;
-    const iconWrapper = checkbox
-      .closest(".platform-icon-option")
-      .querySelector(".icon-wrapper");
-    if (iconWrapper) {
-      iconWrapper.classList.toggle("checked", checkbox.checked);
-    }
+    togglePlatformCheckbox(checkbox, !allChecked);
   });
 
-  updateSelectAllText();
-  savePlatformStates();
-}
+  updateSelectAllButton();
 
-/**
- * 渲染历史消息
- */
-function populateHistory(historySelect, history) {
-  historySelect.innerHTML = `<option value="">选择历史消息</option>`;
-  history.forEach((msg) => {
-    const opt = document.createElement("option");
-    opt.value = msg;
-    opt.textContent = msg.length > 40 ? msg.slice(0, 40) + "..." : msg;
-    historySelect.appendChild(opt);
-  });
-}
-
-/**
- * 添加消息到历史（使用 local 存储）
- */
-function addToHistory(message) {
-  return new Promise((resolve) => {
-    // 使用 chrome.storage.local
-    chrome.storage.local.get(HISTORY_KEY, (result) => {
-      let history = result[HISTORY_KEY] || [];
-      history = history.filter((item) => item !== message);
-      history.unshift(message);
-      if (history.length > MAX_HISTORY) {
-        history = history.slice(0, MAX_HISTORY);
-      }
-      // 使用 chrome.storage.local
-      chrome.storage.local.set({ [HISTORY_KEY]: history }, () => {
-        populateHistory(elements.historySelect, history);
-        resolve();
-      });
-    });
-  });
-}
-
-/**
- * 保存平台勾选状态（使用 local 存储）
- */
-function savePlatformStates() {
-  const checkedStates = {};
-  elements.platformCheckboxes.forEach((cb) => {
-    checkedStates[cb.dataset.platform] = cb.checked;
-  });
-  // 使用 chrome.storage.local
-  chrome.storage.local.set({ platformStates: checkedStates });
-}
-
-/**
- * 加载并应用平台可见性设置
- */
-function loadPlatformVisibilitySettings() {
-  chrome.storage.local.get([PLATFORM_VISIBILITY_KEY], (result) => {
-    const visibilitySettings = result[PLATFORM_VISIBILITY_KEY] || {};
-
-    // 获取所有平台选项
-    const platformOptions = document.querySelectorAll('.platform-icon-option');
-
-    platformOptions.forEach(option => {
-      const platformId = option.getAttribute('data-platform-id');
-      if (platformId) {
-        // 如果设置了可见性为false，则隐藏该平台
-        if (visibilitySettings.hasOwnProperty(platformId) && !visibilitySettings[platformId]) {
-          option.style.display = 'none';
-        } else {
-          option.style.display = '';
-        }
-      }
-    });
-
-    // 更新全选按钮状态（只考虑可见的平台）
-    updateSelectAllText();
-  });
-}
-
-/**
- * 应用平台可见性设置（当设置更新时调用）
- */
-function applyPlatformVisibilitySettings(settings) {
-  const platformOptions = document.querySelectorAll('.platform-icon-option');
-
-  platformOptions.forEach(option => {
-    const platformId = option.getAttribute('data-platform-id');
-    if (platformId) {
-      // 如果设置了可见性为false，则隐藏该平台
-      if (settings.hasOwnProperty(platformId) && !settings[platformId]) {
-        option.style.display = 'none';
-      } else {
-        option.style.display = '';
-      }
-    }
-  });
-
-  // 更新全选按钮状态（只考虑可见的平台）
-  updateSelectAllText();
+  try {
+    await savePlatformStates(elements.platformCheckboxes);
+  } catch (error) {
+    console.error("保存平台状态失败:", error);
+  }
 }
 
 /**
  * 关闭所有AI标签页
  */
 function closeAllAITabs() {
-  // 添加禁用样式类
-  elements.closeTabsButton.classList.add('disabled');
-  elements.closeTabsButton.textContent = "关闭中...";
+  setButtonLoadingState(elements.closeTabsButton, "关闭中...");
   elements.closeTabsButton.style.cursor = 'not-allowed';
 
   chrome.runtime.sendMessage({ action: "closeAllAITabs" }, (response) => {
@@ -501,8 +319,7 @@ function closeAllAITabs() {
 
     // 短暂延迟后重置按钮状态
     setTimeout(() => {
-      elements.closeTabsButton.classList.remove('disabled');
-      elements.closeTabsButton.textContent = "关闭AI标签页";
+      resetButtonState(elements.closeTabsButton, "关闭AI标签页");
       elements.closeTabsButton.style.cursor = 'pointer';
     }, 1500);
   });
@@ -517,12 +334,10 @@ async function startSending() {
     clearTimeout(saveTimeout);
     saveTimeout = null;
   }
-  await saveMessageContent(elements.messageInput.value);
+  await debouncedSaveMessage(elements.messageInput.value);
 
-  const originalMessage = elements.messageInput.value.trim();
+  const originalMessage = validateMessageInput(elements.messageInput.value);
   if (!originalMessage) {
-    console.error("请输入消息内容");
-    showTempMessage("请输入消息内容");
     return;
   }
 
@@ -544,16 +359,13 @@ async function startSending() {
     .filter((checkbox) => checkbox.checked)
     .map((checkbox) => checkbox.dataset.platform);
 
-  if (selectedPlatforms.length === 0) {
-    console.error("请至少选择一个平台");
-    showTempMessage("请至少选择一个平台");
+  if (!validatePlatformSelection(selectedPlatforms)) {
     return;
   }
 
   // 检查文本长度，如果超过400则复制到剪切板
   if (finalMessage.length > 400) {
-    elements.sendButton.disabled = true;
-    elements.sendButton.textContent = "复制中...";
+    setButtonLoadingState(elements.sendButton, "复制中...");
 
     const copySuccess = await copyToClipboard(finalMessage);
 
@@ -567,14 +379,15 @@ async function startSending() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  elements.sendButton.disabled = true;
-  elements.sendButton.textContent = "发送中...";
+  setButtonLoadingState(elements.sendButton, "发送中...");
 
-  // 确保历史消息保存完成后再发送任务
-  Promise.all([
-    Promise.resolve(savePlatformStates()),
-    addToHistory(originalMessage),
-  ]).then(() => {
+  try {
+    // 确保历史消息保存完成后再发送任务
+    await Promise.all([
+      savePlatformStates(elements.platformCheckboxes),
+      addToHistory(originalMessage)
+    ]);
+
     const actionsQueue = selectedPlatforms.map((platform) => ({
       platform,
       message: finalMessage,
@@ -586,7 +399,9 @@ async function startSending() {
         window.close();
       }
     );
-  });
+  } catch (error) {
+    console.error("发送消息失败:", error);
+    showTempMessage("发送失败，请重试");
+    resetButtonState(elements.sendButton, "发送消息");
+  }
 }
-
-export { initializePopup, setupEventListeners, loadStoredData };
