@@ -3,6 +3,7 @@ import { populateOptimizer } from "../promots/promptsUI.js";
 // popupUtils.js
 const HISTORY_KEY = "messageHistory";
 const OPTIMIZER_KEY = "selectedOptimizer";
+const PLATFORM_VISIBILITY_KEY = "platformVisibilitySettings";
 const MAX_HISTORY = 5;
 
 // DOM 元素缓存
@@ -107,6 +108,9 @@ function initializePopup() {
 
   // 初始化优化器下拉框
   populateOptimizer(elements.promptOptimizerSelect);
+
+  // 加载并应用平台可见性设置
+  loadPlatformVisibilitySettings();
 }
 
 /**
@@ -218,6 +222,15 @@ function restorePlatformStates(platformStates) {
  * 设置所有事件监听器
  */
 function setupEventListeners() {
+  // 监听来自options页面的平台可见性更新消息
+  chrome.runtime.onMessage.addListener((request) => {
+    if (request.action === 'platformVisibilityUpdated') {
+      applyPlatformVisibilitySettings(request.settings);
+      showTempMessage('平台显示设置已更新');
+    }
+  });
+
+  // 原有的事件监听器
   // 输入框内容变化时实时保存（优化防抖机制）
   elements.messageInput.addEventListener("input", () => {
     const currentContent = elements.messageInput.value;
@@ -323,9 +336,20 @@ function setupEventListeners() {
  * 更新全选按钮文本
  */
 function updateSelectAllText() {
-  const allChecked = Array.from(elements.platformCheckboxes).every(
-    (checkbox) => checkbox.checked
+  // 只考虑可见的平台复选框
+  const visibleCheckboxes = Array.from(elements.platformCheckboxes).filter(
+    (checkbox) => {
+      const option = checkbox.closest('.platform-icon-option');
+      return option && option.style.display !== 'none';
+    }
   );
+
+  if (visibleCheckboxes.length === 0) {
+    elements.selectAllButton.textContent = "全选";
+    return;
+  }
+
+  const allChecked = visibleCheckboxes.every((checkbox) => checkbox.checked);
   elements.selectAllButton.textContent = allChecked ? "取消全选" : "全选";
 }
 
@@ -333,11 +357,22 @@ function updateSelectAllText() {
  * 切换全选/取消全选状态
  */
 function toggleSelectAll() {
-  const allChecked = Array.from(elements.platformCheckboxes).every(
-    (checkbox) => checkbox.checked
+  // 只考虑可见的平台复选框
+  const visibleCheckboxes = Array.from(elements.platformCheckboxes).filter(
+    (checkbox) => {
+      const option = checkbox.closest('.platform-icon-option');
+      return option && option.style.display !== 'none';
+    }
   );
 
-  elements.platformCheckboxes.forEach((checkbox) => {
+  if (visibleCheckboxes.length === 0) {
+    return;
+  }
+
+  const allChecked = visibleCheckboxes.every((checkbox) => checkbox.checked);
+
+  // 只切换可见的复选框
+  visibleCheckboxes.forEach((checkbox) => {
     checkbox.checked = !allChecked;
     const iconWrapper = checkbox
       .closest(".platform-icon-option")
@@ -396,6 +431,55 @@ function savePlatformStates() {
   });
   // 使用 chrome.storage.local
   chrome.storage.local.set({ platformStates: checkedStates });
+}
+
+/**
+ * 加载并应用平台可见性设置
+ */
+function loadPlatformVisibilitySettings() {
+  chrome.storage.local.get([PLATFORM_VISIBILITY_KEY], (result) => {
+    const visibilitySettings = result[PLATFORM_VISIBILITY_KEY] || {};
+
+    // 获取所有平台选项
+    const platformOptions = document.querySelectorAll('.platform-icon-option');
+
+    platformOptions.forEach(option => {
+      const platformId = option.getAttribute('data-platform-id');
+      if (platformId) {
+        // 如果设置了可见性为false，则隐藏该平台
+        if (visibilitySettings.hasOwnProperty(platformId) && !visibilitySettings[platformId]) {
+          option.style.display = 'none';
+        } else {
+          option.style.display = '';
+        }
+      }
+    });
+
+    // 更新全选按钮状态（只考虑可见的平台）
+    updateSelectAllText();
+  });
+}
+
+/**
+ * 应用平台可见性设置（当设置更新时调用）
+ */
+function applyPlatformVisibilitySettings(settings) {
+  const platformOptions = document.querySelectorAll('.platform-icon-option');
+
+  platformOptions.forEach(option => {
+    const platformId = option.getAttribute('data-platform-id');
+    if (platformId) {
+      // 如果设置了可见性为false，则隐藏该平台
+      if (settings.hasOwnProperty(platformId) && !settings[platformId]) {
+        option.style.display = 'none';
+      } else {
+        option.style.display = '';
+      }
+    }
+  });
+
+  // 更新全选按钮状态（只考虑可见的平台）
+  updateSelectAllText();
 }
 
 /**
