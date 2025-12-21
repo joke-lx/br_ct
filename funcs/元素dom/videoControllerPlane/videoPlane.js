@@ -41,9 +41,13 @@
     // 查找页面中的所有视频
     findVideos() {
       this.videos = Array.from(document.querySelectorAll('video'));
-      
+
       if (this.videos.length > 0) {
-        this.currentVideo = this.videos[0];
+        // 如果当前视频不在新的视频列表中，或者没有当前视频，则选择第一个
+        if (!this.currentVideo || !this.videos.includes(this.currentVideo)) {
+          this.currentVideo = this.videos[0];
+          this.setupTimeUpdateListener();
+        }
         this.updateUI();
       } else {
         console.log('❌ 未找到视频元素');
@@ -109,16 +113,16 @@
         </option>`
       ).join('');
       
-      const segmentsList = this.segments.map((seg, i) => 
-        `<div class="segment-item" data-index="${i}">
+      const segmentsList = this.segments.map((seg, i) =>
+        `<div class="segment-item ${i === this.currentSegment ? 'active' : ''}" data-index="${i}">
           <div class="segment-info">
             <span class="segment-index">${i+1}.</span>
-            <input type="text" class="segment-start" value="${this.formatTime(seg.start)}" 
+            <input type="text" class="segment-start" value="${this.formatTime(seg.start)}"
                    placeholder="开始时间" data-index="${i}">
             <span> - </span>
-            <input type="text" class="segment-end" value="${this.formatTime(seg.end)}" 
+            <input type="text" class="segment-end" value="${this.formatTime(seg.end)}"
                    placeholder="结束时间" data-index="${i}">
-            <input type="text" class="segment-label" value="${seg.label || ''}" 
+            <input type="text" class="segment-label" value="${seg.label || ''}"
                    placeholder="标签(可选)" data-index="${i}">
           </div>
           <div class="segment-actions">
@@ -140,11 +144,17 @@
             ${videoOptions}
           </select>
           <div style="font-size: 11px; color: #bbb; margin-bottom: 10px;">
-            ${this.currentVideo ? 
-              `时长: ${this.currentVideo.duration ? this.currentVideo.duration.toFixed(1) + 's' : '加载中...'} | 
-              尺寸: ${this.currentVideo.videoWidth || 0}x${this.currentVideo.videoHeight || 0}` : 
+            ${this.currentVideo ?
+              `时长: ${this.currentVideo.duration ? this.currentVideo.duration.toFixed(1) + 's' : '加载中...'} |
+              尺寸: ${this.currentVideo.videoWidth || 0}x${this.currentVideo.videoHeight || 0}` :
               '无视频'}
           </div>
+          ${this.currentVideo ? `
+            <div style="font-size: 12px; color: #4CAF50; margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+              <span>当前时间: <strong id="currentTimeDisplay">${this.formatTime(this.currentVideo.currentTime || 0)}</strong></span>
+              <button class="btn btn-small" id="copyTimeBtn" title="复制当前时间">📋 复制</button>
+            </div>
+          ` : ''}
         </div>
         
         <div class="section">
@@ -253,7 +263,7 @@
             font-size: 12px;
             transition: all 0.2s;
             background: rgba(255,255,255,0.1);
-            color: white;
+            color: white !important;
           }
           
           .btn:hover {
@@ -311,32 +321,61 @@
             margin: 3px 0;
             background: rgba(255,255,255,0.05);
             border-radius: 4px;
-            border-left: 3px solid ${this.currentSegment === 0 ? '#4CAF50' : '#666'};
+            border-left: 3px solid #666;
+            color: white !important;
           }
-          
+
+          .segment-item.active {
+            border-left-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+          }
+
+          .segment-item.active .segment-index {
+            color: #4CAF50 !important;
+          }
+
+          .segment-item.active .segment-start,
+          .segment-item.active .segment-end,
+          .segment-item.active .segment-label {
+            color: white !important;
+            background: rgba(255,255,255,0.15) !important;
+          }
+
           .segment-item:hover {
             background: rgba(255,255,255,0.1);
           }
-          
+
           .segment-info {
             display: flex;
             align-items: center;
             gap: 5px;
             flex: 1;
           }
-          
+
           .segment-index {
             min-width: 20px;
             text-align: center;
             font-weight: bold;
-            color: ${this.currentSegment === 0 ? '#4CAF50' : '#aaa'};
+            color: #aaa !important;
           }
           
           .time-input, .label-input {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.1) !important;
             border: 1px solid #444;
             border-radius: 3px;
-            color: white;
+            color: white !important;
+            padding: 4px 6px;
+            font-family: monospace;
+            font-size: 11px;
+          }
+
+          .segment-start,
+          .segment-end,
+          .segment-label {
+            background: rgba(255,255,255,0.1) !important;
+            border: 1px solid #444;
+            border-radius: 3px;
+            color: white !important;
             padding: 4px 6px;
             font-family: monospace;
             font-size: 11px;
@@ -541,6 +580,14 @@
       
       // 绑定片段列表事件
       this.bindSegmentListEvents();
+
+      // 绑定复制时间按钮
+      const copyTimeBtn = this.uiElement.querySelector('#copyTimeBtn');
+      if (copyTimeBtn) {
+        copyTimeBtn.addEventListener('click', () => {
+          this.copyCurrentTime();
+        });
+      }
     }
     
     // 绑定片段列表事件
@@ -864,6 +911,38 @@
     updateUI() {
       this.renderUI();
     }
+
+    // 更新时间显示
+    updateTimeDisplay() {
+      if (!this.uiElement || !this.currentVideo) return;
+
+      const timeDisplay = this.uiElement.querySelector('#currentTimeDisplay');
+      if (timeDisplay) {
+        timeDisplay.textContent = this.formatTime(this.currentVideo.currentTime || 0);
+      }
+    }
+
+    // 复制当前时间
+    copyCurrentTime() {
+      if (!this.currentVideo) {
+        this.showMessage('没有可用的视频元素', 'error');
+        return;
+      }
+
+      const currentTime = this.formatTime(this.currentVideo.currentTime || 0);
+      navigator.clipboard.writeText(currentTime).then(() => {
+        this.showMessage(`已复制时间: ${currentTime}`, 'success');
+      }).catch(() => {
+        // 降级方案
+        const textArea = document.createElement('textarea');
+        textArea.value = currentTime;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        this.showMessage(`已复制时间: ${currentTime}`, 'success');
+      });
+    }
     
     // 移除UI
     removeUI() {
@@ -884,9 +963,32 @@
           this.findVideos();
         }
       });
-      
+
       observer.observe(document.body, { childList: true, subtree: true });
       this.eventListeners.push({ type: 'observer', value: observer });
+
+      // 添加视频时间更新监听器
+      if (this.currentVideo) {
+        this.setupTimeUpdateListener();
+      }
+    }
+
+    // 设置时间更新监听器
+    setupTimeUpdateListener() {
+      if (!this.currentVideo) return;
+
+      const handleTimeUpdate = () => {
+        this.updateTimeDisplay();
+      };
+
+      this.currentVideo.addEventListener('timeupdate', handleTimeUpdate);
+
+      // 保存监听器以便清理
+      this.eventListeners.push({
+        type: 'videoTimeUpdate',
+        target: this.currentVideo,
+        handler: handleTimeUpdate
+      });
     }
     
     // 将时间字符串转换为秒
@@ -1152,12 +1254,27 @@
     // 选择视频
     setVideo(index) {
       if (index >= 0 && index < this.videos.length) {
+        // 清理旧视频的事件监听器
+        this.cleanupVideoListeners();
+
         this.currentVideo = this.videos[index];
+        this.setupTimeUpdateListener();
         this.updateUI();
         this.showMessage(`已切换到视频 ${index}`, 'success');
       } else {
         this.showMessage(`无效的视频索引，有效范围: 0-${this.videos.length-1}`, 'error');
       }
+    }
+
+    // 清理视频相关的事件监听器
+    cleanupVideoListeners() {
+      this.eventListeners = this.eventListeners.filter(listener => {
+        if (listener.type === 'videoTimeUpdate' && listener.target) {
+          listener.target.removeEventListener('timeupdate', listener.handler);
+          return false;
+        }
+        return true;
+      });
     }
     
     // 导出配置
@@ -1219,17 +1336,21 @@
     // 清理
     cleanup() {
       this.stop();
-      
+
       if (this.uiElement) {
         this.uiElement.remove();
       }
-      
+
+      // 清理所有事件监听器
+      this.cleanupVideoListeners();
+
       this.eventListeners.forEach(listener => {
         if (listener.type === 'observer' && listener.value) {
           listener.value.disconnect();
         }
       });
-      
+
+      this.eventListeners = [];
       console.log('🧹 视频片段播放器已清理');
     }
   }
