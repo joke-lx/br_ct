@@ -208,30 +208,24 @@
             <label style="display: flex; align-items: center; gap: 5px; font-size: 11px;">
               <input type="checkbox" id="debugMode"> 调试模式
             </label>
-            <button class="btn btn-small" id="exportBtn">导出配置</button>
-            <button class="btn btn-small" id="importBtn">导入配置</button>
+            <button class="btn btn-small" id="exportBtn">导出YAML</button>
+            <button class="btn btn-small" id="importBtn">导入YAML</button>
           </div>
         </div>
         
         <div class="section">
           <div class="section-title">🔧 批量操作</div>
-          <textarea id="batchInput" placeholder="支持格式:
-
-YAML格式 (推荐):
+          <textarea id="batchInput" placeholder="YAML格式 (支持分组):
 Part 1:
   - 01:16-01:21 打开
   - 08:37-08:42 没语季节
 
 Part 2:
   - 25:48-30:15 带我去很远地方
-  - 34:06-34:11 小云
 
-文本格式:
-• 00:01-00:05 标签
-• Part 1
-  1. 01:16-01:21 打开
-
-自动识别格式类型"
+或简单格式 (每行一个):
+01:16-01:21 打开
+08:37-08:42 没语季节"
                     style="width: 100%; height: 100px; padding: 8px; font-family: monospace; font-size: 11px; background: rgba(255,255,255,0.1); color: white; border: 1px solid #444; border-radius: 4px; resize: vertical; margin-bottom: 8px;"></textarea>
           <div style="display: flex; gap: 5px;">
             <button class="btn" id="batchAddBtn" style="flex: 1;">批量添加</button>
@@ -720,58 +714,23 @@ Part 2:
             });
           });
 
-          if (added > 0) {
-            this.showMessage(`YAML格式解析成功，已添加 ${added} 个片段`, 'success');
-          }
+          this.showMessage(`YAML格式解析成功，已添加 ${added} 个片段`, 'success');
         } catch (err) {
-          this.showMessage('YAML格式解析失败，尝试使用文本格式', 'warning');
-          // 降级到文本格式解析
-          this.parseTextFormat(text, added, errors);
+          console.error('YAML解析错误:', err);
+          this.showMessage('YAML格式解析失败', 'error');
         }
       } else {
-        // 解析文本格式
-        this.parseTextFormat(text, added, errors);
-      }
+        // 解析简单文本格式：每行一个 01:16-01:21 标签
+        const lines = text.split('\n');
 
-      this.renderUI();
+        lines.forEach((line, i) => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
 
-      if (errors.length > 0) {
-        console.error('解析错误:', errors);
-        this.showMessage(`${errors.length} 个格式错误，已跳过无效行`, 'warning');
-      }
-    }
-
-    // 解析文本格式（原有逻辑）
-    parseTextFormat(text, added, errors) {
-      const lines = text.split('\n');
-      let currentPart = '';
-
-      lines.forEach((line, i) => {
-        const trimmed = line.trim();
-        if (!trimmed) return;
-
-        // 检查是否是分组标题 (如: "Part 1", "Part 2")
-        if (trimmed.match(/^Part \d+/i)) {
-          currentPart = trimmed;
-          return;
-        }
-
-        // 检查是否是纯数字编号 (如: "5.", "12.")
-        const numberMatch = trimmed.match(/^\d+\./);
-        if (numberMatch) {
-          // 提取时间范围和标签
           const timeRangeMatch = trimmed.match(/(\d{1,2}:\d{2}(?::\d{2})?-\d{1,2}:\d{2}(?::\d{2})?)\s*(.+)?/);
-
           if (timeRangeMatch) {
             const timeRange = timeRangeMatch[1];
-            let label = timeRangeMatch[2] ? timeRangeMatch[2].trim() : '';
-
-            // 如果有分组标题，添加到标签前面
-            if (currentPart && label) {
-              label = `${currentPart} - ${label}`;
-            } else if (currentPart) {
-              label = currentPart;
-            }
+            const label = timeRangeMatch[2] ? timeRangeMatch[2].trim() : '';
 
             const segment = this.parseTimeRange(timeRange);
             if (segment) {
@@ -782,28 +741,18 @@ Part 2:
               errors.push(`第${i+1}行时间格式错误: ${line}`);
             }
           } else {
-            // 尝试原始格式: 00:01-00:05 或 00:01-00:05 标签
-            const parts = trimmed.split(/\s+/);
-            const timeRange = parts[0];
-            const label = parts.slice(1).join(' ') || '';
-
-            const finalLabel = currentPart && label ? `${currentPart} - ${label}` : (currentPart || label);
-
-            const segment = this.parseTimeRange(timeRange);
-            if (segment) {
-              if (finalLabel) segment.label = finalLabel;
-              this.segments.push(segment);
-              added++;
-            } else {
-              errors.push(`第${i+1}行: ${line}`);
-            }
+            errors.push(`第${i+1}行格式错误: ${line}`);
           }
-        }
-        // 如果不匹配任何已知格式，则跳过
-      });
+        });
 
-      if (added > 0 && !errors.some(e => e.includes('YAML'))) {
-        this.showMessage(`文本格式解析成功，已添加 ${added} 个片段`, 'success');
+        this.showMessage(`简单格式解析成功，已添加 ${added} 个片段`, 'success');
+      }
+
+      this.renderUI();
+
+      if (errors.length > 0) {
+        console.error('解析错误:', errors);
+        this.showMessage(`${errors.length} 个格式错误，已跳过无效行`, 'warning');
       }
     }
     
@@ -1418,55 +1367,104 @@ Part 2:
       });
     }
     
-    // 导出配置
+    // 导出YAML配置
     exportConfig() {
-      const config = {
-        segments: this.segments,
-        currentSegment: this.currentSegment,
-        autoPlayNext: this.uiElement.querySelector('#autoPlayNext')?.checked || true,
-        debugMode: this.uiElement.querySelector('#debugMode')?.checked || false
-      };
-      
-      const json = JSON.stringify(config, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
+      let yaml = "# 视频片段配置\n";
+      yaml += `# 当前片段: ${this.currentSegment}\n`;
+      yaml += `# 自动播放: ${this.uiElement?.querySelector('#autoPlayNext')?.checked ? true : false}\n`;
+      yaml += `# 调试模式: ${this.uiElement?.querySelector('#debugMode')?.checked ? true : false}\n\n`;
+
+      if (this.segments.length > 0) {
+        // 按分组整理片段
+        const groups = {};
+
+        this.segments.forEach((segment, index) => {
+          let groupName = '默认分组';
+
+          if (segment.label) {
+            // 如果标签包含 " - "，提取分组名
+            const parts = segment.label.split(' - ');
+            if (parts.length > 1) {
+              groupName = parts[0];
+            }
+          }
+
+          if (!groups[groupName]) {
+            groups[groupName] = [];
+          }
+
+          const timeRange = `${this.formatTime(segment.start)}-${this.formatTime(segment.end)}`;
+          const itemLabel = segment.label.includes(' - ') ?
+            segment.label.split(' - ').slice(1).join(' - ') :
+            (segment.label || '');
+
+          groups[groupName].push({
+            timeRange,
+            label: itemLabel
+          });
+        });
+
+        // 生成YAML
+        Object.entries(groups).forEach(([groupName, items]) => {
+          yaml += `${groupName}:\n`;
+          items.forEach(item => {
+            if (item.label) {
+              yaml += `  - ${item.timeRange} ${item.label}\n`;
+            } else {
+              yaml += `  - ${item.timeRange}\n`;
+            }
+          });
+          yaml += '\n';
+        });
+      } else {
+        yaml += "默认分组:\n  # 暂无片段\n";
+      }
+
+      const blob = new Blob([yaml], { type: 'text/yaml' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'video-segments-config.json';
+      a.download = 'video-segments.yaml';
       a.click();
       URL.revokeObjectURL(url);
-      
-      this.showMessage('配置已导出', 'success');
+
+      this.showMessage('YAML配置已导出', 'success');
     }
-    
-    // 导入配置
+
+    // 导入YAML配置
     importConfig() {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = '.json';
+      input.accept = '.yaml,.yml';
       input.onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        
+
         const reader = new FileReader();
         reader.onload = (e) => {
           try {
-            const config = JSON.parse(e.target.result);
-            this.segments = config.segments || [];
-            this.currentSegment = config.currentSegment || 0;
-            
-            if (this.uiElement) {
-              const autoPlayNext = this.uiElement.querySelector('#autoPlayNext');
-              const debugMode = this.uiElement.querySelector('#debugMode');
-              if (autoPlayNext) autoPlayNext.checked = config.autoPlayNext !== false;
-              if (debugMode) debugMode.checked = config.debugMode || false;
-            }
-            
+            const yamlText = e.target.result;
+            const yamlData = this.parseSimpleYAML(yamlText);
+
+            this.segments = [];
+
+            Object.entries(yamlData).forEach(([sectionName, items]) => {
+              items.forEach((item, index) => {
+                const segment = this.parseTimeRange(item.timeRange);
+                if (segment) {
+                  const label = item.label ? `${sectionName} - ${item.label}` : sectionName;
+                  segment.label = label;
+                  this.segments.push(segment);
+                }
+              });
+            });
+
+            this.currentSegment = 0;
             this.updateUI();
-            this.showMessage('配置已导入', 'success');
+            this.showMessage(`YAML配置导入成功，共导入 ${this.segments.length} 个片段`, 'success');
           } catch (err) {
-            this.showMessage('配置文件格式错误', 'error');
-            console.error('导入配置错误:', err);
+            this.showMessage('YAML文件格式错误', 'error');
+            console.error('导入YAML配置错误:', err);
           }
         };
         reader.readAsText(file);
