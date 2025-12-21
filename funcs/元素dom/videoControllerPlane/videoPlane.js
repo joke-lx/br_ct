@@ -134,110 +134,122 @@
       
       this.uiElement.innerHTML = `
         <div class="header">
-          <strong style="color: #4CAF50; font-size: 14px;">🎬 视频片段播放器</strong>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <strong style="color: #4CAF50; font-size: 14px;">🎬 视频片段播放器</strong>
+            <button class="btn btn-small" id="minimizeBtn" title="缩小">📐</button>
+          </div>
           <button class="btn btn-close" id="closeUI" title="关闭面板">×</button>
         </div>
-        
-        <div class="section">
-          <div class="section-title">📹 视频选择</div>
-          <select id="videoSelect" class="select-input" style="width: 100%; padding: 5px; margin-bottom: 10px;">
-            ${videoOptions}
-          </select>
-          <div style="font-size: 11px; color: #bbb; margin-bottom: 10px;">
-            ${this.currentVideo ?
-              `时长: ${this.currentVideo.duration ? this.currentVideo.duration.toFixed(1) + 's' : '加载中...'} |
-              尺寸: ${this.currentVideo.videoWidth || 0}x${this.currentVideo.videoHeight || 0}` :
-              '无视频'}
-          </div>
-          ${this.currentVideo ? `
-            <div style="font-size: 12px; color: #4CAF50; margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
-              <span>当前时间: <strong id="currentTimeDisplay">${this.formatTime(this.currentVideo.currentTime || 0)}</strong></span>
-              <button class="btn btn-small" id="copyTimeBtn" title="复制当前时间">📋 复制</button>
+
+        <div class="main-content" id="mainContent">
+          <div class="section">
+            <div class="section-title">📹 视频选择</div>
+            <select id="videoSelect" class="select-input" style="width: 100%; padding: 5px; margin-bottom: 10px;">
+              ${videoOptions}
+            </select>
+            <div style="font-size: 11px; color: #bbb; margin-bottom: 10px;">
+              ${this.currentVideo ?
+                `时长: ${this.currentVideo.duration ? this.currentVideo.duration.toFixed(1) + 's' : '加载中...'} |
+                尺寸: ${this.currentVideo.videoWidth || 0}x${this.currentVideo.videoHeight || 0}` :
+                '无视频'}
             </div>
-          ` : ''}
-        </div>
-        
-        <div class="section">
-          <div class="section-title">⏱️ 添加片段</div>
-          <div style="display: flex; gap: 5px; margin-bottom: 10px;">
-            <input type="text" id="segmentStart" class="time-input" placeholder="00:00" 
-                   style="flex: 1; padding: 5px;">
-            <input type="text" id="segmentEnd" class="time-input" placeholder="00:05" 
-                   style="flex: 1; padding: 5px;">
-            <input type="text" id="segmentLabel" class="label-input" placeholder="标签(可选)" 
-                   style="flex: 1.5; padding: 5px;">
-            <button class="btn btn-primary" id="addSegmentBtn">添加</button>
+            ${this.currentVideo ? `
+              <div style="font-size: 12px; color: #4CAF50; margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                <span>当前时间: <strong id="currentTimeDisplay">${this.formatTime(this.currentVideo.currentTime || 0)}</strong></span>
+                <button class="btn btn-small" id="copyTimeBtn" title="复制当前时间">📋 复制</button>
+              </div>
+            ` : ''}
           </div>
-          <div style="font-size: 11px; color: #bbb; margin-bottom: 10px;">
-            格式: 00:01-00:05 或 00:01:10-00:01:20
-          </div>
-        </div>
-        
-        <div class="section">
-          <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-            <span>📊 片段列表 (${this.segments.length})</span>
-            <div>
-              <button class="btn btn-small" id="quickAddBtn">快速添加</button>
-              <button class="btn btn-small" id="clearSegmentsBtn">清空</button>
+
+          <div class="section">
+            <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>📊 片段列表 (${this.segments.length})</span>
+              <div>
+                <button class="btn btn-small" id="quickAddBtn">快速添加</button>
+                <button class="btn btn-small" id="clearSegmentsBtn">清空</button>
+              </div>
+            </div>
+            <div id="segmentsList" class="segments-list" style="max-height: 200px; overflow-y: auto; margin: 10px 0;">
+              ${segmentsList || '<div style="text-align: center; padding: 20px; color: #888;">暂无片段</div>'}
             </div>
           </div>
-          <div id="segmentsList" class="segments-list" style="max-height: 200px; overflow-y: auto; margin: 10px 0;">
-            ${segmentsList || '<div style="text-align: center; padding: 20px; color: #888;">暂无片段</div>'}
+
+          <div class="section">
+            <div class="section-title">🎮 播放控制</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px;">
+              <button class="btn btn-success" id="playAllBtn" style="flex: 1;">播放全部</button>
+              <button class="btn btn-info" id="playNextBtn" style="flex: 1;">下一段</button>
+              <button class="btn btn-warning" id="stopBtn" style="flex: 1;">停止</button>
+            </div>
+            <div style="display: flex; gap: 5px;">
+              <button class="btn" id="prevSegmentBtn" style="flex: 1;">上一段</button>
+              <button class="btn" id="nextSegmentBtn" style="flex: 1;">下一段</button>
+            </div>
           </div>
-        </div>
-        
-        <div class="section">
-          <div class="section-title">🎮 播放控制</div>
-          <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px;">
-            <button class="btn btn-success" id="playAllBtn" style="flex: 1;">播放全部</button>
-            <button class="btn btn-info" id="playNextBtn" style="flex: 1;">下一段</button>
-            <button class="btn btn-warning" id="stopBtn" style="flex: 1;">停止</button>
+
+          <div class="section">
+            <div class="section-title">⚙️ 设置</div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+              <label style="display: flex; align-items: center; gap: 5px; font-size: 11px;">
+                <input type="checkbox" id="autoPlayNext" checked> 自动播放下一个
+              </label>
+              <label style="display: flex; align-items: center; gap: 5px; font-size: 11px;">
+                <input type="checkbox" id="debugMode"> 调试模式
+              </label>
+              <button class="btn btn-small" id="exportBtn">导出YAML</button>
+              <button class="btn btn-small" id="importBtn">导入YAML</button>
+            </div>
           </div>
-          <div style="display: flex; gap: 5px;">
-            <button class="btn" id="prevSegmentBtn" style="flex: 1;">上一段</button>
-            <button class="btn" id="nextSegmentBtn" style="flex: 1;">下一段</button>
-          </div>
-        </div>
-        
-        <div class="section">
-          <div class="section-title">⚙️ 设置</div>
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
-            <label style="display: flex; align-items: center; gap: 5px; font-size: 11px;">
-              <input type="checkbox" id="autoPlayNext" checked> 自动播放下一个
-            </label>
-            <label style="display: flex; align-items: center; gap: 5px; font-size: 11px;">
-              <input type="checkbox" id="debugMode"> 调试模式
-            </label>
-            <button class="btn btn-small" id="exportBtn">导出YAML</button>
-            <button class="btn btn-small" id="importBtn">导入YAML</button>
-          </div>
-        </div>
-        
-        <div class="section">
-          <div class="section-title">🔧 批量操作</div>
-          <textarea id="batchInput" placeholder="YAML格式 (支持分组):
+
+          <div class="section">
+            <div class="section-title">🔧 批量操作</div>
+            <textarea id="batchInput" placeholder="YAML格式 (支持分组):
 Part 1:
   - 01:16-01:21 打开
   - 08:37-08:42 没语季节
 
-Part 2:
-  - 25:48-30:15 带我去很远地方
-
 或简单格式 (每行一个):
 01:16-01:21 打开
 08:37-08:42 没语季节"
-                    style="width: 100%; height: 100px; padding: 8px; font-family: monospace; font-size: 11px; background: rgba(255,255,255,0.1); color: white; border: 1px solid #444; border-radius: 4px; resize: vertical; margin-bottom: 8px;"></textarea>
-          <div style="display: flex; gap: 5px;">
-            <button class="btn" id="batchAddBtn" style="flex: 1;">批量添加</button>
-            <button class="btn" id="replaceAllBtn" style="flex: 1;">全部替换</button>
-            <button class="btn" id="clearBatchBtn" style="flex: 1;">清空</button>
+                      style="width: 100%; height: 80px; padding: 8px; font-family: monospace; font-size: 11px; background: rgba(255,255,255,0.1); color: white; border: 1px solid #444; border-radius: 4px; resize: vertical; margin-bottom: 8px;"></textarea>
+            <div style="display: flex; gap: 5px;">
+              <button class="btn" id="batchAddBtn" style="flex: 1;">批量添加</button>
+              <button class="btn" id="replaceAllBtn" style="flex: 1;">全部替换</button>
+              <button class="btn" id="clearBatchBtn" style="flex: 1;">清空</button>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">⏱️ 添加片段</div>
+            <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+              <input type="text" id="segmentStart" class="time-input" placeholder="00:00"
+                     style="flex: 1; padding: 5px;">
+              <input type="text" id="segmentEnd" class="time-input" placeholder="00:05"
+                     style="flex: 1; padding: 5px;">
+              <input type="text" id="segmentLabel" class="label-input" placeholder="标签(可选)"
+                     style="flex: 1.5; padding: 5px;">
+              <button class="btn btn-primary" id="addSegmentBtn">添加</button>
+            </div>
+            <div style="font-size: 11px; color: #bbb; margin-bottom: 10px;">
+              格式: 00:01-00:05 或 00:01:10-00:01:20
+            </div>
           </div>
         </div>
-        
-        <div class="status-bar" style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #444; font-size: 10px; color: #aaa; text-align: center;">
+
+        <div class="minimized-content" id="minimizedContent" style="display: none;">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 10px;">
+            <span style="font-size: 11px; color: #4CAF50;">${this.segments.length} 片段</span>
+            <div style="display: flex; gap: 5px;">
+              <button class="btn btn-small" id="playAllMiniBtn" style="padding: 2px 6px;">▶</button>
+              <button class="btn btn-small" id="stopMiniBtn" style="padding: 2px 6px;">⏸</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-bar">
           当前片段: ${this.currentSegment + 1}/${this.segments.length} | 状态: ${this.isPlaying ? '播放中' : '已停止'}
         </div>
-        
+
         <style>
           .header {
             display: flex;
@@ -247,90 +259,90 @@ Part 2:
             border-bottom: 1px solid #444;
             padding-bottom: 8px;
           }
-          
+
           .section {
-            margin-bottom: 15px;
-            padding-bottom: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
           }
-          
+
           .section:last-child {
             border-bottom: none;
           }
-          
+
           .section-title {
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: #4CAF50;
-            font-size: 12px;
+            font-size: 11px;
           }
-          
+
           .btn {
-            padding: 6px 12px;
+            padding: 4px 10px;
             border: none;
-            border-radius: 4px;
+            border-radius: 3px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             transition: all 0.2s;
             background: rgba(255,255,255,0.1);
             color: white !important;
           }
-          
+
           .btn:hover {
             background: rgba(255,255,255,0.2);
             transform: translateY(-1px);
           }
-          
+
           .btn:active {
             transform: translateY(0);
           }
-          
+
           .btn-primary {
             background: #4CAF50;
             color: white;
           }
-          
+
           .btn-success {
             background: #2196F3;
             color: white;
           }
-          
+
           .btn-info {
             background: #00bcd4;
             color: white;
           }
-          
+
           .btn-warning {
             background: #ff9800;
             color: white;
           }
-          
+
           .btn-small {
-            padding: 3px 8px;
-            font-size: 11px;
+            padding: 2px 6px;
+            font-size: 10px;
           }
-          
+
           .btn-close {
             background: #f44336;
             color: white;
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 50%;
             width: 20px;
             height: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 14px;
           }
-          
+
           .segment-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 6px;
-            margin: 3px 0;
+            padding: 4px;
+            margin: 2px 0;
             background: rgba(255,255,255,0.05);
-            border-radius: 4px;
+            border-radius: 3px;
             border-left: 3px solid #666;
             color: white !important;
           }
@@ -358,25 +370,26 @@ Part 2:
           .segment-info {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
             flex: 1;
           }
 
           .segment-index {
-            min-width: 20px;
+            min-width: 16px;
             text-align: center;
             font-weight: bold;
             color: #aaa !important;
+            font-size: 10px;
           }
-          
+
           .time-input, .label-input {
             background: rgba(255,255,255,0.1) !important;
             border: 1px solid #444;
-            border-radius: 3px;
+            border-radius: 2px;
             color: white !important;
-            padding: 4px 6px;
+            padding: 3px 5px;
             font-family: monospace;
-            font-size: 11px;
+            font-size: 10px;
           }
 
           .segment-start,
@@ -384,51 +397,81 @@ Part 2:
           .segment-label {
             background: rgba(255,255,255,0.1) !important;
             border: 1px solid #444;
-            border-radius: 3px;
+            border-radius: 2px;
             color: white !important;
-            padding: 4px 6px;
+            padding: 3px 5px;
             font-family: monospace;
-            font-size: 11px;
+            font-size: 10px;
           }
-          
+
           .time-input {
-            width: 60px;
+            width: 55px;
           }
-          
+
           .label-input {
-            width: 80px;
+            width: 75px;
           }
-          
+
           .segment-actions {
             display: flex;
-            gap: 3px;
+            gap: 2px;
           }
-          
+
           .segments-list::-webkit-scrollbar {
-            width: 6px;
+            width: 4px;
           }
-          
+
           .segments-list::-webkit-scrollbar-track {
             background: rgba(255,255,255,0.1);
-            border-radius: 3px;
+            border-radius: 2px;
           }
-          
+
           .segments-list::-webkit-scrollbar-thumb {
             background: #4CAF50;
-            border-radius: 3px;
+            border-radius: 2px;
           }
-          
+
           .select-input {
             background: rgba(255,255,255,0.1);
             border: 1px solid #444;
-            border-radius: 4px;
+            border-radius: 3px;
             color: white;
-            padding: 6px;
+            padding: 5px;
+            font-size: 11px;
           }
-          
+
           .select-input option {
             background: #222;
             color: white;
+          }
+
+          .status-bar {
+            margin-top: 10px;
+            padding-top: 6px;
+            border-top: 1px solid #444;
+            font-size: 9px;
+            color: #aaa;
+            text-align: center;
+          }
+
+          /* 最小化状态 */
+          .minimized-ui {
+            width: auto !important;
+            height: auto !important;
+            min-width: 120px !important;
+            min-height: 30px !important;
+          }
+
+          .minimized-ui .main-content {
+            display: none;
+          }
+
+          .minimized-ui .minimized-content {
+            display: block !important;
+          }
+
+          .minimized-ui .status-bar {
+            display: none;
           }
         </style>
       `;
@@ -596,6 +639,29 @@ Part 2:
       if (copyTimeBtn) {
         copyTimeBtn.addEventListener('click', () => {
           this.copyCurrentTime();
+        });
+      }
+
+      // 绑定最小化按钮
+      const minimizeBtn = this.uiElement.querySelector('#minimizeBtn');
+      if (minimizeBtn) {
+        minimizeBtn.addEventListener('click', () => {
+          this.toggleMinimize();
+        });
+      }
+
+      // 绑定最小化状态下的按钮
+      const playAllMiniBtn = this.uiElement.querySelector('#playAllMiniBtn');
+      if (playAllMiniBtn) {
+        playAllMiniBtn.addEventListener('click', () => {
+          this.playSegments();
+        });
+      }
+
+      const stopMiniBtn = this.uiElement.querySelector('#stopMiniBtn');
+      if (stopMiniBtn) {
+        stopMiniBtn.addEventListener('click', () => {
+          this.stop();
         });
       }
     }
@@ -949,6 +1015,31 @@ Part 2:
       }
     }
     
+    // 切换最小化状态
+    toggleMinimize() {
+      if (!this.uiElement) return;
+
+      const mainContent = this.uiElement.querySelector('#mainContent');
+      const minimizedContent = this.uiElement.querySelector('#minimizedContent');
+      const minimizeBtn = this.uiElement.querySelector('#minimizeBtn');
+
+      if (this.uiElement.classList.contains('minimized-ui')) {
+        // 展开UI
+        this.uiElement.classList.remove('minimized-ui');
+        mainContent.style.display = 'block';
+        minimizedContent.style.display = 'none';
+        minimizeBtn.textContent = '📐';
+        minimizeBtn.title = '缩小';
+      } else {
+        // 最小化UI
+        this.uiElement.classList.add('minimized-ui');
+        mainContent.style.display = 'none';
+        minimizedContent.style.display = 'block';
+        minimizeBtn.textContent = '📖';
+        minimizeBtn.title = '展开';
+      }
+    }
+
     // 更新UI
     updateUI() {
       this.renderUI();
