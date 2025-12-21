@@ -582,9 +582,18 @@ Part 1:
       // 导入/导出按钮
       const exportBtn = this.uiElement.querySelector('#exportBtn');
       if (exportBtn) {
-        exportBtn.addEventListener('click', () => {
+        // 移除可能存在的旧监听器避免重复绑定
+        exportBtn.replaceWith(exportBtn.cloneNode(true));
+        const newExportBtn = this.uiElement.querySelector('#exportBtn');
+        newExportBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('导出按钮被点击');
           this.exportConfig();
         });
+        console.log('导出按钮事件已绑定');
+      } else {
+        console.warn('未找到导出按钮 #exportBtn');
       }
       
       const importBtn = this.uiElement.querySelector('#importBtn');
@@ -1148,6 +1157,23 @@ Part 1:
       observer.observe(document.body, { childList: true, subtree: true });
       this.eventListeners.push({ type: 'observer', value: observer });
 
+      // 添加全局点击处理作为导出按钮的备选方案
+      const globalClickHandler = (e) => {
+        if (e.target && e.target.id === 'exportBtn') {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('全局点击处理器捕获到导出按钮点击');
+          this.exportConfig();
+        }
+      };
+
+      document.addEventListener('click', globalClickHandler, true);
+      this.eventListeners.push({
+        type: 'documentClick',
+        target: document,
+        handler: globalClickHandler
+      });
+
       // 添加视频时间更新监听器
       if (this.currentVideo) {
         this.setupTimeUpdateListener();
@@ -1460,66 +1486,169 @@ Part 1:
     
     // 导出YAML配置
     exportConfig() {
-      let yaml = "# 视频片段配置\n";
-      yaml += `# 当前片段: ${this.currentSegment}\n`;
-      yaml += `# 自动播放: ${this.uiElement?.querySelector('#autoPlayNext')?.checked ? true : false}\n`;
-      yaml += `# 调试模式: ${this.uiElement?.querySelector('#debugMode')?.checked ? true : false}\n\n`;
+      try {
+        console.log('开始导出YAML配置');
 
-      if (this.segments.length > 0) {
-        // 按分组整理片段
-        const groups = {};
+        let yaml = "# 视频片段配置\n";
+        yaml += `# 当前片段: ${this.currentSegment}\n`;
+        yaml += `# 自动播放: ${this.uiElement?.querySelector('#autoPlayNext')?.checked ? true : false}\n`;
+        yaml += `# 调试模式: ${this.uiElement?.querySelector('#debugMode')?.checked ? true : false}\n\n`;
 
-        this.segments.forEach((segment, index) => {
-          let groupName = '默认分组';
+        if (this.segments.length > 0) {
+          // 按分组整理片段
+          const groups = {};
 
-          if (segment.label) {
-            // 如果标签包含 " - "，提取分组名
-            const parts = segment.label.split(' - ');
-            if (parts.length > 1) {
-              groupName = parts[0];
+          this.segments.forEach((segment, index) => {
+            let groupName = '默认分组';
+
+            if (segment.label) {
+              // 如果标签包含 " - "，提取分组名
+              const parts = segment.label.split(' - ');
+              if (parts.length > 1) {
+                groupName = parts[0];
+              }
             }
+
+            if (!groups[groupName]) {
+              groups[groupName] = [];
+            }
+
+            const timeRange = `${this.formatTime(segment.start)}-${this.formatTime(segment.end)}`;
+            const itemLabel = segment.label.includes(' - ') ?
+              segment.label.split(' - ').slice(1).join(' - ') :
+              (segment.label || '');
+
+            groups[groupName].push({
+              timeRange,
+              label: itemLabel
+            });
+          });
+
+          // 生成YAML
+          Object.entries(groups).forEach(([groupName, items]) => {
+            yaml += `${groupName}:\n`;
+            items.forEach(item => {
+              if (item.label) {
+                yaml += `  - ${item.timeRange} ${item.label}\n`;
+              } else {
+                yaml += `  - ${item.timeRange}\n`;
+              }
+            });
+            yaml += '\n';
+          });
+        } else {
+          yaml += "默认分组:\n  # 暂无片段\n";
+        }
+
+        console.log('YAML内容生成完成，开始下载');
+
+        // 先复制到剪切板作为兜底
+        this.copyToClipboard(yaml);
+
+        // 尝试下载文件
+        let downloadSuccess = false;
+        try {
+          const blob = new Blob([yaml], { type: 'text/yaml' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'video-segments.yaml';
+          a.style.display = 'none';
+
+          // 使用更兼容的点击方式
+          document.body.appendChild(a);
+
+          // 尝试多种触发下载的方法
+          if (a.click) {
+            a.click();
+          } else {
+            // 备选方法：创建鼠标事件
+            const event = new MouseEvent('click', {
+              view: window,
+              bubbles: true,
+              cancelable: true
+            });
+            a.dispatchEvent(event);
           }
 
-          if (!groups[groupName]) {
-            groups[groupName] = [];
-          }
-
-          const timeRange = `${this.formatTime(segment.start)}-${this.formatTime(segment.end)}`;
-          const itemLabel = segment.label.includes(' - ') ?
-            segment.label.split(' - ').slice(1).join(' - ') :
-            (segment.label || '');
-
-          groups[groupName].push({
-            timeRange,
-            label: itemLabel
-          });
-        });
-
-        // 生成YAML
-        Object.entries(groups).forEach(([groupName, items]) => {
-          yaml += `${groupName}:\n`;
-          items.forEach(item => {
-            if (item.label) {
-              yaml += `  - ${item.timeRange} ${item.label}\n`;
-            } else {
-              yaml += `  - ${item.timeRange}\n`;
+          // 延迟清理，确保下载触发
+          setTimeout(() => {
+            try {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } catch (e) {
+              console.warn('清理下载元素时出错:', e);
             }
-          });
-          yaml += '\n';
+          }, 100);
+
+          downloadSuccess = true;
+          console.log('YAML文件下载触发成功');
+
+        } catch (downloadError) {
+          console.error('文件下载失败:', downloadError);
+        }
+
+        // 根据结果显示不同的消息
+        if (downloadSuccess) {
+          this.showMessage('YAML配置已导出（文件下载+剪切板备份）', 'success');
+        } else {
+          this.showMessage('下载失败，但内容已复制到剪切板', 'warning');
+        }
+
+      } catch (error) {
+        console.error('导出YAML配置时发生错误:', error);
+        this.showMessage('导出失败: ' + error.message, 'error');
+      }
+    }
+
+    // 复制到剪切板的通用方法
+    copyToClipboard(text) {
+      // 优先使用现代 Clipboard API
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          console.log('内容已复制到剪切板（现代API）');
+        }).catch((err) => {
+          console.warn('现代剪切板API失败，尝试降级方案:', err);
+          this.fallbackCopyToClipboard(text);
         });
       } else {
-        yaml += "默认分组:\n  # 暂无片段\n";
+        // 降级方案
+        this.fallbackCopyToClipboard(text);
       }
+    }
 
-      const blob = new Blob([yaml], { type: 'text/yaml' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'video-segments.yaml';
-      a.click();
-      URL.revokeObjectURL(url);
+    // 降级的剪切板复制方法
+    fallbackCopyToClipboard(text) {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        textArea.style.opacity = '0';
+        textArea.style.pointerEvents = 'none';
+        textArea.setAttribute('readonly', '');
 
-      this.showMessage('YAML配置已导出', 'success');
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        textArea.setSelectionRange(0, textArea.length); // 对于移动设备
+
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        if (successful) {
+          console.log('内容已复制到剪切板（降级方案）');
+        } else {
+          console.error('降级剪切板复制失败');
+        }
+      } catch (err) {
+        console.error('降级剪切板复制出错:', err);
+        // 最后的兜底：在控制台输出
+        console.log('=== YAML配置内容 ===');
+        console.log(text);
+        console.log('=== 内容结束 ===');
+      }
     }
 
     // 导入YAML配置
@@ -1577,6 +1706,8 @@ Part 1:
       this.eventListeners.forEach(listener => {
         if (listener.type === 'observer' && listener.value) {
           listener.value.disconnect();
+        } else if (listener.type === 'documentClick' && listener.target && listener.handler) {
+          listener.target.removeEventListener('click', listener.handler, true);
         }
       });
 
