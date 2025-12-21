@@ -215,8 +215,24 @@
         
         <div class="section">
           <div class="section-title">🔧 批量操作</div>
-          <textarea id="batchInput" placeholder="批量输入片段，每行一个，格式: 00:01-00:05 或 00:01-00:05 标签" 
-                    style="width: 100%; height: 60px; padding: 8px; font-family: monospace; font-size: 11px; background: rgba(255,255,255,0.1); color: white; border: 1px solid #444; border-radius: 4px; resize: vertical; margin-bottom: 8px;"></textarea>
+          <textarea id="batchInput" placeholder="支持格式:
+
+YAML格式 (推荐):
+Part 1:
+  - 01:16-01:21 打开
+  - 08:37-08:42 没语季节
+
+Part 2:
+  - 25:48-30:15 带我去很远地方
+  - 34:06-34:11 小云
+
+文本格式:
+• 00:01-00:05 标签
+• Part 1
+  1. 01:16-01:21 打开
+
+自动识别格式类型"
+                    style="width: 100%; height: 100px; padding: 8px; font-family: monospace; font-size: 11px; background: rgba(255,255,255,0.1); color: white; border: 1px solid #444; border-radius: 4px; resize: vertical; margin-bottom: 8px;"></textarea>
           <div style="display: flex; gap: 5px;">
             <button class="btn" id="batchAddBtn" style="flex: 1;">批量添加</button>
             <button class="btn" id="replaceAllBtn" style="flex: 1;">全部替换</button>
@@ -669,48 +685,125 @@
     // 从批量输入添加片段
     addSegmentsFromBatch() {
       if (!this.uiElement) return;
-      
+
       const batchInput = this.uiElement.querySelector('#batchInput');
       if (!batchInput) return;
-      
+
       const text = batchInput.value.trim();
       if (!text) {
         this.showMessage('请输入时间片段', 'error');
         return;
       }
-      
-      const lines = text.split('\n');
+
       let added = 0;
       let errors = [];
-      
+
+      // 检查是否是YAML格式（包含冒号和短横线的缩进结构）
+      const isYAML = text.includes(':') && text.includes('-');
+
+      if (isYAML) {
+        // 解析YAML格式
+        try {
+          const yamlData = this.parseSimpleYAML(text);
+
+          Object.entries(yamlData).forEach(([sectionName, items]) => {
+            items.forEach((item, index) => {
+              const segment = this.parseTimeRange(item.timeRange);
+              if (segment) {
+                const label = item.label ? `${sectionName} - ${item.label}` : sectionName;
+                segment.label = label;
+                this.segments.push(segment);
+                added++;
+              } else {
+                errors.push(`${sectionName} - ${item.timeRange}: 时间格式错误`);
+              }
+            });
+          });
+
+          if (added > 0) {
+            this.showMessage(`YAML格式解析成功，已添加 ${added} 个片段`, 'success');
+          }
+        } catch (err) {
+          this.showMessage('YAML格式解析失败，尝试使用文本格式', 'warning');
+          // 降级到文本格式解析
+          this.parseTextFormat(text, added, errors);
+        }
+      } else {
+        // 解析文本格式
+        this.parseTextFormat(text, added, errors);
+      }
+
+      this.renderUI();
+
+      if (errors.length > 0) {
+        console.error('解析错误:', errors);
+        this.showMessage(`${errors.length} 个格式错误，已跳过无效行`, 'warning');
+      }
+    }
+
+    // 解析文本格式（原有逻辑）
+    parseTextFormat(text, added, errors) {
+      const lines = text.split('\n');
+      let currentPart = '';
+
       lines.forEach((line, i) => {
         const trimmed = line.trim();
         if (!trimmed) return;
-        
-        // 支持格式: 00:01-00:05 或 00:01-00:05 标签
-        const parts = trimmed.split(/\s+/);
-        const timeRange = parts[0];
-        const label = parts.slice(1).join(' ') || '';
-        
-        const segment = this.parseTimeRange(timeRange);
-        if (segment) {
-          if (label) segment.label = label;
-          this.segments.push(segment);
-          added++;
-        } else {
-          errors.push(`第${i+1}行: ${line}`);
+
+        // 检查是否是分组标题 (如: "Part 1", "Part 2")
+        if (trimmed.match(/^Part \d+/i)) {
+          currentPart = trimmed;
+          return;
         }
+
+        // 检查是否是纯数字编号 (如: "5.", "12.")
+        const numberMatch = trimmed.match(/^\d+\./);
+        if (numberMatch) {
+          // 提取时间范围和标签
+          const timeRangeMatch = trimmed.match(/(\d{1,2}:\d{2}(?::\d{2})?-\d{1,2}:\d{2}(?::\d{2})?)\s*(.+)?/);
+
+          if (timeRangeMatch) {
+            const timeRange = timeRangeMatch[1];
+            let label = timeRangeMatch[2] ? timeRangeMatch[2].trim() : '';
+
+            // 如果有分组标题，添加到标签前面
+            if (currentPart && label) {
+              label = `${currentPart} - ${label}`;
+            } else if (currentPart) {
+              label = currentPart;
+            }
+
+            const segment = this.parseTimeRange(timeRange);
+            if (segment) {
+              if (label) segment.label = label;
+              this.segments.push(segment);
+              added++;
+            } else {
+              errors.push(`第${i+1}行时间格式错误: ${line}`);
+            }
+          } else {
+            // 尝试原始格式: 00:01-00:05 或 00:01-00:05 标签
+            const parts = trimmed.split(/\s+/);
+            const timeRange = parts[0];
+            const label = parts.slice(1).join(' ') || '';
+
+            const finalLabel = currentPart && label ? `${currentPart} - ${label}` : (currentPart || label);
+
+            const segment = this.parseTimeRange(timeRange);
+            if (segment) {
+              if (finalLabel) segment.label = finalLabel;
+              this.segments.push(segment);
+              added++;
+            } else {
+              errors.push(`第${i+1}行: ${line}`);
+            }
+          }
+        }
+        // 如果不匹配任何已知格式，则跳过
       });
-      
-      this.renderUI();
-      
-      if (added > 0) {
-        this.showMessage(`已添加 ${added} 个片段`, 'success');
-      }
-      
-      if (errors.length > 0) {
-        console.error('解析错误的行:', errors);
-        this.showMessage(`${errors.length} 个格式错误，请检查格式`, 'error');
+
+      if (added > 0 && !errors.some(e => e.includes('YAML'))) {
+        this.showMessage(`文本格式解析成功，已添加 ${added} 个片段`, 'success');
       }
     }
     
@@ -954,6 +1047,54 @@
       }
     }
     
+    // 简单的YAML解析器
+    parseSimpleYAML(yamlText) {
+      const lines = yamlText.split('\n');
+      const result = {};
+      let currentSection = null;
+      let currentList = [];
+
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+
+        // 检查是否是节标题（不以空格开头，以冒号结尾）
+        if (!line.startsWith(' ') && trimmed.endsWith(':')) {
+          // 保存上一个节
+          if (currentSection && currentList.length > 0) {
+            result[currentSection] = currentList;
+          }
+          currentSection = trimmed.slice(0, -1); // 移除冒号
+          currentList = [];
+          return;
+        }
+
+        // 检查是否是列表项（以空格和-开头）
+        if (line.match(/^\s*-\s*/)) {
+          const item = trimmed.replace(/^\s*-\s*/, '');
+
+          // 解析时间范围和标签
+          const timeRangeMatch = item.match(/(\d{1,2}:\d{2}(?::\d{2})?-\d{1,2}:\d{2}(?::\d{2})?)\s*(.+)?/);
+          if (timeRangeMatch) {
+            const timeRange = timeRangeMatch[1];
+            const label = timeRangeMatch[2] ? timeRangeMatch[2].trim() : '';
+
+            currentList.push({
+              timeRange,
+              label
+            });
+          }
+        }
+      });
+
+      // 保存最后一个节
+      if (currentSection && currentList.length > 0) {
+        result[currentSection] = currentList;
+      }
+
+      return result;
+    }
+
     // 绑定全局事件
     bindGlobalEvents() {
       // 监听页面变化，检测新视频
