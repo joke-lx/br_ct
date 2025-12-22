@@ -11,7 +11,7 @@ const scriptFiles = [
   { name: "转换成一行数据", file: "元素dom/oneRaw.js" },
   { name: "颜色色卡", file: "元素dom/color_show.js" },
   { name: "剪切板抓暖文字", file: "元素dom/copy2file.js" },
-  { name: "视频播放面板", file: "元素dom\\videoControllerPlane\\videoPlane.js" },
+  { name: "视频播放面板", file: "元素dom/videoControllerPlane/videoPlane.js" },
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
