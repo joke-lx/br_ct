@@ -205,7 +205,7 @@ const PROMPT_TEMPLATES = {
     group: "custom_design",
     label: "docker运行",
     template:
-      "主题: %s  要求:基础:  1. 生成一个最小运行的docker run 一行指令,生成一行指令,不要使用命令换行,方便兼容不同shell直接复制,优先保证运行,数据卷都使用数据卷名进行映射,不要指定路径,其他的用户密码优先使用默认配置,如果需要指定 都使用容器作为用户名 223456作为密码 保证快速启动  2. 生成完整的docker-compose.yml文件 可以包含一些高级的参数 比如各种卷的挂载(使用./xxxx进行相对路径的挂载),环境变量的设置,具有良好的配置管理 ,其他:把相关的端口全部映射 完成上面两个主题的配置 ",
+      "主题: %s  要求:基础:  1. 生成一个最小运行的docker run 一行指令,生成一行指令,不要使用命令换行,方便兼容不同shell直接复制,优先保证运行,数据卷都使用数据卷名进行映射,不要指定路径,其他的用户密码优先使用默认配置,如果需要指定 都使用容器作为用户名 223456作为密码 保证快速启动  2. 生成完整的docker-compose.yml文件 可以包含一些高级的参数 比如各种卷的挂载(使用./xxxx进行相对路径的挂载),环境变量的设置,具有良好的配置管理,并且使用扩展一个预留数据卷的挂载./shared:/shared进行预留的映射,其他:把相关的端口全部映射 完成上面两个主题的配置 ",
   },
   "有问题:: 官方文档 sdk文档 ": {
     group: "search",
@@ -283,7 +283,10 @@ const PROMPT_TEMPLATES = {
     template: `内容: %s  
   要求: 按照用户需要设计数据库，其中在用户的表当中有以下基本规范：  
   建表语句自带drop if exists,如果有抽象类型 优先使用status字段,前期验证原型阶段,减少使用not null的约束字段 
+  为你便捷开发,你可以对业务数据使用json数据格式存储,整体的json来进行保存
   id              bigint auto_increment comment '主键ID',  
+  status         varchar(20), -- 时间维度上的状态 
+  type          varchar(20), -- 静态维度上的状态
   create_time     datetime default CURRENT_TIMESTAMP not null comment '创建时间',  
   update_time     datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'`,
   },
