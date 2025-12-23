@@ -5,14 +5,12 @@ import { executeFunctionScript , setupFuncCommandListener } from './backgroudtas
 import { setTabTransListener } from './backgroudtask/gotoServer.js';
 import { startServer } from './backgroudtask/word_http_server.js';
 // import { setupClipboardToFileListener } from './backgroudtask/clipboard2file.js';
-import { startCarousel } from './backgroudtask/startCarousel.js';
 // 初始化标签页更新监听器，用于处理 AI 平台任务的加载完成事件
 setupTabUpdateListener();
 setupFuncCommandListener();
 setTabTransListener();
 startServer();
 // setupClipboardToFileListener();
-startCarousel();
 
 // 监听来自 popup 的任务请求
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
