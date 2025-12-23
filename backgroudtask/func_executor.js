@@ -73,6 +73,19 @@ export function executeFunctionScript(scriptFile, sendResponse) {
   });
 }
 
+/**
+ * 导出函数：设置消息监听器（处理函数执行相关的消息）
+ */
+export function setupMessageListener() {
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "executeFunctionScript") {
+      // 处理通用脚本执行请求
+      executeFunctionScript(request.file, sendResponse);
+      return true;
+    }
+  });
+}
+
 export function setupFuncCommandListener() {
   // 监听快捷键
   chrome.commands.onCommand.addListener((command) => {

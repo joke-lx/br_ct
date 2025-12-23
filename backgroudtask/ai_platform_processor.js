@@ -101,6 +101,27 @@ export function processNextAction() {
 }
 
 /**
+ * 导出函数：设置消息监听器（处理 AI 平台相关的消息）
+ */
+export function setupMessageListener() {
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "processTaskQueue") {
+      // 收到任务队列，保存并开始处理第一个任务
+      chrome.storage.local.set({ actionsQueue: request.queue }, () => {
+        processNextAction();
+      });
+      sendResponse({ status: "processing_started" });
+      return true;
+    } else if (request.action === "closeAllAITabs") {
+      // 处理关闭所有AI标签页的请求
+      closeAllAITabs();
+      sendResponse({ status: "closing_tabs" });
+      return true;
+    }
+  });
+}
+
+/**
  * 导出函数：监听标签页更新（用于新创建的 AI 平台标签页）
  */
 export function setupTabUpdateListener() {
