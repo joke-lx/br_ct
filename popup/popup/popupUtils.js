@@ -326,82 +326,140 @@ function closeAllAITabs() {
 }
 
 /**
- * 发送消息逻辑
+ * 发送消息逻辑（优化版：支持并发并显示进度）
  */
 async function startSending() {
-  // 确保最新的输入被保存
-  if (saveTimeout) {
-    clearTimeout(saveTimeout);
-    saveTimeout = null;
-  }
-  await debouncedSaveMessage(elements.messageInput.value);
+    // 确保最新的输入被保存
+    if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+    }
+    await debouncedSaveMessage(elements.messageInput.value);
 
-  const originalMessage = validateMessageInput(elements.messageInput.value);
-  if (!originalMessage) {
-    return;
-  }
-
-  // 从selectedValue中直接获取当前选中的模板
-  const selectedValue =
-    elements.promptOptimizerSelect.querySelector(".selected-value");
-  const templateKey = selectedValue.dataset.value;
-  const templateContent = selectedValue.dataset.template;
-
-  let finalMessage = originalMessage;
-
-  if (templateKey && templateContent) {
-    finalMessage = templateContent.includes("%s")
-      ? templateContent.replace("%s", originalMessage)
-      : originalMessage + " " + templateContent;
-  }
-
-  const selectedPlatforms = Array.from(elements.platformCheckboxes)
-    .filter((checkbox) => checkbox.checked)
-    .map((checkbox) => checkbox.dataset.platform);
-
-  if (!validatePlatformSelection(selectedPlatforms)) {
-    return;
-  }
-
-  // 检查文本长度，如果超过400则复制到剪切板
-  if (finalMessage.length > 400) {
-    setButtonLoadingState(elements.sendButton, "复制中...");
-
-    const copySuccess = await copyToClipboard(finalMessage);
-
-    if (copySuccess) {
-      showTempMessage(`内容已复制到剪切板（${finalMessage.length}字符）`);
-    } else {
-      showTempMessage("复制失败，但将继续发送");
+    const originalMessage = validateMessageInput(elements.messageInput.value);
+    if (!originalMessage) {
+        return;
     }
 
-    // 短暂延迟让用户看到提示
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
+    // 从selectedValue中直接获取当前选中的模板
+    const selectedValue =
+        elements.promptOptimizerSelect.querySelector(".selected-value");
+    const templateKey = selectedValue.dataset.value;
+    const templateContent = selectedValue.dataset.template;
 
-  setButtonLoadingState(elements.sendButton, "发送中...");
+    let finalMessage = originalMessage;
 
-  try {
-    // 确保历史消息保存完成后再发送任务
-    await Promise.all([
-      savePlatformStates(elements.platformCheckboxes),
-      addToHistory(originalMessage)
-    ]);
+    if (templateKey && templateContent) {
+        finalMessage = templateContent.includes("%s")
+            ? templateContent.replace("%s", originalMessage)
+            : originalMessage + " " + templateContent;
+    }
 
-    const actionsQueue = selectedPlatforms.map((platform) => ({
-      platform,
-      message: finalMessage,
-    }));
+    const selectedPlatforms = Array.from(elements.platformCheckboxes)
+        .filter((checkbox) => checkbox.checked)
+        .map((checkbox) => checkbox.dataset.platform);
 
-    chrome.runtime.sendMessage(
-      { action: "processTaskQueue", queue: actionsQueue },
-      () => {
-        window.close();
-      }
+    if (!validatePlatformSelection(selectedPlatforms)) {
+        return;
+    }
+
+    // 检查文本长度，如果超过400则复制到剪切板
+    if (finalMessage.length > 400) {
+        setButtonLoadingState(elements.sendButton, "复制中...");
+
+        const copySuccess = await copyToClipboard(finalMessage);
+
+        if (copySuccess) {
+            showTempMessage(`内容已复制到剪切板（${finalMessage.length}字符）`);
+        } else {
+            showTempMessage("复制失败，但将继续发送");
+        }
+
+        // 短暂延迟让用户看到提示
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    // 显示初始进度
+    setButtonLoadingState(
+        elements.sendButton,
+        `处理中 (0/${selectedPlatforms.length})`
     );
-  } catch (error) {
-    console.error("发送消息失败:", error);
-    showTempMessage("发送失败，请重试");
-    resetButtonState(elements.sendButton, "发送消息");
-  }
+
+    try {
+        // 1. 并行保存数据
+        await Promise.all([
+            savePlatformStates(elements.platformCheckboxes),
+            addToHistory(originalMessage)
+        ]);
+
+        // 2. 构造任务队列
+        const actionsQueue = selectedPlatforms.map((platform) => ({
+            platform,
+            message: finalMessage,
+        }));
+
+        // 3. 发送任务到 background（使用 Promise 包装）
+        const response = await new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage(
+                {
+                    action: "processTaskQueue",
+                    queue: actionsQueue,
+                    config: {
+                        maxConcurrent: 3,      // 最多同时处理3个平台
+                        batchDelay: 300,       // 批次间延迟300ms
+                        tabLoadTimeout: 8000,  // 页面加载超时8秒
+                        scriptTimeout: 5000    // 脚本执行超时5秒
+                    }
+                },
+                (response) => {
+                    if (chrome.runtime.lastError) {
+                        reject(chrome.runtime.lastError);
+                    } else {
+                        resolve(response);
+                    }
+                }
+            );
+        });
+
+        // 4. 处理响应结果
+        console.log("任务处理完成:", response);
+
+        if (response && response.status === "completed") {
+            // 显示处理结果
+            const successMsg = `处理完成: 成功 ${response.success}/${response.total}`;
+            setButtonLoadingState(elements.sendButton, successMsg);
+            showTempMessage(successMsg, 2000);
+
+            // 如果有失败的任务，显示详细信息
+            if (response.failed > 0) {
+                const failedPlatforms = response.results
+                    .filter(r => r.status === 'rejected')
+                    .map(r => {
+                        const match = r.reason?.message?.match(/^(\w+):/);
+                        return match ? match[1] : '未知';
+                    })
+                    .join(', ');
+
+                console.warn("失败的平台:", failedPlatforms);
+                setTimeout(() => {
+                    showTempMessage(`失败: ${failedPlatforms}`, 3000);
+                }, 2000);
+            }
+        } else if (response && response.status === "error") {
+            throw new Error(response.error || "处理失败");
+        } else {
+            showTempMessage("发送完成");
+        }
+
+        // 5. 短暂延迟后关闭窗口
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        window.close();
+
+    } catch (error) {
+        console.error("发送消息失败:", error);
+        showTempMessage("发送失败，请重试");
+
+        // 恢复按钮状态
+        resetButtonState(elements.sendButton, "发送消息");
+    }
 }
