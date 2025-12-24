@@ -200,10 +200,15 @@ export async function processTaskQueueConcurrent(queue, options = {}) {
 
         // 并发执行当前批次
         const batchResults = await Promise.allSettled(
-            batch.map(task => processSingleTaskConcurrent(task, {
-                tabLoadTimeout,
-                scriptTimeout
-            }))
+            batch.map((task, index) => {
+                // 判断标准：是整个队列的第 0 个元素 (i 是当前批次的起始索引)
+                const isFirstTask = (i === 0 && index === 0);
+                return processSingleTaskConcurrent(task, {
+                    tabLoadTimeout,
+                    scriptTimeout,
+                    active: isFirstTask // 只有第一个任务传 true
+                });
+            })
         );
 
         results.push(...batchResults);
@@ -235,13 +240,13 @@ export async function processTaskQueueConcurrent(queue, options = {}) {
  */
 async function processSingleTaskConcurrent(task, options = {}) {
     const { platform, message } = task;
-    const { tabLoadTimeout = 8000, scriptTimeout = 5000 } = options;
+    const { tabLoadTimeout = 8000, scriptTimeout = 5000, active = false } = options;
 
     try {
         console.log(`[${platform}] 开始处理任务`);
 
         // 1. 查找或创建标签页
-        const tab = await findOrCreatePlatformTab(platform);
+        const tab = await findOrCreatePlatformTab(platform,active);
         console.log(`[${platform}] 使用标签页 ID: ${tab.id}`);
 
         // 2. 等待页面加载完成
@@ -269,7 +274,7 @@ async function processSingleTaskConcurrent(task, options = {}) {
  * @param {string} platform 平台名称
  * @returns {Promise<Object>} 标签页对象
  */
-async function findOrCreatePlatformTab(platform) {
+async function findOrCreatePlatformTab(platform,shouldActive = false) {
     const targetUrl = platformUrls[platform];
 
     if (!targetUrl) {
@@ -282,6 +287,10 @@ async function findOrCreatePlatformTab(platform) {
 
     if (existingTab) {
         console.log(`[${platform}] 找到已存在的标签页: ${existingTab.id}`);
+        // 如果需要激活已存在的标签页
+        if (shouldActive) {
+            await chrome.tabs.update(existingTab.id, { active: true });
+        }
         // 不激活，后台处理
         return existingTab;
     }
@@ -290,7 +299,7 @@ async function findOrCreatePlatformTab(platform) {
     console.log(`[${platform}] 创建新标签页`);
     const newTab = await chrome.tabs.create({
         url: targetUrl,
-        active: false  // 后台打开
+        active: shouldActive  // 后台打开
     });
 
     return newTab;
