@@ -43,6 +43,12 @@ const PLATFORM_CONFIG = {
     icon: '通',
     color: '#ff6600',
     defaultVisible: true
+  },
+   glm: {
+    name: 'glm',
+    icon: 'g',
+    color: '#62a3d8ff',
+    defaultVisible: true
   }
 };
 
