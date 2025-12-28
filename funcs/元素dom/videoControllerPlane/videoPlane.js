@@ -340,13 +340,14 @@
           <div class="section">
             <div class="section-title">🎮 播放控制</div>
             <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px;">
-              <button class="btn btn-success" id="playAllBtn" style="flex: 1;">播放全部</button>
-              <button class="btn btn-info" id="playNextBtn" style="flex: 1;">下一段</button>
-              <button class="btn btn-warning" id="stopBtn" style="flex: 1;">停止</button>
+              <button class="btn btn-success" id="autoFitBtn" style="flex: 1;">📍 自动适配</button>
             </div>
             <div style="display: flex; gap: 5px;">
-              <button class="btn" id="prevSegmentBtn" style="flex: 1;">上一段</button>
-              <button class="btn" id="nextSegmentBtn" style="flex: 1;">下一段</button>
+              <button class="btn" id="prevSegmentBtn" style="flex: 1;">⬅️ 上一段</button>
+              <button class="btn" id="nextSegmentBtn" style="flex: 1;">➡️ 下一段</button>
+            </div>
+            <div style="font-size: 10px; color: #888; margin-top: 5px; text-align: center;">
+              当前片段: <span id="currentSegmentLabel">${this.currentSegment + 1}/${this.segments.length || 0}</span>
             </div>
           </div>
 
@@ -681,47 +682,31 @@ Part 1:
           this.clearSegments();
         });
       }
-      
-      // 播放全部按钮
-      const playAllBtn = this.uiElement.querySelector('#playAllBtn');
-      if (playAllBtn) {
-        playAllBtn.addEventListener('click', () => {
-          this.playSegments();
+
+      // 自动适配按钮
+      const autoFitBtn = this.uiElement.querySelector('#autoFitBtn');
+      if (autoFitBtn) {
+        autoFitBtn.addEventListener('click', () => {
+          this.autoFitToCurrentTime();
         });
       }
-      
-      // 播放下一个按钮
-      const playNextBtn = this.uiElement.querySelector('#playNextBtn');
-      if (playNextBtn) {
-        playNextBtn.addEventListener('click', () => {
-          this.playNextSegment();
-        });
-      }
-      
-      // 停止按钮
-      const stopBtn = this.uiElement.querySelector('#stopBtn');
-      if (stopBtn) {
-        stopBtn.addEventListener('click', () => {
-          this.stop();
-        });
-      }
-      
+
       // 上一段按钮
       const prevSegmentBtn = this.uiElement.querySelector('#prevSegmentBtn');
       if (prevSegmentBtn) {
         prevSegmentBtn.addEventListener('click', () => {
-          this.playPreviousSegment();
+          this.activatePreviousSegment();
         });
       }
-      
+
       // 下一段按钮
       const nextSegmentBtn = this.uiElement.querySelector('#nextSegmentBtn');
       if (nextSegmentBtn) {
         nextSegmentBtn.addEventListener('click', () => {
-          this.playNextSegment();
+          this.activateNextSegment();
         });
       }
-      
+
       // 批量操作按钮
       const batchAddBtn = this.uiElement.querySelector('#batchAddBtn');
       if (batchAddBtn) {
@@ -1455,38 +1440,84 @@ Part 1:
       this.updateUI();
       this.showMessage('已清除所有片段', 'info');
     }
-    
-    // 播放片段
-    playSegments(rangeStrings = null) {
+
+    // 根据时间查找对应的片段
+    findSegmentForTime(time) {
+      for (let i = 0; i < this.segments.length; i++) {
+        const seg = this.segments[i];
+        if (time >= seg.start && time <= seg.end) {
+          return { index: i, segment: seg, within: true };
+        }
+      }
+
+      // 如果不在任何片段内，找到最近的下一个片段
+      for (let i = 0; i < this.segments.length; i++) {
+        if (time < this.segments[i].start) {
+          return { index: i, segment: this.segments[i], within: false };
+        }
+      }
+
+      // 如果时间超过所有片段，返回 null
+      return null;
+    }
+
+    // 播放片段（智能定位）
+    playSegments(rangeStrings = null, smartStart = true) {
       if (!this.currentVideo) {
         this.showMessage('没有可用的视频元素', 'error');
         return;
       }
-      
+
       // 如果提供了新的片段列表，替换当前片段
       if (rangeStrings && Array.isArray(rangeStrings)) {
         this.segments = [];
         let allValid = true;
-        
+
         rangeStrings.forEach(rangeStr => {
           if (!this.addSegment(rangeStr)) {
             allValid = false;
           }
         });
-        
+
         if (!allValid) {
           this.showMessage('部分片段格式错误，播放取消', 'error');
           return;
         }
       }
-      
+
       if (this.segments.length === 0) {
         this.showMessage('没有设置播放片段', 'error');
         return;
       }
-      
-      this.currentSegment = 0;
-      this.playCurrentSegment();
+
+      // 智能定位：根据当前视频时间找到对应的片段
+      if (smartStart && this.currentVideo.currentTime > 0) {
+        const currentTime = this.currentVideo.currentTime;
+        const result = this.findSegmentForTime(currentTime);
+
+        if (result) {
+          if (result.within) {
+            // 当前时间在某个片段内，从当前时间继续播放
+            this.currentSegment = result.index;
+            this.playCurrentSegment(true); // true 表示从当前时间继续
+            this.showMessage(`从当前进度继续: ${this.formatTime(currentTime)}`, 'info');
+          } else {
+            // 当前时间不在任何片段内，跳转到最近的下一个片段
+            this.currentSegment = result.index;
+            this.playCurrentSegment(false);
+            this.showMessage(`跳转到下一个片段: ${this.formatTime(result.segment.start)}`, 'info');
+          }
+        } else {
+          // 当前时间超过所有片段，从第一个片段开始
+          this.currentSegment = 0;
+          this.playCurrentSegment(false);
+          this.showMessage('当前进度已超过所有片段，从头开始', 'info');
+        }
+      } else {
+        // 不使用智能定位，从头开始
+        this.currentSegment = 0;
+        this.playCurrentSegment(false);
+      }
     }
     
     // 播放单个片段
@@ -1495,50 +1526,58 @@ Part 1:
         this.showMessage('无效的片段索引', 'error');
         return;
       }
-      
+
       this.currentSegment = index;
-      this.playCurrentSegment();
+      this.playCurrentSegment(false);
     }
-    
+
     // 播放当前片段
-    playCurrentSegment() {
+    // resumeFromCurrent: true 表示从当前视频时间继续播放，false 表示从头开始
+    playCurrentSegment(resumeFromCurrent = false) {
       if (this.currentSegment >= this.segments.length) {
         this.showMessage('所有片段播放完毕', 'success');
         this.isPlaying = false;
         this.updateUI();
         return;
       }
-      
+
       const segment = this.segments[this.currentSegment];
-      
+
       if (!this.currentVideo) {
         this.showMessage('视频元素不存在', 'error');
         return;
       }
-      
+
       // 确保视频已加载
       if (this.currentVideo.readyState < 2) {
         this.showMessage('视频加载中...', 'info');
         this.currentVideo.load();
-        
+
         const onLoaded = () => {
           this.currentVideo.removeEventListener('loadeddata', onLoaded);
-          this.startSegmentPlayback(segment);
+          this.startSegmentPlayback(segment, resumeFromCurrent);
         };
-        
+
         this.currentVideo.addEventListener('loadeddata', onLoaded);
       } else {
-        this.startSegmentPlayback(segment);
+        this.startSegmentPlayback(segment, resumeFromCurrent);
       }
     }
-    
+
     // 开始播放片段
-    startSegmentPlayback(segment) {
+    // resumeFromCurrent: true 表示从当前时间继续，false 表示跳转到片段开始
+    startSegmentPlayback(segment, resumeFromCurrent = false) {
       this.isPlaying = true;
-      
-      // 跳转到片段开始
-      this.currentVideo.currentTime = segment.start;
-      this.showMessage(`播放片段 ${this.currentSegment + 1}/${this.segments.length}: ${this.formatTime(segment.start)} - ${this.formatTime(segment.end)}`, 'info');
+
+      if (resumeFromCurrent) {
+        // 从当前时间继续播放
+        const currentTime = this.currentVideo.currentTime;
+        this.showMessage(`继续播放片段 ${this.currentSegment + 1}/${this.segments.length}: ${this.formatTime(currentTime)}`, 'info');
+      } else {
+        // 跳转到片段开始
+        this.currentVideo.currentTime = segment.start;
+        this.showMessage(`播放片段 ${this.currentSegment + 1}/${this.segments.length}: ${this.formatTime(segment.start)} - ${this.formatTime(segment.end)}`, 'info');
+      }
       
       // 开始播放
       const playPromise = this.currentVideo.play();
@@ -1554,84 +1593,227 @@ Part 1:
       this.setupEndCheck(segment);
       this.updateUI();
     }
-    
+
     // 设置结束检查
     setupEndCheck(segment) {
       // 清除之前的检查
       if (this.intervalId) {
         clearInterval(this.intervalId);
       }
-      
+
       // 设置定时检查
       this.intervalId = setInterval(() => {
         if (!this.currentVideo || !this.isPlaying) {
           clearInterval(this.intervalId);
           return;
         }
-        
+
         const currentTime = this.currentVideo.currentTime;
-        
+
         if (this.debugMode) {
-          console.log(`⏱️ 当前时间: ${this.formatTime(currentTime)} / 结束: ${this.formatTime(segment.end)}`);
+          console.log(`⏱️ 当前时间: ${this.formatTime(currentTime)} | 片段: ${this.formatTime(segment.start)} - ${this.formatTime(segment.end)}`);
         }
-        
-        // 检查是否到达片段结束
+
+        // 如果当前时间在片段范围之外，显示状态但不强制跳转（用户可能手动拖动了进度条）
+        if (currentTime < segment.start) {
+          // 用户手动拖动到片段之前，工具不生效
+          this.updateStatusDisplay(`⏸️ 工具暂停（时间 ${this.formatTime(currentTime)} 在片段 ${this.formatTime(segment.start)} 之前）`);
+          return;
+        }
+
+        if (currentTime >= segment.end) {
+          // 时间已超出片段范围
+          this.updateStatusDisplay(`⏸️ 工具暂停（时间 ${this.formatTime(currentTime)} 超出片段 ${this.formatTime(segment.end)}）`);
+        }
+
+        // 检查是否到达片段结束，自动切换到下一个片段
         if (currentTime >= segment.end - 0.1) { // 提前0.1秒切换到下一个片段
           clearInterval(this.intervalId);
-          
+
           const autoPlayNext = this.uiElement && this.uiElement.querySelector('#autoPlayNext') ?
             this.uiElement.querySelector('#autoPlayNext').checked : true;
-          
+
           if (autoPlayNext && this.currentSegment < this.segments.length - 1) {
             this.currentSegment++;
-            setTimeout(() => this.playCurrentSegment(), 100);
+            const nextSegment = this.segments[this.currentSegment];
+            // 检查当前时间是否在下一个片段范围内
+            if (currentTime >= nextSegment.start && currentTime < nextSegment.end) {
+              // 当前时间在下一个片段范围内，直接激活
+              this.activateSegment(nextSegment);
+              this.updateUI();
+            } else if (currentTime < nextSegment.start) {
+              // 有时间间隙，跳转到下一个片段开始
+              this.currentVideo.currentTime = nextSegment.start;
+              this.activateSegment(nextSegment);
+              this.updateUI();
+            } else {
+              // 当前时间已超出下一个片段，继续查找合适的片段
+              this.findAndActivateAppropriateSegment(currentTime);
+            }
           } else {
             this.showMessage('片段播放完成', 'success');
             this.isPlaying = false;
-            this.currentVideo.pause();
-            this.updateUI();
+            this.updateStatusDisplay('✅ 全部片段播放完成');
           }
         }
       }, 100); // 每100ms检查一次
     }
-    
+
+    // 更新状态栏显示
+    updateStatusDisplay(message) {
+      const statusBar = this.uiElement?.querySelector('.status-bar');
+      if (statusBar) {
+        statusBar.textContent = message;
+      }
+    }
+
+    // 查找并激活适合当前时间的片段
+    findAndActivateAppropriateSegment(currentTime) {
+      const result = this.findSegmentForTime(currentTime);
+      if (result && result.within) {
+        this.currentSegment = result.index;
+        this.activateSegment(result.segment);
+        this.updateUI();
+        this.showMessage(`自动激活片段 ${this.currentSegment + 1}`, 'info');
+      } else {
+        // 没有找到合适的片段，停止监听
+        this.isPlaying = false;
+        this.updateStatusDisplay(`⏸️ 当前时间 ${this.formatTime(currentTime)} 不在任何片段范围内`);
+      }
+    }
+
     // 播放下一个片段
     playNextSegment() {
       if (this.currentSegment < this.segments.length - 1) {
         this.currentSegment++;
-        this.playCurrentSegment();
+        this.playCurrentSegment(false);
       } else {
         this.showMessage('已经是最后一个片段', 'info');
       }
     }
-    
+
     // 播放上一个片段
     playPreviousSegment() {
       if (this.currentSegment > 0) {
         this.currentSegment--;
-        this.playCurrentSegment();
+        this.playCurrentSegment(false);
       } else {
         this.showMessage('已经是第一个片段', 'info');
       }
     }
-    
+
+    // 自动适配当前时间（不修改进度，只激活对应片段）
+    autoFitToCurrentTime() {
+      if (!this.currentVideo) {
+        this.showMessage('没有可用的视频元素', 'error');
+        return;
+      }
+
+      if (this.segments.length === 0) {
+        this.showMessage('没有设置播放片段', 'error');
+        return;
+      }
+
+      const currentTime = this.currentVideo.currentTime;
+      const result = this.findSegmentForTime(currentTime);
+
+      if (result) {
+        this.currentSegment = result.index;
+        const segment = result.segment;
+
+        if (result.within) {
+          // 当前时间在片段内，激活该片段并开始监听
+          this.activateSegment(segment);
+          this.showMessage(`已激活片段 ${this.currentSegment + 1}: ${this.formatTime(segment.start)} - ${this.formatTime(segment.end)}`, 'success');
+        } else {
+          // 当前时间不在片段内，跳转到该片段开始
+          this.currentVideo.currentTime = segment.start;
+          this.activateSegment(segment);
+          this.showMessage(`已跳转到片段 ${this.currentSegment + 1}: ${this.formatTime(segment.start)}`, 'info');
+        }
+      } else {
+        this.showMessage('当前时间已超过所有片段', 'warning');
+      }
+
+      this.updateUI();
+    }
+
+    // 激活上一个片段（跳转到片段开始）
+    activatePreviousSegment() {
+      if (this.segments.length === 0) {
+        this.showMessage('没有设置播放片段', 'error');
+        return;
+      }
+
+      if (this.currentSegment > 0) {
+        this.currentSegment--;
+        const segment = this.segments[this.currentSegment];
+        // 跳转到片段开始
+        this.currentVideo.currentTime = segment.start;
+        this.activateSegment(segment);
+        this.showMessage(`已跳转到片段 ${this.currentSegment + 1}: ${this.formatTime(segment.start)} - ${this.formatTime(segment.end)}`, 'success');
+        this.updateUI();
+      } else {
+        this.showMessage('已经是第一个片段', 'info');
+      }
+    }
+
+    // 激活下一个片段（跳转到片段开始）
+    activateNextSegment() {
+      if (this.segments.length === 0) {
+        this.showMessage('没有设置播放片段', 'error');
+        return;
+      }
+
+      if (this.currentSegment < this.segments.length - 1) {
+        this.currentSegment++;
+        const segment = this.segments[this.currentSegment];
+        // 跳转到片段开始
+        this.currentVideo.currentTime = segment.start;
+        this.activateSegment(segment);
+        this.showMessage(`已跳转到片段 ${this.currentSegment + 1}: ${this.formatTime(segment.start)} - ${this.formatTime(segment.end)}`, 'success');
+        this.updateUI();
+      } else {
+        this.showMessage('已经是最后一个片段', 'info');
+      }
+    }
+
+    // 激活片段并开始监听（不修改视频位置）
+    activateSegment(segment) {
+      // 清除之前的监听
+      if (this.intervalId) {
+        clearInterval(this.intervalId);
+      }
+
+      this.isPlaying = true;
+
+      // 如果视频未播放，则开始播放
+      if (this.currentVideo && this.currentVideo.paused) {
+        this.currentVideo.play().catch(error => {
+          console.error('播放失败:', error);
+        });
+      }
+
+      this.setupEndCheck(segment);
+    }
+
     // 停止播放
     stop() {
       this.isPlaying = false;
-      
+
       if (this.intervalId) {
         clearInterval(this.intervalId);
         this.intervalId = null;
       }
-      
+
       if (this.currentVideo) {
         this.currentVideo.pause();
       }
-      
+
       this.updateUI();
       this.showMessage('播放已停止', 'info');
     }
-    
+
     // 选择视频
     setVideo(index) {
       if (index >= 0 && index < this.videos.length) {
