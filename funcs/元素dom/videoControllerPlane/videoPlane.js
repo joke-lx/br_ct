@@ -33,11 +33,174 @@
       this.findVideos();
       this.createUI();
       this.bindGlobalEvents();
-      
+
+      // 向 background 请求预设配置
+      this.requestStoredConfig();
+
       window._videoSegmentPlayer = this;
       console.log('✅ 视频片段播放器已加载成功!');
     }
-    
+
+    // 向 background 请求存储的配置
+    requestStoredConfig() {
+      const currentUrl = window.location.href;
+
+      // 检查是否在扩展环境中运行
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage(
+          {
+            action: 'getVideoConfig',
+            url: currentUrl
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.log('📡 无法连接到 background (可能是直接在页面运行)');
+              return;
+            }
+
+            if (response && response.status === 'success' && response.yaml) {
+              console.log('📥 找到预设配置:', response.matchedPrefix);
+              console.log('📄 YAML 内容:', response.yaml);
+
+              // 自动加载配置
+              this.loadConfigFromYaml(response.yaml);
+              this.showMessage(`已加载预设配置: ${response.matchedPrefix}`, 'success');
+            } else {
+              console.log('📭 未找到预设配置');
+            }
+          }
+        );
+      } else {
+        console.log('📡 非扩展环境，跳过配置请求');
+      }
+    }
+
+    // 从 YAML 字符串加载配置
+    loadConfigFromYaml(yamlText) {
+      try {
+        const yamlData = this.parseSimpleYAML(yamlText);
+
+        this.segments = [];
+
+        Object.entries(yamlData).forEach(([sectionName, items]) => {
+          items.forEach((item) => {
+            const segment = this.parseTimeRange(item.timeRange);
+            if (segment) {
+              const label = item.label ? `${sectionName} - ${item.label}` : sectionName;
+              segment.label = label;
+              this.segments.push(segment);
+            }
+          });
+        });
+
+        this.currentSegment = 0;
+        this.renderUI();
+        console.log(`✅ 已加载 ${this.segments.length} 个片段`);
+        return true;
+      } catch (err) {
+        console.error('❌ YAML 解析失败:', err);
+        this.showMessage('配置加载失败', 'error');
+        return false;
+      }
+    }
+
+    // 保存当前配置到 background
+    saveCurrentConfig() {
+      const currentUrl = window.location.href;
+      const urlPrefix = this.extractUrlPrefix(currentUrl);
+
+      // 生成 YAML
+      let yaml = `# 视频片段配置 - ${currentUrl}\n`;
+      yaml += `# 当前片段: ${this.currentSegment}\n`;
+      yaml += `# 自动播放: ${this.uiElement?.querySelector('#autoPlayNext')?.checked ? true : false}\n`;
+      yaml += `# 调试模式: ${this.uiElement?.querySelector('#debugMode')?.checked ? true : false}\n\n`;
+
+      if (this.segments.length > 0) {
+        const groups = {};
+
+        this.segments.forEach((segment) => {
+          let groupName = '默认分组';
+
+          if (segment.label) {
+            const parts = segment.label.split(' - ');
+            if (parts.length > 1) {
+              groupName = parts[0];
+            }
+          }
+
+          if (!groups[groupName]) {
+            groups[groupName] = [];
+          }
+
+          const timeRange = `${this.formatTime(segment.start)}-${this.formatTime(segment.end)}`;
+          const itemLabel = segment.label.includes(' - ') ?
+            segment.label.split(' - ').slice(1).join(' - ') :
+            (segment.label || '');
+
+          groups[groupName].push({
+            timeRange,
+            label: itemLabel
+          });
+        });
+
+        Object.entries(groups).forEach(([groupName, items]) => {
+          yaml += `${groupName}:\n`;
+          items.forEach(item => {
+            if (item.label) {
+              yaml += `  - ${item.timeRange} ${item.label}\n`;
+            } else {
+              yaml += `  - ${item.timeRange}\n`;
+            }
+          });
+          yaml += '\n';
+        });
+      } else {
+        yaml += "默认分组:\n  # 暂无片段\n";
+      }
+
+      // 发送到 background 保存
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage(
+          {
+            action: 'setVideoConfig',
+            urlPrefix: urlPrefix,
+            yaml: yaml
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              this.showMessage('保存失败: 无法连接到 background', 'error');
+              return;
+            }
+
+            if (response && response.status === 'success') {
+              this.showMessage(`配置已保存: ${urlPrefix}`, 'success');
+            } else {
+              this.showMessage(response?.message || '保存失败', 'error');
+            }
+          }
+        );
+      } else {
+        // 非扩展环境，只复制到剪贴板
+        this.copyToClipboard(yaml);
+        this.showMessage('非扩展环境，内容已复制到剪贴板', 'info');
+      }
+    }
+
+    // 提取 URL 前缀
+    extractUrlPrefix(url) {
+      try {
+        const urlObj = new URL(url);
+        const pathParts = urlObj.pathname.split('/').filter(p => p);
+        if (pathParts.length > 0) {
+          return `${urlObj.protocol}//${urlObj.hostname}/${pathParts[0]}`;
+        }
+        return `${urlObj.protocol}//${urlObj.hostname}`;
+      } catch (e) {
+        console.error('URL 解析失败:', e);
+        return url;
+      }
+    }
+
     // 查找页面中的所有视频
     findVideos() {
       this.videos = Array.from(document.querySelectorAll('video'));
@@ -198,6 +361,9 @@
               </label>
               <button class="btn btn-small" id="exportBtn">导出YAML</button>
               <button class="btn btn-small" id="importBtn">导入YAML</button>
+            </div>
+            <div style="display: flex; gap: 5px; margin-top: 5px;">
+              <button class="btn btn-small" id="saveToPluginBtn" style="flex: 1; background: #4CAF50;">💾 保存到插件</button>
             </div>
           </div>
 
@@ -602,7 +768,15 @@ Part 1:
           this.importConfig();
         });
       }
-      
+
+      // 保存到插件按钮
+      const saveToPluginBtn = this.uiElement.querySelector('#saveToPluginBtn');
+      if (saveToPluginBtn) {
+        saveToPluginBtn.addEventListener('click', () => {
+          this.saveCurrentConfig();
+        });
+      }
+
       // 关闭按钮
       const closeBtn = this.uiElement.querySelector('#closeUI');
       if (closeBtn) {

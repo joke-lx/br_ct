@@ -7,6 +7,7 @@ import {
 import { setupFuncCommandListener, setupMessageListener as setupFuncExecutorListener } from './backgroudtask/func_executor.js';
 import { setTabTransListener } from './backgroudtask/gotoServer.js';
 import { startServer } from './backgroudtask/word_http_server.js';
+import { init as initVideoPlaneServer } from './backgroudtask/video_plane_server.js';
 
 // 初始化标签页更新监听器
 setupTabUpdateListener();
@@ -18,3 +19,6 @@ setupFuncExecutorListener();      // 函数执行消息监听
 
 setTabTransListener();
 startServer();
+
+// 初始化视频片段播放器配置服务器
+initVideoPlaneServer();
