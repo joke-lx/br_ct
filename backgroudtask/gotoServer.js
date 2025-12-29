@@ -143,21 +143,59 @@ export function setTabTransListener() {
 function getDomainName(url) {
   try {
     const urlObj = new URL(url);
-    const domain = urlObj.hostname;
+    let domain = urlObj.hostname;
+
+    // 移除 www. 前缀
+    if (domain.startsWith('www.')) {
+      domain = domain.slice(4);
+    }
+
+    // 提取主域名部分（去掉顶级域名）
+    const parts = domain.split('.');
+    let mainDomain = domain;
+
+    if (parts.length >= 2) {
+      // 对于常见域名格式，提取主域名部分
+      const secondTld = parts[parts.length - 2];
+
+      // 处理三段式域名（如 co.jp, com.cn, com.tw 等）
+      if (['co', 'com', 'org', 'net', 'gov', 'edu'].includes(secondTld) && parts.length >= 3) {
+        mainDomain = parts[parts.length - 3];
+      } else {
+        // 两段式域名，取第二部分（如 taobao.com → taobao）
+        mainDomain = secondTld;
+      }
+    }
 
     // 简化一些常见域名的显示
     const domainMap = {
-      'www.bilibili.com': 'B站',
-      'github.com': 'GitHub',
-      'gitee.com': 'Gitee',
-      'www.zhihu.com': '知乎',
-      'www.douyin.com': '抖音',
-      'www.notion.so': 'Notion',
-      'ditu.amap.com': '高德地图',
-      'bailian.console.aliyun.com': '通义千问'
+      'bilibili': 'B站',
+      'github': 'GitHub',
+      'gitee': 'Gitee',
+      'zhihu': '知乎',
+      'douyin': '抖音',
+      'notion': 'Notion',
+      'amap': '高德地图',
+      'taobao': '淘宝',
+      'tmall': '天猫',
+      'jd': '京东',
+      'google': 'Google',
+      'baidu': '百度',
+      'weibo': '微博',
+      'youtube': 'YouTube',
+      'facebook': 'Facebook',
+      'twitter': 'Twitter',
+      'instagram': 'Instagram',
+      'linkedin': 'LinkedIn',
+      'reddit': 'Reddit',
+      'stackoverflow': 'StackOverflow',
+      'csdn': 'CSDN',
+      'juejin': '掘金',
+      'aliyun': '阿里云',
+      'console': '通义千问'
     };
 
-    return domainMap[domain] || domain;
+    return domainMap[mainDomain] || mainDomain;
   } catch (e) {
     return null;
   }
