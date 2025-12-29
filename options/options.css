@@ -22,7 +22,7 @@ body {
 /* ==================== 侧边栏样式 ==================== */
 .sidebar {
   width: 240px;
-  background: linear-gradient(180deg, #2c3e50 0%, #1a252f 100%);
+  background: linear-gradient(180deg, #1e3a5f 0%, #0d1b2a 100%);
   color: white;
   display: flex;
   flex-direction: column;
@@ -63,17 +63,18 @@ body {
   margin-bottom: 4px;
   transition: all 0.2s ease;
   font-size: 14px;
+  cursor: pointer;
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(59, 130, 246, 0.2);
   color: white;
 }
 
 .nav-item.active {
-  background: rgba(102, 126, 234, 0.3);
-  color: #a8b4ff;
-  border-left: 3px solid #667eea;
+  background: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+  border-left: 3px solid #3b82f6;
   padding-left: 13px;
 }
 
@@ -175,14 +176,14 @@ body {
 }
 
 .btn-primary {
-  background: #667eea;
+  background: #3b82f6;
   color: white;
 }
 
 .btn-primary:hover {
-  background: #5568d3;
+  background: #2563eb;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .btn-secondary {
@@ -264,10 +265,10 @@ body {
 }
 
 .platform-item:hover {
-  border-color: #667eea;
-  background: #f8f9ff;
+  border-color: #3b82f6;
+  background: #eff6ff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
 .platform-checkbox {
@@ -275,7 +276,7 @@ body {
   height: 20px;
   margin-right: 12px;
   cursor: pointer;
-  accent-color: #667eea;
+  accent-color: #3b82f6;
 }
 
 .platform-label {
@@ -333,7 +334,7 @@ body {
 }
 
 .storage-group-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   color: white;
   padding: 12px 16px;
   font-size: 14px;
@@ -395,7 +396,7 @@ body {
 
 .key-name {
   font-family: 'Consolas', 'Monaco', monospace;
-  color: #667eea;
+  color: #3b82f6;
 }
 
 .key-type {
@@ -420,7 +421,7 @@ body {
 }
 
 .json-key {
-  color: #667eea;
+  color: #3b82f6;
 }
 
 .json-string {
@@ -479,7 +480,7 @@ body {
 }
 
 .queue-item-index {
-  background: #667eea;
+  background: #3b82f6;
   color: white;
   width: 28px;
   height: 28px;
@@ -535,7 +536,7 @@ body {
 
 .menu-config-item-body {
   padding-left: 16px;
-  border-left: 3px solid #667eea;
+  border-left: 3px solid #3b82f6;
 }
 
 .menu-empty-state {
