@@ -55,11 +55,11 @@
     {
       "matches": ["<all_urls>"],
       "js": [
-        "tripleSpace/tripleSpace.js",
-        "funcs/goto/goto.js",
-        "funcs/word/word.js"
+        "runjs/tripleSpace/tripleSpace.js",
+        "runjs/goto/goto.js",
+        "runjs/word/word.js"
       ],
-      "css": ["tripleSpace/tripleSpace.css"],
+      "css": ["runjs/tripleSpace/tripleSpace.css"],
       "run_at": "document_idle"
     }
   ],
@@ -68,8 +68,9 @@
       "resources": [
         "contentScripts/*.js",
         "funcs/*.js",
-        "tripleSpace/*.js",
-        "tripleSpace/*.css"
+        "runjs/*.js",
+        "runjs/**/*.js",
+        "runjs/**/*.css"
       ],
       "matches": ["<all_urls>"]
     }
