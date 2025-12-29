@@ -2,48 +2,9 @@
  * 存储调试页面
  */
 
-// 默认菜单配置（与 gotoServer.js 保持一致）
-const defaultMenuData = {
-  name: '菜单',
-  isRoot: true,
-  children: [
-    {
-      name: '📄 feed',
-      children: [
-        { name: 'IT老齐', url: 'https://www.itlaoqi.com/chapter.html?sid=143&cid=3292', children: [] },
-        { name: 'NOTION', url: 'https://www.notion.so/a23ee5b49d7d474ebf9d3e3094441088', children: [] },
-        { name: 'B站', url: 'https://www.bilibili.com', children: [] },
-        { name: 'github', url: 'https://github.com/', children: [] },
-        { name: 'gitee', url: 'https://gitee.com/', children: [] },
-      ]
-    },
-    {
-      name: '📄 面包',
-      children: [
-        { name: '上海演唱会', url: 'https://www.bilibili.com/video/BV1L48qzsESK?spm_id_from=333.788.videopod.sections', children: [] },
-        { name: '宁波演唱会', url: 'https://www.bilibili.com/video/BV1pca3zPECZ/?spm_id_from=333.337.search-card.all.click&vd_source=b00eb5ad0e31d2629f81cb48d7fab1f2', children: [] },
-        { name: '北京演唱会', url: 'https://www.bilibili.com/video/BV13hSzYfEfD?spm_id_from=333.788.videopod.sections&vd_source=b00eb5ad0e31d2629f81cb48d7fab1f2', children: [] },
-        { name: '广州演唱会', url: 'https://www.bilibili.com/video/BV1g2oiYqEiM?spm_id_from=333.788.videopod.sections&vd_source=b00eb5ad0e31d2629f81cb48d7fab1f2', children: [] },
-        { name: '成都演唱会', url: 'https://www.bilibili.com/video/BV1dUjkzqEUj/?spm_id_from=333.788.videopod.sections&vd_source=b00eb5ad0e31d2629f81cb48d7fab1f2', children: [] },
-        { name: '天津演唱会', url: 'https://www.bilibili.com/video/BV1hNq1BTEG8/?spm_id_from=333.337.search-card.all.click', children: [] },
-      ]
-    },
-    {
-      name: '📄 网站跳转3',
-      children: [
-        { name: 'gitee_api', url: 'https://gitee.com/api/v5/swagger', children: [] },
-        { name: '高德地图', url: 'https://ditu.amap.com/', children: [] },
-        { name: '抖音', url: 'https://www.douyin.com', children: [] },
-      ]
-    }
-  ]
-};
-
 // DOM 元素
 let debugContent;
 let statusMessage;
-let menuEditor;
-let editorStatus;
 
 /**
  * 初始化存储调试页面
@@ -51,8 +12,6 @@ let editorStatus;
 function initializeStorageDebug() {
   debugContent = document.getElementById('storage-debug-content');
   statusMessage = document.getElementById('storage-status-message');
-  menuEditor = document.getElementById('menu-config-editor');
-  editorStatus = document.getElementById('editor-status');
 
   // 加载存储数据
   loadStorageDebug();
@@ -62,17 +21,6 @@ function initializeStorageDebug() {
 
   // 清空按钮
   document.getElementById('clear-storage').addEventListener('click', clearAllStorage);
-
-  // 菜单配置编辑器按钮
-  document.getElementById('load-menu-config').addEventListener('click', loadMenuConfig);
-  document.getElementById('save-menu-config').addEventListener('click', saveMenuConfig);
-  document.getElementById('reset-menu-config').addEventListener('click', resetMenuConfig);
-  document.getElementById('format-menu-config').addEventListener('click', formatMenuConfig);
-
-  // 编辑器内容变化时隐藏状态
-  menuEditor.addEventListener('input', () => {
-    editorStatus.style.display = 'none';
-  });
 
   // 使用事件委托处理折叠/展开
   debugContent.addEventListener('click', (e) => {
@@ -344,125 +292,6 @@ function showStatusMessage(message, type = 'success') {
   // 3秒后自动隐藏
   setTimeout(() => {
     statusMessage.classList.remove('show');
-  }, 3000);
-}
-
-// ==================== 菜单配置编辑功能 ====================
-
-/**
- * 加载菜单配置到编辑器
- */
-function loadMenuConfig() {
-  chrome.storage.local.get(['customMenuConfig'], (result) => {
-    const config = result.customMenuConfig || defaultMenuData;
-    menuEditor.value = JSON.stringify(config, null, 2);
-    showEditorStatus('配置已加载', 'valid');
-  });
-}
-
-/**
- * 保存菜单配置
- */
-function saveMenuConfig() {
-  const configText = menuEditor.value.trim();
-
-  if (!configText) {
-    showEditorStatus('配置不能为空', 'invalid');
-    return;
-  }
-
-  try {
-    const config = JSON.parse(configText);
-
-    // 验证配置结构
-    if (!validateMenuConfig(config)) {
-      showEditorStatus('配置结构无效：必须包含 name, isRoot, children 属性', 'invalid');
-      return;
-    }
-
-    // 保存到 storage
-    chrome.storage.local.set({ customMenuConfig: config }, () => {
-      showEditorStatus('配置已保存到 customMenuConfig', 'valid');
-      showStatusMessage('菜单配置已保存', 'success');
-      // 刷新存储显示
-      loadStorageDebug();
-    });
-  } catch (e) {
-    showEditorStatus('JSON 格式错误: ' + e.message, 'invalid');
-  }
-}
-
-/**
- * 重置为默认配置
- */
-function resetMenuConfig() {
-  if (confirm('确定要重置为默认菜单配置吗？当前自定义配置将被删除。')) {
-    menuEditor.value = JSON.stringify(defaultMenuData, null, 2);
-    showEditorStatus('已重置为默认配置（点击保存生效）', 'valid');
-
-    // 删除自定义配置
-    chrome.storage.local.remove(['customMenuConfig'], () => {
-      showStatusMessage('已重置为默认菜单配置', 'success');
-      loadStorageDebug();
-    });
-  }
-}
-
-/**
- * 格式化 JSON
- */
-function formatMenuConfig() {
-  const configText = menuEditor.value.trim();
-
-  if (!configText) {
-    showEditorStatus('没有内容可格式化', 'invalid');
-    return;
-  }
-
-  try {
-    const config = JSON.parse(configText);
-    menuEditor.value = JSON.stringify(config, null, 2);
-    showEditorStatus('已格式化', 'valid');
-  } catch (e) {
-    showEditorStatus('JSON 格式错误，无法格式化: ' + e.message, 'invalid');
-  }
-}
-
-/**
- * 验证菜单配置结构
- */
-function validateMenuConfig(config) {
-  if (!config || typeof config !== 'object') return false;
-  if (typeof config.name !== 'string') return false;
-  if (typeof config.isRoot !== 'boolean') return false;
-  if (!Array.isArray(config.children)) return false;
-
-  // 递归验证子项
-  for (const child of config.children) {
-    if (!child || typeof child !== 'object') return false;
-    if (typeof child.name !== 'string') return false;
-    if (!Array.isArray(child.children)) return false;
-
-    // 叶子节点应该有 url
-    if (child.children.length === 0 && typeof child.url !== 'string') {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-/**
- * 显示编辑器状态
- */
-function showEditorStatus(message, type) {
-  editorStatus.textContent = message;
-  editorStatus.className = `editor-status ${type}`;
-  editorStatus.style.display = 'block';
-
-  // 3秒后自动隐藏
-  setTimeout(() => {
-    editorStatus.style.display = 'none';
   }, 3000);
 }
 
