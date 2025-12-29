@@ -4,6 +4,57 @@
     <meta charset="UTF-8" />
     <title>存储调试</title>
     <link rel="stylesheet" href="options.css" />
+    <style>
+      /* 菜单编辑器样式 */
+      .menu-editor-container {
+        background: #fff;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+      }
+      .menu-editor-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .menu-editor-content {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px;
+        background: #f8fafc;
+      }
+      #menu-config-editor {
+        width: 100%;
+        min-height: 300px;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 13px;
+        padding: 12px;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        background: #fff;
+        resize: vertical;
+        line-height: 1.5;
+      }
+      #menu-config-editor:focus {
+        outline: none;
+        border-color: #4361ee;
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+      }
+      .editor-status {
+        margin-top: 8px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+      .editor-status.valid {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .editor-status.invalid {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+    </style>
   </head>
   <body>
     <div class="page-container">
@@ -13,6 +64,26 @@
           查看插件在 chrome.storage.local 中存储的所有数据
         </p>
       </header>
+
+      <!-- 菜单配置编辑器 -->
+      <section class="section">
+        <h2 class="section-title">📋 自定义菜单配置</h2>
+        <p class="section-description">
+          编辑自定义菜单配置。如果不存在，将使用默认菜单结构。
+        </p>
+        <div class="menu-editor-container">
+          <div class="menu-editor-controls">
+            <button class="btn btn-primary" id="load-menu-config">📥 加载配置</button>
+            <button class="btn btn-success" id="save-menu-config">💾 保存配置</button>
+            <button class="btn btn-warning" id="reset-menu-config">🔄 重置为默认</button>
+            <button class="btn" id="format-menu-config">✨ 格式化</button>
+          </div>
+          <div class="menu-editor-content">
+            <textarea id="menu-config-editor" placeholder="点击"加载配置"按钮加载自定义菜单配置..."></textarea>
+          </div>
+          <div id="editor-status" class="editor-status" style="display: none;"></div>
+        </div>
+      </section>
 
       <section class="section">
         <div class="debug-controls">
