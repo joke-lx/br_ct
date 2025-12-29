@@ -12,50 +12,6 @@ body {
   color: #1a1a1a;
 }
 
-/* 顶部标题区域 */
-.header {
-  background: linear-gradient(135deg, #0078d7 0%, #005a9e 100%);
-  padding: 24px 20px 20px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.header::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  animation: pulse 8s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.1); opacity: 0.8; }
-}
-
-.header h1 {
-  font-size: 20px;
-  font-weight: 600;
-  color: #ffffff;
-  margin: 0 0 6px 0;
-  letter-spacing: -0.3px;
-  position: relative;
-  z-index: 1;
-}
-
-.header p {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
-  margin: 0;
-  font-weight: 400;
-  position: relative;
-  z-index: 1;
-}
-
 /* 主内容容器 */
 .main-content {
   padding: 20px 16px;
