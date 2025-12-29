@@ -1,4 +1,6 @@
 // ========== 菜单配置数据 ==========
+const CUSTOM_MENU_CONFIG_KEY = 'customMenuConfig';
+
 const menuData = {
   name: '菜单',
   isRoot: true,
@@ -35,6 +37,99 @@ const menuData = {
   ]
 };
 // ===================================
+
+/**
+ * 初始化右键菜单
+ */
+export function initContextMenu() {
+  // 创建右键菜单
+  chrome.runtime.onInstalled.addListener(() => {
+    chrome.contextMenus.create({
+      id: 'addToCircularMenu',
+      title: '➕ 添加到圆形菜单',
+      contexts: ['link', 'page']
+    });
+  });
+
+  // 监听右键菜单点击事件
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
+    if (info.menuItemId === 'addToCircularMenu') {
+      // 获取 URL 和标题
+      let url = info.linkUrl || tab.url;
+      let title = info.linkUrl ? info.selectionText || getDomainName(url) : tab.title;
+
+      // 添加到自定义菜单
+      addToCustomMenu(url, title);
+    }
+  });
+}
+
+/**
+ * 添加到自定义菜单
+ */
+function addToCustomMenu(url, title) {
+  chrome.storage.local.get([CUSTOM_MENU_CONFIG_KEY], (result) => {
+    let customConfig = result[CUSTOM_MENU_CONFIG_KEY];
+
+    // 如果没有自定义配置，创建一个空的
+    if (!customConfig) {
+      customConfig = {
+        name: '菜单',
+        isRoot: true,
+        children: []
+      };
+    }
+
+    // 确保有 children 数组
+    if (!customConfig.children) {
+      customConfig.children = [];
+    }
+
+    // 创建一个默认分组（如果没有分组）
+    if (customConfig.children.length === 0) {
+      customConfig.children.push({
+        name: '📄 我的收藏',
+        children: []
+      });
+    }
+
+    // 添加到第一个分组
+    const firstGroup = customConfig.children[0];
+    if (!firstGroup.children) {
+      firstGroup.children = [];
+    }
+
+    // 检查是否已存在相同的 URL
+    const existingIndex = firstGroup.children.findIndex(item => item.url === url);
+    if (existingIndex !== -1) {
+      // 已存在，提示用户
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icon.png',
+        title: '圆形菜单',
+        message: '该链接已在菜单中'
+      });
+      return;
+    }
+
+    // 添加新项
+    firstGroup.children.push({
+      name: title || getDomainName(url) || '未命名',
+      url: url,
+      children: []
+    });
+
+    // 保存配置
+    chrome.storage.local.set({ [CUSTOM_MENU_CONFIG_KEY]: customConfig }, () => {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icon.png',
+        title: '圆形菜单',
+        message: `已添加 "${title || getDomainName(url)}" 到菜单`
+      });
+    });
+  });
+}
 
 export function setTabTransListener() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

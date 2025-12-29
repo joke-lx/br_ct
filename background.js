@@ -5,7 +5,7 @@ import {
     setupMessageListener as setupAIProcessorListener
 } from './backgroudtask/ai_platform_processor.js';
 import { setupFuncCommandListener, setupMessageListener as setupFuncExecutorListener } from './backgroudtask/func_executor.js';
-import { setTabTransListener } from './backgroudtask/gotoServer.js';
+import { setTabTransListener, initContextMenu } from './backgroudtask/gotoServer.js';
 import { startServer } from './backgroudtask/word_http_server.js';
 import { init as initVideoPlaneServer } from './backgroudtask/video_plane_server.js';
 
@@ -22,3 +22,6 @@ startServer();
 
 // 初始化视频片段播放器配置服务器
 initVideoPlaneServer();
+
+// 初始化右键菜单
+initContextMenu();
