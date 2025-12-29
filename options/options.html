@@ -162,6 +162,285 @@
       .btn-secondary:hover {
         background: #545b62;
       }
+
+      .debug-section {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 16px;
+        margin-top: 16px;
+      }
+
+      .debug-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .debug-content {
+        max-height: 500px;
+        overflow-y: auto;
+      }
+
+      .debug-content:empty::before {
+        content: "暂无存储数据";
+        color: #6c757d;
+        font-style: italic;
+      }
+
+      /* 存储分组样式 */
+      .storage-group {
+        margin-bottom: 16px;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+
+      .storage-group-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .storage-group-header:hover {
+        opacity: 0.9;
+      }
+
+      .storage-group-header .group-badge {
+        background: rgba(255,255,255,0.2);
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+      }
+
+      .storage-group-content {
+        background: white;
+        max-height: 400px;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+
+      .storage-group-content.collapsed {
+        max-height: 0;
+      }
+
+      .storage-item {
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .storage-item:last-child {
+        border-bottom: none;
+      }
+
+      .storage-item-header {
+        padding: 10px 16px;
+        background: #fafafa;
+        font-size: 12px;
+        font-weight: 600;
+        color: #495057;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+
+      .storage-item-header:hover {
+        background: #f0f0f0;
+      }
+
+      .storage-item-header .key-name {
+        font-family: 'Consolas', 'Monaco', monospace;
+        color: #667eea;
+      }
+
+      .storage-item-header .key-type {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        background: #e9ecef;
+        color: #6c757d;
+      }
+
+      .storage-item-content {
+        padding: 12px 16px;
+        background: white;
+        font-size: 12px;
+      }
+
+      /* JSON 结构化显示 */
+      .json-viewer {
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .json-key {
+        color: #667eea;
+      }
+
+      .json-string {
+        color: #28a745;
+      }
+
+      .json-number {
+        color: #fd7e14;
+      }
+
+      .json-boolean {
+        color: #6f42c1;
+      }
+
+      .json-null {
+        color: #6c757d;
+        font-style: italic;
+      }
+
+      .json-array-item,
+      .json-object-item {
+        padding-left: 16px;
+        border-left: 2px solid #e9ecef;
+        margin: 4px 0;
+      }
+
+      /* 数组项卡片 */
+      .array-card {
+        background: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        padding: 8px 12px;
+        margin: 4px 0;
+      }
+
+      .array-card-header {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 4px;
+        font-size: 11px;
+      }
+
+      .array-card-body {
+        font-size: 11px;
+        color: #6c757d;
+      }
+
+      /* 队列特殊样式 */
+      .queue-item {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 10px;
+        margin: 6px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .queue-item-index {
+        background: #667eea;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: bold;
+        flex-shrink: 0;
+      }
+
+      .queue-item-content {
+        flex: 1;
+        font-size: 11px;
+      }
+
+      .queue-item-platform {
+        background: #e7f3ff;
+        color: #0066cc;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 10px;
+      }
+
+      .menu-config-section {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 16px;
+        margin-top: 16px;
+      }
+
+      .menu-config-textarea {
+        width: 100%;
+        min-height: 200px;
+        padding: 12px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        resize: vertical;
+        background: white;
+      }
+
+      .menu-config-textarea:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+      }
+
+      .menu-config-help {
+        font-size: 12px;
+        color: #6c757d;
+        margin-top: 8px;
+        line-height: 1.5;
+      }
+
+      .menu-config-help code {
+        background: #e9ecef;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 11px;
+      }
+
+      .refresh-btn {
+        padding: 4px 12px;
+        font-size: 12px;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .refresh-btn:hover {
+        background: #218838;
+      }
+
+      .clear-btn {
+        padding: 4px 12px;
+        font-size: 12px;
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 8px;
+      }
+
+      .clear-btn:hover {
+        background: #c82333;
+      }
     </style>
   </head>
   <body>
@@ -190,6 +469,66 @@
       </div>
 
       <div id="status-message" class="status-message"></div>
+
+      <!-- 存储调试区域 -->
+      <div class="section">
+        <h2 class="section-title">
+          🔍 存储调试
+        </h2>
+        <p class="section-description">
+          查看插件在 chrome.storage.local 中存储的所有数据
+        </p>
+
+        <div class="debug-section">
+          <div class="debug-title">
+            <span>当前存储数据</span>
+            <div>
+              <button class="refresh-btn" id="refresh-storage">🔄 刷新</button>
+              <button class="clear-btn" id="clear-storage">🗑️ 清空</button>
+            </div>
+          </div>
+          <div class="debug-content" id="storage-debug-content"></div>
+        </div>
+      </div>
+
+      <!-- 自定义菜单配置区域 -->
+      <div class="section">
+        <h2 class="section-title">
+          📋 自定义菜单配置
+        </h2>
+        <p class="section-description">
+          配置圆形菜单的自定义链接。如果留空，将使用默认配置。
+        </p>
+
+        <div class="menu-config-section">
+          <textarea
+            class="menu-config-textarea"
+            id="menu-config-textarea"
+            placeholder="在此输入 JSON 格式的菜单配置..."
+          ></textarea>
+          <div class="menu-config-help">
+            <strong>配置格式说明：</strong><br>
+            使用 JSON 格式定义菜单结构，示例如下：<br>
+            <code>{
+  "name": "菜单",
+  "isRoot": true,
+  "children": [
+    {
+      "name": "📄 我的收藏",
+      "children": [
+        { "name": "GitHub", "url": "https://github.com/", "children": [] },
+        { "name": "B站", "url": "https://www.bilibili.com", "children": [] }
+      ]
+    }
+  ]
+}</code>
+          </div>
+          <div class="button-group">
+            <button class="btn btn-primary" id="save-menu-config">💾 保存菜单配置</button>
+            <button class="btn btn-secondary" id="reset-menu-config">↺ 恢复默认</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="options.js"></script>

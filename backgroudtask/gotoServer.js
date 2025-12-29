@@ -96,8 +96,16 @@ export function setTabTransListener() {
       sendResponse({ status: 'ok' });
       return true; // 表示异步响应
     } else if (message.action === 'getMenuData') {
-      // 返回菜单数据
-      sendResponse({ status: 'ok', data: menuData });
+      // 先检查是否有自定义菜单配置
+      chrome.storage.local.get(['customMenuConfig'], (result) => {
+        if (result.customMenuConfig) {
+          // 返回自定义菜单
+          sendResponse({ status: 'ok', data: result.customMenuConfig });
+        } else {
+          // 返回默认菜单
+          sendResponse({ status: 'ok', data: menuData });
+        }
+      });
       return true;
     } else if (message.action === 'getHistory') {
       // 获取浏览器历史记录
