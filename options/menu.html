@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>菜单配置</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div class="page-container">
+      <header class="page-header">
+        <h1 class="page-title">📋 菜单配置</h1>
+        <p class="page-description">
+          查看当前圆形菜单的配置结构
+        </p>
+      </header>
+
+      <section class="section">
+        <div class="debug-controls">
+          <button class="btn btn-success" id="refresh-menu">🔄 刷新</button>
+          <button class="btn btn-danger" id="reset-menu">↺ 恢复默认</button>
+        </div>
+
+        <div id="menu-config-content">
+          <!-- 菜单配置将由 JavaScript 动态生成 -->
+        </div>
+
+        <div id="menu-status-message" class="status-message"></div>
+      </section>
+    </div>
+
+    <script src="menu.js"></script>
+  </body>
+</html>

@@ -1,0 +1,581 @@
+/* 选项页面全局样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #f5f5f5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 应用容器布局 */
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ==================== 侧边栏样式 ==================== */
+.sidebar {
+  width: 240px;
+  background: linear-gradient(180deg, #2c3e50 0%, #1a252f 100%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-header {
+  padding: 24px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.sidebar-header p {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* 导航菜单 */
+.sidebar-nav {
+  flex: 1;
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.nav-item.active {
+  background: rgba(102, 126, 234, 0.3);
+  color: #a8b4ff;
+  border-left: 3px solid #667eea;
+  padding-left: 13px;
+}
+
+.nav-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  opacity: 0.5;
+  text-align: center;
+}
+
+/* ==================== 主内容区样式 ==================== */
+.main-content {
+  flex: 1;
+  background: #f5f5f5;
+  overflow: hidden;
+}
+
+#content-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ==================== 子页面通用样式 ==================== */
+.page-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.page-header {
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.page-description {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-description {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* 按钮组 */
+.button-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background: #667eea;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.btn-secondary:hover {
+  background: #dee2e6;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #218838;
+}
+
+/* 状态消息 */
+.status-message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 16px;
+  display: none;
+  font-size: 14px;
+}
+
+.status-message.show {
+  display: block;
+}
+
+.status-message.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-message.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* ==================== 平台设置特定样式 ==================== */
+.platform-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.platform-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  background: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.platform-item:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.platform-checkbox {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.platform-label {
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.platform-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  color: white;
+}
+
+/* ==================== 存储调试特定样式 ==================== */
+.debug-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.debug-content {
+  max-height: 600px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.debug-content:empty::before {
+  content: "暂无存储数据";
+  color: #6c757d;
+  font-style: italic;
+  padding: 40px;
+  display: block;
+  text-align: center;
+}
+
+/* 存储分组 */
+.storage-group {
+  margin-bottom: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.storage-group-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.storage-group-header:hover {
+  opacity: 0.9;
+}
+
+.group-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.storage-group-content {
+  background: white;
+  max-height: 500px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.storage-group-content.collapsed {
+  max-height: 0;
+}
+
+.storage-item {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.storage-item:last-child {
+  border-bottom: none;
+}
+
+.storage-item-header {
+  padding: 12px 16px;
+  background: #fafafa;
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.storage-item-header:hover {
+  background: #f0f0f0;
+}
+
+.key-name {
+  font-family: 'Consolas', 'Monaco', monospace;
+  color: #667eea;
+}
+
+.key-type {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #e9ecef;
+  color: #6c757d;
+}
+
+.storage-item-content {
+  padding: 12px 16px;
+  background: white;
+  font-size: 12px;
+}
+
+/* JSON 显示 */
+.json-viewer {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.json-key {
+  color: #667eea;
+}
+
+.json-string {
+  color: #28a745;
+}
+
+.json-number {
+  color: #fd7e14;
+}
+
+.json-boolean {
+  color: #6f42c1;
+}
+
+.json-null {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.json-object-item {
+  padding-left: 16px;
+  margin: 4px 0;
+}
+
+/* 数组卡片 */
+.array-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 6px 0;
+}
+
+.array-card-header {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.array-card-body {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+/* 队列项 */
+.queue-item {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.queue-item-index {
+  background: #667eea;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.queue-item-content {
+  flex: 1;
+  font-size: 12px;
+}
+
+.queue-item-platform {
+  background: #e7f3ff;
+  color: #0066cc;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  display: inline-block;
+}
+
+/* ==================== 菜单配置特定样式 ==================== */
+.menu-config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.menu-config-item {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.menu-config-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.menu-config-item-title {
+  font-weight: 600;
+  color: #333;
+  font-size: 15px;
+}
+
+.menu-config-item-body {
+  padding-left: 16px;
+  border-left: 3px solid #667eea;
+}
+
+.menu-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.menu-empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.menu-empty-state-text {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.menu-empty-state-hint {
+  font-size: 13px;
+  color: #999;
+}
+
+/* 滚动条美化 */
+.sidebar-nav::-webkit-scrollbar,
+.page-container::-webkit-scrollbar,
+.debug-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track,
+.page-container::-webkit-scrollbar-track,
+.debug-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.page-container::-webkit-scrollbar-thumb,
+.debug-content::-webkit-scrollbar-thumb {
+  background: #dee2e6;
+  border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover,
+.page-container::-webkit-scrollbar-thumb:hover,
+.debug-content::-webkit-scrollbar-thumb:hover {
+  background: #adb5bd;
+}
