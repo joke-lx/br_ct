@@ -18,7 +18,7 @@
     "default_title": "AI Assistant"
   },
   "options_ui": {
-    "page": "/popup/x/options/options.html",
+    "page": "/options/options.html",
     "open_in_tab": true
 },
   "permissions": [
