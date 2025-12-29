@@ -1,34 +1,9 @@
 /**
- * 菜单配置页面 - 支持可视化 CRUD 操作
+ * 菜单配置页面 - 管理自定义菜单配置 customMenuConfig
+ * 注意：此页面仅管理用户自定义配置，默认菜单由 gotoServer.js 提供
  */
 
 const CUSTOM_MENU_CONFIG_KEY = 'customMenuConfig';
-
-// 默认菜单配置
-const defaultMenuData = {
-  name: '菜单',
-  isRoot: true,
-  children: [
-    {
-      name: '📄 feed',
-      children: [
-        { name: 'IT老齐', url: 'https://www.itlaoqi.com/chapter.html?sid=143&cid=3292', children: [] },
-        { name: 'NOTION', url: 'https://www.notion.so/a23ee5b49d7d474ebf9d3e3094441088', children: [] },
-        { name: 'B站', url: 'https://www.bilibili.com', children: [] },
-        { name: 'github', url: 'https://github.com/', children: [] },
-        { name: 'gitee', url: 'https://gitee.com/', children: [] },
-      ]
-    },
-    {
-      name: '📄 面包',
-      children: [
-        { name: '上海演唱会', url: 'https://www.bilibili.com/video/BV1L48qzsESK', children: [] },
-        { name: '宁波演唱会', url: 'https://www.bilibili.com/video/BV1pca3zPECZ', children: [] },
-        { name: '北京演唱会', url: 'https://www.bilibili.com/video/BV13hSzYfEfD', children: [] },
-      ]
-    }
-  ]
-};
 
 // 当前编辑的菜单数据
 let currentMenuData = null;
@@ -68,6 +43,56 @@ function initializeMenuConfig() {
   // 模态框保存按钮
   document.getElementById('save-group-btn').addEventListener('click', saveGroup);
   document.getElementById('save-item-btn').addEventListener('click', saveItem);
+
+  // 事件委托处理动态生成的按钮
+  menuConfigContent.addEventListener('click', handleMenuContentClick);
+
+  // 事件委托处理模态框关闭按钮
+  document.addEventListener('click', (e) => {
+    const closeAction = e.target.closest('[data-action="close-modal"]');
+    if (closeAction) {
+      const modalId = closeAction.getAttribute('data-modal');
+      closeModal(modalId);
+    }
+    // 点击模态框背景关闭
+    if (e.target.classList.contains('modal-overlay')) {
+      e.target.classList.remove('show');
+    }
+  });
+}
+
+/**
+ * 处理菜单内容区域的点击事件（事件委托）
+ */
+function handleMenuContentClick(e) {
+  const target = e.target.closest('button');
+  if (!target) return;
+
+  const action = target.getAttribute('data-action');
+  if (!action) return;
+
+  const groupIndex = parseInt(target.getAttribute('data-group'));
+  const itemIndex = target.getAttribute('data-item') !== null
+    ? parseInt(target.getAttribute('data-item'))
+    : null;
+
+  switch (action) {
+    case 'add-item':
+      openItemModal(groupIndex);
+      break;
+    case 'edit-group':
+      openGroupModal(groupIndex);
+      break;
+    case 'delete-group':
+      deleteGroup(groupIndex);
+      break;
+    case 'edit-item':
+      openItemModal(groupIndex, itemIndex);
+      break;
+    case 'delete-item':
+      deleteItem(groupIndex, itemIndex);
+      break;
+  }
 }
 
 /**
@@ -75,7 +100,7 @@ function initializeMenuConfig() {
  */
 function loadMenuConfig() {
   chrome.storage.local.get([CUSTOM_MENU_CONFIG_KEY], (result) => {
-    currentMenuData = result[CUSTOM_MENU_CONFIG_KEY] || JSON.parse(JSON.stringify(defaultMenuData));
+    currentMenuData = result[CUSTOM_MENU_CONFIG_KEY] || null;
     renderMenuConfig();
   });
 }
@@ -94,9 +119,9 @@ function renderMenuConfig() {
       <div class="menu-group-header">
         <span class="menu-group-title">${escapeHtml(group.name)}</span>
         <div class="menu-group-actions">
-          <button class="btn-add-item" onclick="openItemModal(${groupIndex})">➕ 添加项</button>
-          <button class="btn-icon btn-edit" onclick="openGroupModal(${groupIndex})" title="编辑分组">✏️</button>
-          <button class="btn-icon btn-delete" onclick="deleteGroup(${groupIndex})" title="删除分组">🗑️</button>
+          <button class="btn-add-item" data-action="add-item" data-group="${groupIndex}">➕ 添加项</button>
+          <button class="btn-icon btn-edit" data-action="edit-group" data-group="${groupIndex}" title="编辑分组">✏️</button>
+          <button class="btn-icon btn-delete" data-action="delete-group" data-group="${groupIndex}" title="删除分组">🗑️</button>
         </div>
       </div>
       ${group.children && group.children.length > 0 ? `
@@ -108,8 +133,8 @@ function renderMenuConfig() {
                 ${item.url ? `<div class="menu-item-url">${escapeHtml(item.url)}</div>` : ''}
               </div>
               <div class="menu-item-actions">
-                <button class="btn-icon btn-edit" onclick="openItemModal(${groupIndex}, ${itemIndex})" title="编辑">✏️</button>
-                <button class="btn-icon btn-delete" onclick="deleteItem(${groupIndex}, ${itemIndex})" title="删除">🗑️</button>
+                <button class="btn-icon btn-edit" data-action="edit-item" data-group="${groupIndex}" data-item="${itemIndex}" title="编辑">✏️</button>
+                <button class="btn-icon btn-delete" data-action="delete-item" data-group="${groupIndex}" data-item="${itemIndex}" title="删除">🗑️</button>
               </div>
             </div>
           `).join('')}
@@ -126,8 +151,8 @@ function showEmptyState() {
   menuConfigContent.innerHTML = `
     <div class="menu-empty-state">
       <div class="menu-empty-state-icon">📋</div>
-      <div class="menu-empty-state-text">菜单配置为空</div>
-      <div class="menu-empty-state-hint">点击"添加分组"开始创建菜单</div>
+      <div class="menu-empty-state-text">暂无自定义菜单配置</div>
+      <div class="menu-empty-state-hint">将使用默认菜单（由 gotoServer.js 提供）<br>点击"添加分组"创建自定义菜单</div>
     </div>
   `;
 }
@@ -167,6 +192,15 @@ function saveGroup() {
     return;
   }
 
+  // 如果是第一次添加，初始化菜单数据结构
+  if (!currentMenuData) {
+    currentMenuData = {
+      name: '菜单',
+      isRoot: true,
+      children: []
+    };
+  }
+
   if (editingGroupIndex !== null) {
     // 编辑现有分组
     currentMenuData.children[editingGroupIndex].name = name;
@@ -190,6 +224,12 @@ function deleteGroup(groupIndex) {
   const group = currentMenuData.children[groupIndex];
   if (confirm(`确定要删除分组"${group.name}"及其所有菜单项吗？`)) {
     currentMenuData.children.splice(groupIndex, 1);
+
+    // 如果没有分组了，设置为 null
+    if (currentMenuData.children.length === 0) {
+      currentMenuData = null;
+    }
+
     renderMenuConfig();
     showStatusMessage('分组已删除', 'success');
   }
@@ -288,6 +328,11 @@ function deleteItem(groupIndex, itemIndex) {
  * 保存菜单配置到 storage
  */
 function saveMenuConfig() {
+  if (!currentMenuData) {
+    showStatusMessage('没有可保存的配置（使用默认菜单）', 'success');
+    return;
+  }
+
   if (!validateMenuData(currentMenuData)) {
     alert('菜单配置结构无效，请检查后重试');
     return;
@@ -332,7 +377,9 @@ function validateMenuData(data) {
 function switchToJsonEditor() {
   document.getElementById('visual-editor').style.display = 'none';
   document.getElementById('json-editor-section').style.display = 'block';
-  jsonEditor.value = JSON.stringify(currentMenuData, null, 2);
+  jsonEditor.value = currentMenuData
+    ? JSON.stringify(currentMenuData, null, 2)
+    : JSON.stringify({ name: '菜单', isRoot: true, children: [] }, null, 2);
 }
 
 /**
@@ -348,7 +395,9 @@ function switchToVisualEditor() {
  * 加载 JSON 到编辑器
  */
 function loadJsonEditor() {
-  jsonEditor.value = JSON.stringify(currentMenuData, null, 2);
+  jsonEditor.value = currentMenuData
+    ? JSON.stringify(currentMenuData, null, 2)
+    : JSON.stringify({ name: '菜单', isRoot: true, children: [] }, null, 2);
   showJsonStatus('配置已加载', 'valid');
 }
 
@@ -359,7 +408,12 @@ function saveJsonConfig() {
   const jsonText = jsonEditor.value.trim();
 
   if (!jsonText) {
-    showJsonStatus('配置不能为空', 'invalid');
+    // 清空配置，删除自定义设置
+    chrome.storage.local.remove(CUSTOM_MENU_CONFIG_KEY, () => {
+      currentMenuData = null;
+      showJsonStatus('已清除自定义配置，将使用默认菜单', 'valid');
+      showStatusMessage('已清除自定义配置', 'success');
+    });
     return;
   }
 
@@ -368,6 +422,16 @@ function saveJsonConfig() {
 
     if (!validateMenuData(config)) {
       showJsonStatus('配置结构无效：必须包含 name, isRoot, children 属性，且每个菜单项必须有 name 和 url', 'invalid');
+      return;
+    }
+
+    // 如果是空配置，删除自定义设置
+    if (!config.children || config.children.length === 0) {
+      chrome.storage.local.remove(CUSTOM_MENU_CONFIG_KEY, () => {
+        currentMenuData = null;
+        showJsonStatus('已清除自定义配置，将使用默认菜单', 'valid');
+        showStatusMessage('已清除自定义配置', 'success');
+      });
       return;
     }
 
@@ -451,24 +515,17 @@ function escapeHtml(text) {
 }
 
 /**
- * 恢复默认配置（隐藏功能，可通过控制台调用）
+ * 清除自定义配置（恢复使用默认菜单）
  */
-function resetToDefault() {
-  if (confirm('确定要恢复默认菜单配置吗？这将清除所有自定义配置。')) {
+function clearCustomConfig() {
+  if (confirm('确定要清除自定义菜单配置吗？清除后将使用默认菜单。')) {
     chrome.storage.local.remove(CUSTOM_MENU_CONFIG_KEY, () => {
-      currentMenuData = JSON.parse(JSON.stringify(defaultMenuData));
+      currentMenuData = null;
       renderMenuConfig();
-      showStatusMessage('已恢复默认菜单配置', 'success');
+      showStatusMessage('已清除自定义配置，将使用默认菜单', 'success');
     });
   }
 }
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', initializeMenuConfig);
-
-// 点击模态框背景关闭
-document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('modal-overlay')) {
-    e.target.classList.remove('show');
-  }
-});

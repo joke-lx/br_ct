@@ -22,7 +22,7 @@
       }
 
       .menu-group-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
         color: white;
         padding: 12px 16px;
         display: flex;
@@ -220,8 +220,8 @@
       .form-group input:focus,
       .form-group textarea:focus {
         outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
       }
 
       .form-group textarea {
@@ -241,22 +241,6 @@
         display: flex;
         justify-content: flex-end;
         gap: 10px;
-      }
-
-      /* 切换视图按钮 */
-      .view-toggle {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 16px;
-      }
-
-      .view-toggle button {
-        flex: 1;
-      }
-
-      .view-toggle button.active {
-        ring: 2px solid #667eea;
-        ring-offset: 2px;
       }
 
       /* JSON 编辑器 */
@@ -317,7 +301,7 @@
       <div class="modal">
         <div class="modal-header">
           <h3 class="modal-title" id="group-modal-title">添加分组</h3>
-          <button class="modal-close" onclick="closeModal('group-modal')">&times;</button>
+          <button class="modal-close" data-action="close-modal" data-modal="group-modal">&times;</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -327,7 +311,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" onclick="closeModal('group-modal')">取消</button>
+          <button class="btn btn-secondary" data-action="close-modal" data-modal="group-modal">取消</button>
           <button class="btn btn-primary" id="save-group-btn">保存</button>
         </div>
       </div>
@@ -338,7 +322,7 @@
       <div class="modal">
         <div class="modal-header">
           <h3 class="modal-title" id="item-modal-title">添加菜单项</h3>
-          <button class="modal-close" onclick="closeModal('item-modal')">&times;</button>
+          <button class="modal-close" data-action="close-modal" data-modal="item-modal">&times;</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -351,7 +335,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" onclick="closeModal('item-modal')">取消</button>
+          <button class="btn btn-secondary" data-action="close-modal" data-modal="item-modal">取消</button>
           <button class="btn btn-primary" id="save-item-btn">保存</button>
         </div>
       </div>
