@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>函数调用库</title>
+  <link rel="stylesheet" href="functioncall.css" />
+</head>
+<body>
+  <!-- 顶部标题 -->
+  <div class="header">
+    <h1>函数调用库</h1>
+    <p>执行预定义的功能脚本</p>
+  </div>
+
+  <!-- 主内容区域 -->
+  <div class="main-content">
+    <!-- 统计卡片 -->
+    <div class="stats-card">
+      <div class="stats-info">
+        <div class="stats-icon">⚡</div>
+        <span class="stats-text">可用脚本</span>
+      </div>
+      <span class="stats-count" id="stats-count">0</span>
+    </div>
+
+    <!-- 脚本列表 -->
+    <div class="script-list" id="script-list"></div>
+  </div>
+
+  <!-- 返回主页按钮 -->
+  <a href="/popup/popup.html" class="back-button">返回主页</a>
+
+  <script src="functioncall.js"></script>
+</body>
+</html>
