@@ -1,5 +1,6 @@
 // popupUtils.js - 核心popup功能模块
 import { populateOptimizer } from "../promots/promptsUI.js";
+import { PROMPT_TEMPLATES } from "../promots/prompts.js";
 import {
   STORAGE_KEYS,
   saveMessageContent,
@@ -89,7 +90,7 @@ export async function initializePopup() {
   focusInputAndSetCursor(elements.messageInput);
 
   // 初始化优化器下拉框
-  populateOptimizer(elements.promptOptimizerSelect);
+  populateOptimizer(elements.promptOptimizerSelect, PROMPT_TEMPLATES);
 
   // 加载并应用平台可见性设置
   await loadPlatformVisibilitySettings();

@@ -1,4 +1,4 @@
-const PROMPT_TEMPLATES = {
+export const PROMPT_TEMPLATES = {
   // code_gen类
   完整代码输出: {
     group: "code_gen",
