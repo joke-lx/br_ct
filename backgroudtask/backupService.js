@@ -166,18 +166,25 @@ function getAllStorageData() {
 
 /**
  * 下载文件
+ * Service Worker 不支持 URL.createObjectURL，使用 Data URI
  */
 function downloadFile(filename, content) {
   return new Promise((resolve, reject) => {
-    const blob = new Blob([content], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    // 将内容转换为 base64 Data URI（使用 TextEncoder 处理 UTF-8）
+    const encoder = new TextEncoder();
+    const data = encoder.encode(content);
+    let binary = '';
+    for (let i = 0; i < data.length; i++) {
+      binary += String.fromCharCode(data[i]);
+    }
+    const base64Content = btoa(binary);
+    const dataUri = `data:application/json;base64,${base64Content}`;
 
     chrome.downloads.download({
-      url: url,
+      url: dataUri,
       filename: `bro_chat_backups/${filename}`,
       saveAs: false
     }, (downloadId) => {
-      URL.revokeObjectURL(url);
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
       } else {
