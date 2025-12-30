@@ -1,4 +1,9 @@
-const PROMPT_TEMPLATES = {
+/**
+ * 多提示词组件 - 提示词模板数据
+ * 隔离的数据层，包含所有自定义的提示词模板
+ */
+
+export const PROMPT_TEMPLATES = {
   // code_gen类
   学习: {
     group: "code_gen",
