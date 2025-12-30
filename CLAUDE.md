@@ -4,25 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a browser extension called "Bro Chat" (AI Assistant) that provides a unified interface for interacting with multiple AI platforms including Yuanbao, Gemini, ChatGPT, Claude, Doubao, and GLM. The extension automates message sending across different AI platforms by simulating user interactions.
+Bro Chat (AI Assistant) is a browser extension that provides a unified interface for interacting with multiple AI platforms. It automates message sending across different AI platforms by simulating user interactions, and provides various utility features including a circular navigation menu, backup system, and function execution capabilities.
 
-## Architecture
-
-### Core Components
-
-- **background.js**: Main service worker that coordinates between popup, content scripts, and backend tasks
-- **popup/**: Extension popup interface with drag-drop functionality and message management
-- **contentScripts/**: Platform-specific scripts for each AI platform (Yuanbao, Gemini, ChatGPT, etc.)
-- **backgroudtask/**: Background processing modules including AI platform processor and function executor
-- **funcs/**: Reusable utility functions organized by functionality
-- **tripleSpace/**: Triple-click space functionality
-
-### Key Patterns
-
-1. **Platform-Specific Adapters**: Each AI platform has its own content script with unified messaging interface
-2. **Task Queue System**: Background processes actions sequentially using chrome.storage.local
-3. **Dynamic Script Injection**: Functions are injected on-demand using chrome.scripting.executeScript
-4. **ES Modules**: Uses modern ES module imports throughout the codebase
+**Supported AI Platforms**: Yuanbao, Gemini, ChatGPT, Claude, Doubao, GLM, Tongyi, Google Studio
 
 ## Development Commands
 
@@ -36,108 +20,305 @@ This is a browser extension called "Bro Chat" (AI Assistant) that provides a uni
 ```
 
 ### Testing
-```bash
-# No automated tests - manual testing required
-# Test each platform by navigating to its URL and using the popup
-```
+- Manual testing required for each AI platform
+- Test each platform by navigating to its URL and using the popup
+- Use DevTools (F12) for debugging popup, content scripts, and service worker
 
 ### Building
-```bash
-# No build process - direct loading of source files
-# Ensure manifest.json paths are correct for all referenced files
-```
+- No build process - direct loading of source files
+- Ensure manifest.json paths are correct for all referenced files
 
-## File Structure
+## Architecture
+
+### Entry Point
+
+**background.js** - Service worker that initializes all modules:
+- `setupTabUpdateListener()` - AI platform processor
+- `setupFuncCommandListener()` / `setupFuncExecutorListener()` - Function executor
+- `setTabTransListener()` / `initContextMenu()` - Goto/navigation server
+- `startServer()` - Word HTTP server
+- `initVideoPlaneServer()` - Video plane server
+- `initBackupService()` / `setupBackupMessageListener()` - Backup service
+
+### Directory Structure
 
 ```
 /
-├── manifest.json              # Extension manifest (manifest v3)
+├── manifest.json              # Manifest v3 configuration
 ├── background.js              # Service worker entry point
+│
 ├── popup/                     # Extension popup UI
 │   ├── popup.html
 │   ├── popup/
-│   │   ├── popup.js
-│   │   ├── popupUtils.js
-│   │   └── dragDropHandler.js
-│   ├── promots/              # Message templates
-│   ├── func_execute/         # Function execution UI
-│   └── options/              # Options page
-├── contentScripts/           # Platform-specific scripts
+│   │   ├── popup.js           # Main popup logic
+│   │   ├── popupUtils.js      # Core utilities
+│   │   └── dragDropHandler.js # Drag-drop input
+│   ├── promots/               # Message templates
+│   └── func_execute/          # Function execution UI
+│
+├── options/                   # Settings pages (iframe-based multi-page)
+│   ├── options.html           # Main settings wrapper with sidebar
+│   ├── options.js             # Navigation logic
+│   ├── options.css            # Blue theme styling
+│   ├── platform.html          # Platform visibility settings
+│   ├── platform.js
+│   ├── storage.html           # Storage debugging tools
+│   ├── storage.js
+│   ├── menu.html              # Menu configuration (visual + JSON)
+│   ├── menu.js
+│   └── backup.html            # Backup settings
+│       └── backup.js
+│
+├── contentScripts/            # Platform-specific content scripts
 │   ├── chatgpt.js
 │   ├── gemini.js
 │   ├── claude.js
 │   ├── doubao.js
 │   ├── glm.js
-│   └── yuanbao.js
-├── backgroudtask/            # Background processors
-│   ├── ai_platform_processor.js  # AI platform task queue
-│   ├── func_executor.js          # Generic function execution
-│   ├── word_http_server.js       # HTTP server for Word integration
-│   └── clipboard2file.js         # Clipboard to file functionality
-├── funcs/                     # Reusable functions
-│   ├── 平台专属/             # Platform-specific utilities
-│   ├── 元素dom/              # DOM manipulation utilities
+│   ├── yuanbao.js
+│   └── ...
+│
+├── backgroudtask/            # Background service modules
+│   ├── ai_platform_processor.js  # AI platform task queue manager
+│   ├── func_executor.js          # Generic function executor
+│   ├── gotoServer.js              # Navigation & menu server
+│   ├── word_http_server.js        # HTTP server for Word integration
+│   ├── message_http_server.js    # Message server
+│   ├── video_plane_server.js     # Video plane server
+│   └── backupService.js           # Backup service
+│
+├── runjs/                     # Runtime scripts (injected content scripts)
+│   ├── tripleSpace/
+│   │   ├── tripleSpace.js        # Triple-click space popup
+│   │   └── tripleSpace.css
+│   ├── goto/
+│   │   └── goto.js                # Circular menu + navigation
+│   └── word/
+│       └── word.js                # Word integration
+│
+├── funcs/                     # Executable utility functions
+│   ├── 平台专属/             # Platform-specific scrapers
+│   ├── 元素dom/              # DOM manipulation
 │   ├── goto/                 # Navigation utilities
-│   └── word/                 # Word integration
-└── tripleSpace/              # Triple-click space feature
-    ├── tripleSpace.js
-    └── tripleSpace.css
+│   └── word/                 # Word-related utilities
+│
+└── icons/                    # Extension icons
 ```
 
-## Key Technical Details
+### Core Background Modules
 
-### Platform Detection and Script Injection
-- Each AI platform script (`contentScripts/{platform}.js`) is injected based on URL matching
-- Scripts use XPath and CSS selectors to find input elements and buttons
-- Unified message passing via `chrome.runtime.sendMessage` and `chrome.tabs.sendMessage`
+#### ai_platform_processor.js
+- **Purpose**: Manages message queuing and delivery to AI platforms
+- **Features**:
+  - Serial and concurrent processing modes
+  - Tab lifecycle management (find/create/activate)
+  - Dynamic content script injection
+  - Timeout management and error recovery
+- **Key Function**: `processTaskQueue(tasks, mode)`
 
-### Function Execution System
-- Functions in `funcs/` directory can be executed via the popup or keyboard shortcuts
-- Each function script should export a `main()` function
-- Execution handled by `backgroudtask/func_executor.js`
+#### func_executor.js
+- **Purpose**: Executes utility functions from `funcs/` directory
+- **Features**:
+  - Keyboard shortcut handling (Alt+C, Alt+D, Alt+F)
+  - Dynamic script injection via `chrome.scripting.executeScript`
+  - Calls `main()` function in injected scripts
+- **Key Functions**: `executeFunctionScript(funcPath)`, `setupFuncCommandListener()`
 
-### Storage
-- Uses `chrome.storage.local` for persisting:
-  - Message history (last 5 messages)
-  - Selected optimizer settings
-  - Task queues for background processing
+#### gotoServer.js
+- **Purpose**: Handles URL navigation, circular menu, and context menu
+- **Features**:
+  - Smart tab management (reuse existing tabs when possible)
+  - Browser history retrieval
+  - Context menu for adding links to circular menu
+  - Domain name extraction for clean display (taobao.com → "淘宝")
+- **Actions**: `openUrl`, `getMenuData`, `getHistory`, `addToCircularMenu`
+- **Storage Key**: `customMenuConfig` - user-defined menu items
 
-### Keyboard Shortcuts
-- `Alt+C`: Execute div copy script
-- `Alt+D`: Execute image picker
-- `Alt+F`: Save clipboard content to file
+#### backupService.js
+- **Purpose**: Automated and manual backup of chrome.storage.local
+- **Features**:
+  - Scheduled backups via chrome.alarms
+  - Exports to JSON files in Downloads/bro_chat_backups/
+  - Automatic cleanup of old backups
+- **Known Issue**: `downloads.search` uses wrong format for `filenameRegex` (should be string, not object)
+
+### Runtime Scripts (runjs/)
+
+#### goto/goto.js - Circular Menu
+- **Features**:
+  - Floating circular menu activated by hover
+  - Displays custom menu + browser history (last 24 hours)
+  - Drag to reposition, position saved to localStorage
+  - Smart tab navigation for URLs (reuses existing tabs)
+- **Storage**: localStorage for `menuPosition`, chrome.storage.local for `customMenuConfig`
+- **Menu Structure**:
+  - Default menu from `gotoServer.js` (feed, 面包, 网站跳转3)
+  - Custom menu from `customMenuConfig` (takes precedence)
+  - History group from browser history
+
+#### tripleSpace/tripleSpace.js
+- **Features**:
+  - Triple-click activation popup
+  - Quick message input
+  - Recording functionality
+
+### Content Scripts Pattern
+
+Each AI platform script (`contentScripts/{platform}.js`) follows this pattern:
+
+1. **State Management**: Check `window.{platform}Injected` to prevent duplicate injection
+2. **Selectors**: Define XPath selectors for input fields and buttons
+3. **Message Handler**: Listen for `sendMessage` action from background
+4. **Execution**: Find elements, populate input, trigger click, report result
+
+### Storage Architecture
+
+**chrome.storage.local keys:**
+- `messageHistory` - Last 5 sent messages
+- `platformStates` - Platform checkbox states
+- `platformVisibility` - Show/hide platform options
+- `lastMessage` - Auto-saved input content
+- `selectedOptimizer` - Prompt optimizer selection
+- `customMenuConfig` - User-defined circular menu items
+- `backupSettings` - Backup configuration (enabled, intervalHours, maxBackups)
+- `lastBackupTime` - Timestamp of last successful backup
+- `promptQueue` - Queue of messages to process
+- `currentTasks` - Active task processing state
+
+**localStorage keys:**
+- `menuPosition` - Circular menu position {left, top}
+
+### Message Passing Patterns
+
+```
+Popup → Background (action: processTaskQueue)
+  → Background manages queue
+  → For each platform: find/create tab → inject content script
+  → Content script → Background (status: ok/error)
+  → Continue to next platform
+
+Popup → Background (action: executeFunctionScript)
+  → Background injects script from funcs/
+  → Script's main() executes
+  → Result returned to popup
+
+Context Menu → Background (menuItemId: addToCircularMenu)
+  → addToCustomMenu() adds to customMenuConfig
+  → Notification shown to user
+  → Always adds to "📄 我的收藏" group
+
+Options → Background (various actions)
+  → getMenuData, getHistory, performBackup, etc.
+```
+
+### Options Page Navigation
+
+The options page uses an iframe-based multi-page architecture:
+
+1. **options.html** - Sidebar navigation + iframe container
+2. **options.js** - Handles nav item clicks by updating iframe.src
+3. **Sub-pages**: platform.html, storage.html, menu.html, backup.html loaded in iframe
+
+**CSS Theme**: Blue (#3b82f6) theme throughout
+
+### Keyboard Shortcuts (Manifest)
+
+- `Alt+C` - Execute div copy script
+- `Alt+D` - Execute image picker
+- `Alt+F` - Save clipboard content to file
+
+### Circular Menu System
+
+The circular menu (`runjs/goto/goto.js`) provides:
+- **Default menu**: From `gotoServer.js` menuData (feed, 面包, 网站跳转3)
+- **Custom menu**: From `customMenuConfig` storage (takes precedence if exists)
+- **History group**: Browser history from last 24 hours, with clean domain names
+- **Navigation**: Smart tab reuse for same domains
+
+**Adding items via right-click**:
+- Right-click any link or page → "➕ 添加到圆形菜单"
+- Adds to "📄 我的收藏" group in customMenuConfig
+- Domain names extracted cleanly (www.taobao.com → "淘宝")
+
+**Domain Name Mapping** (gotoServer.js):
+```javascript
+const domainMap = {
+  'bilibili': 'B站', 'github': 'GitHub', 'gitee': 'Gitee',
+  'zhihu': '知乎', 'douyin': '抖音', 'notion': 'Notion',
+  'amap': '高德地图', 'taobao': '淘宝', 'tmall': '天猫',
+  'jd': '京东', 'google': 'Google', 'baidu': '百度',
+  // ... and more
+};
+```
 
 ## Common Development Tasks
 
 ### Adding a New AI Platform
-1. Create `contentScripts/{platform}.js` with platform-specific selectors and logic
-2. Add platform URL to `backgroudtask/ai_platform_processor.js` platformUrls object
-3. Include platform in popup UI checkboxes if needed
+
+1. Create `contentScripts/{platform}.js`:
+   ```javascript
+   if (window.{platform}Injected) return;
+   window.{platform}Injected = true;
+
+   const SELECTORS = {
+     input: '//xpath_to_input',
+     sendButton: '//xpath_to_send_button'
+   };
+
+   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+     if (message.action === 'sendMessage') {
+       // Implementation
+     }
+   });
+   ```
+
+2. Add to `backgroudtask/ai_platform_processor.js`:
+   ```javascript
+   platformUrls: {
+     // ...existing
+     '{platform}': 'https://{platform-domain}.com'
+   }
+   ```
+
+3. Add to popup checkbox list in `popup/popup.html`
 
 ### Adding a New Function
-1. Create function file in appropriate `funcs/` subdirectory
-2. Export a `main()` function that contains the core logic
-3. Add function to popup UI or keyboard shortcuts in manifest.json
 
-### Debugging
-- Use browser DevTools for popup and content script debugging
-- Service worker debugging via chrome://extensions/ service worker inspector
-- Console logs are preserved across all modules
+1. Create file in `funcs/{category}/{functionName}.js`:
+   ```javascript
+   export async function main() {
+     // Function logic
+     return { success: true, data: ... };
+   }
+   ```
 
-## Platform-Specific Notes
+2. Add to popup UI or register in manifest.json for keyboard shortcut
 
-### Content Script Structure
-Each platform script should:
-- Export XPath selectors for input fields and send buttons
-- Implement message sending logic with proper event triggering
-- Handle platform-specific edge cases and rate limiting
-- Use the unified messaging interface for coordination
+### Debugging Tips
 
-### Message Flow
-1. Popup creates task queue and sends to background script
-2. Background script processes queue sequentially
-3. For each task, navigates to platform URL and injects appropriate content script
-4. Content script executes message sending and reports completion
-5. Background script continues to next task in queue
+- **Service Worker**: chrome://extensions/ → Service worker link
+- **Popup**: Right-click popup → Inspect
+- **Content Scripts**: DevTools on the target page
+- **Options Page**: Right-click settings page → Inspect
+- **Console logs**: Preserved across all modules
 
-This modular architecture allows for easy extension to new AI platforms and functionality.
+### Known Issues
+
+1. **backupService.js line 218**: `downloads.search` uses wrong format
+   - Current: `{ filenameRegex: '^bro_chat_backups/bro_chat_backup_.*\\.json$' }`
+   - Should be: `filenameRegex: '^bro_chat_backups/bro_chat_backup_.*\\.json$'` (string directly in query)
+   - Error: "Invalid type: expected string, found object"
+
+2. **Backup Storage**: Currently uses chrome.downloads API
+   - User wants to save to specific directory instead
+   - Chrome extensions have limited filesystem access (cannot specify arbitrary paths)
+
+## Important Technical Notes
+
+1. **ES Modules**: All imports use ES6 module syntax
+2. **Content Security Policy**: No inline event handlers allowed
+3. **Service Worker Limitations**: No DOM access, no URL.createObjectURL
+4. **Data URI for Downloads**: Use base64-encoded data URIs for file downloads in service worker
+5. **Chrome Storage API**: All async operations use callbacks
+6. **Tab Management**: Reuse existing tabs for same domain/path when possible
+7. **Context Menus**: Requires `contextMenus` permission in manifest.json
