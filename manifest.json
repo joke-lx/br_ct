@@ -29,6 +29,7 @@
     "notifications",
     "commands",
     "downloads",
+    "alarms",
     "clipboardRead",
     "history",
     "contextMenus"

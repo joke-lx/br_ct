@@ -8,6 +8,7 @@ import { setupFuncCommandListener, setupMessageListener as setupFuncExecutorList
 import { setTabTransListener, initContextMenu } from './backgroudtask/gotoServer.js';
 import { startServer } from './backgroudtask/word_http_server.js';
 import { init as initVideoPlaneServer } from './backgroudtask/video_plane_server.js';
+import { initBackupService, setupBackupMessageListener } from './backgroudtask/backupService.js';
 
 // 初始化标签页更新监听器
 setupTabUpdateListener();
@@ -25,3 +26,7 @@ initVideoPlaneServer();
 
 // 初始化右键菜单
 initContextMenu();
+
+// 初始化备份服务
+initBackupService();
+setupBackupMessageListener();

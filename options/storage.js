@@ -5,6 +5,7 @@
 // DOM 元素
 let debugContent;
 let statusMessage;
+let lastBackupTimeElement;
 
 /**
  * 初始化存储调试页面
@@ -12,15 +13,22 @@ let statusMessage;
 function initializeStorageDebug() {
   debugContent = document.getElementById('storage-debug-content');
   statusMessage = document.getElementById('storage-status-message');
+  lastBackupTimeElement = document.getElementById('last-backup-time');
 
   // 加载存储数据
   loadStorageDebug();
+
+  // 加载最后备份时间
+  loadLastBackupTime();
 
   // 刷新按钮
   document.getElementById('refresh-storage').addEventListener('click', loadStorageDebug);
 
   // 清空按钮
   document.getElementById('clear-storage').addEventListener('click', clearAllStorage);
+
+  // 备份按钮
+  document.getElementById('backup-now-btn').addEventListener('click', performManualBackup);
 
   // 使用事件委托处理折叠/展开
   debugContent.addEventListener('click', (e) => {
@@ -293,6 +301,86 @@ function showStatusMessage(message, type = 'success') {
   setTimeout(() => {
     statusMessage.classList.remove('show');
   }, 3000);
+}
+
+// ==================== 备份功能 ====================
+
+/**
+ * 加载最后备份时间
+ */
+function loadLastBackupTime() {
+  chrome.runtime.sendMessage({ action: 'getLastBackupTime' }, (response) => {
+    if (response) {
+      updateLastBackupTimeDisplay(response);
+    }
+  });
+}
+
+/**
+ * 更新最后备份时间显示
+ */
+function updateLastBackupTimeDisplay(timestamp) {
+  if (!timestamp) {
+    lastBackupTimeElement.textContent = '从未备份';
+    lastBackupTimeElement.classList.add('never');
+    return;
+  }
+
+  lastBackupTimeElement.classList.remove('never');
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  let timeText;
+  if (diffMins < 1) {
+    timeText = '刚刚';
+  } else if (diffMins < 60) {
+    timeText = `${diffMins} 分钟前`;
+  } else if (diffHours < 24) {
+    timeText = `${diffHours} 小时前`;
+  } else if (diffDays < 7) {
+    timeText = `${diffDays} 天前`;
+  } else {
+    timeText = `上次备份：${formatDateTime(date)}`;
+  }
+
+  lastBackupTimeElement.textContent = timeText;
+}
+
+/**
+ * 格式化日期时间
+ */
+function formatDateTime(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+/**
+ * 执行手动备份
+ */
+function performManualBackup() {
+  const btn = document.getElementById('backup-now-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 备份中...';
+
+  chrome.runtime.sendMessage({ action: 'performBackup' }, (response) => {
+    btn.disabled = false;
+    btn.textContent = '📥 立即备份';
+
+    if (response && response.success) {
+      showStatusMessage(`备份成功: ${response.filename}`, 'success');
+      updateLastBackupTimeDisplay(response.time);
+    } else {
+      showStatusMessage(`备份失败: ${response?.error || '未知错误'}`, 'error');
+    }
+  });
 }
 
 // 页面加载时初始化
