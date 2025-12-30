@@ -348,6 +348,14 @@ function setupEventListeners() {
 
   // 点击遮罩层关闭历史面板
   elements.historyOverlay.addEventListener("click", toggleHistoryPanel);
+
+  // 设置链接点击事件
+  const settingsLink = document.querySelector(".settings-link");
+  if (settingsLink) {
+    settingsLink.addEventListener("click", () => {
+      chrome.runtime.openOptionsPage();
+    });
+  }
 }
 
 export { initializePopup, setupEventListeners, startSending };

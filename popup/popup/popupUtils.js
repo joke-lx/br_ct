@@ -84,6 +84,7 @@ export async function initializePopup() {
     selectAllButton: document.getElementById("select-all"),
     historySelect: document.getElementById("history-select"),
     promptOptimizerSelect: document.getElementById("prompt-optimizer-select"),
+    openOptionsButton: document.getElementById("open-options"),
   };
 
   // 自动聚焦输入框
@@ -267,6 +268,11 @@ export function setupEventListeners() {
 
   // 关闭AI标签页按钮
   elements.closeTabsButton.addEventListener("click", closeAllAITabs);
+
+  // 打开设置页面按钮
+  elements.openOptionsButton.addEventListener("click", () => {
+    chrome.runtime.openOptionsPage();
+  });
 }
 
 /**

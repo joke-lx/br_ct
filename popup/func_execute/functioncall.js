@@ -78,4 +78,12 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     }
   });
+
+  // 设置链接点击事件
+  const settingsLink = document.querySelector(".settings-link");
+  if (settingsLink) {
+    settingsLink.addEventListener("click", () => {
+      chrome.runtime.openOptionsPage();
+    });
+  }
 });
