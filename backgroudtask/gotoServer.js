@@ -85,22 +85,25 @@ function addToCustomMenu(url, title) {
       customConfig.children = [];
     }
 
-    // 创建一个默认分组（如果没有分组）
-    if (customConfig.children.length === 0) {
-      customConfig.children.push({
+    // 查找或创建 "📄 我的收藏" 分组
+    let favoritesGroup = customConfig.children.find(group => group.name === '📄 我的收藏');
+    if (!favoritesGroup) {
+      // 创建 "📄 我的收藏" 分组
+      favoritesGroup = {
         name: '📄 我的收藏',
         children: []
-      });
+      };
+      // 添加到最前面
+      customConfig.children.unshift(favoritesGroup);
     }
 
-    // 添加到第一个分组
-    const firstGroup = customConfig.children[0];
-    if (!firstGroup.children) {
-      firstGroup.children = [];
+    // 确保分组有 children 数组
+    if (!favoritesGroup.children) {
+      favoritesGroup.children = [];
     }
 
     // 检查是否已存在相同的 URL
-    const existingIndex = firstGroup.children.findIndex(item => item.url === url);
+    const existingIndex = favoritesGroup.children.findIndex(item => item.url === url);
     if (existingIndex !== -1) {
       // 已存在，提示用户
       chrome.notifications.create({
@@ -113,7 +116,7 @@ function addToCustomMenu(url, title) {
     }
 
     // 添加新项
-    firstGroup.children.push({
+    favoritesGroup.children.push({
       name: title || getDomainName(url) || '未命名',
       url: url,
       children: []
