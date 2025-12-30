@@ -209,7 +209,7 @@ async function cleanupOldBackups() {
     // 获取下载历史中的备份文件
     const downloads = await new Promise((resolve) => {
       chrome.downloads.search({
-        filenameRegex: /^bro_chat_backups\/bro_chat_backup_.*\.json$/,
+        filenameRegex: '^bro_chat_backups/bro_chat_backup_.*\\.json$',
         orderBy: ['-startTime']
       }, resolve);
     });

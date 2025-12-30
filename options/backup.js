@@ -186,7 +186,7 @@ function loadStorageSize() {
  */
 function loadBackupHistory() {
   chrome.downloads.search({
-    filenameRegex: /^bro_chat_backups\/bro_chat_backup_.*\.json$/,
+    filenameRegex: '^bro_chat_backups/bro_chat_backup_.*\\.json$',
     orderBy: ['-startTime'],
     limit: 10
   }, (results) => {
