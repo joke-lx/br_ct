@@ -11,7 +11,9 @@ const LAST_BACKUP_TIME_KEY = 'lastBackupTime';
 const DEFAULT_BACKUP_SETTINGS = {
   enabled: false,
   intervalHours: 24, // 默认24小时备份一次
-  maxBackups: 7 // 最多保留7个备份文件
+  maxBackups: 7, // 最多保留7个备份文件
+  folderName: 'bro_chat_backups', // 备份文件夹名称
+  saveAs: false // 是否每次弹出保存对话框
 };
 
 /**
@@ -106,6 +108,9 @@ function scheduleBackup(intervalHours) {
  */
 export async function performBackup() {
   try {
+    // 获取当前设置
+    const settings = await loadBackupSettings();
+
     // 获取所有存储数据
     const data = await getAllStorageData();
 
@@ -124,13 +129,13 @@ export async function performBackup() {
     }, null, 2);
 
     // 下载文件
-    await downloadFile(filename, jsonContent);
+    await downloadFile(filename, jsonContent, settings);
 
     // 更新最后备份时间
     await saveLastBackupTime(timestamp.getTime());
 
     // 清理旧备份
-    await cleanupOldBackups();
+    await cleanupOldBackups(settings);
 
     // 发送通知
     chrome.notifications.create({
@@ -167,8 +172,11 @@ function getAllStorageData() {
 /**
  * 下载文件
  * Service Worker 不支持 URL.createObjectURL，使用 Data URI
+ * @param {string} filename - 文件名
+ * @param {string} content - 文件内容
+ * @param {object} settings - 备份设置
  */
-function downloadFile(filename, content) {
+function downloadFile(filename, content, settings) {
   return new Promise((resolve, reject) => {
     // 将内容转换为 base64 Data URI（使用 TextEncoder 处理 UTF-8）
     const encoder = new TextEncoder();
@@ -180,10 +188,13 @@ function downloadFile(filename, content) {
     const base64Content = btoa(binary);
     const dataUri = `data:application/json;base64,${base64Content}`;
 
+    // 构建完整路径（包含自定义文件夹名称）
+    const fullPath = `${settings.folderName || 'bro_chat_backups'}/${filename}`;
+
     chrome.downloads.download({
       url: dataUri,
-      filename: `bro_chat_backups/${filename}`,
-      saveAs: false
+      filename: fullPath,
+      saveAs: settings.saveAs || false
     }, (downloadId) => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
@@ -207,16 +218,21 @@ function saveLastBackupTime(time) {
 
 /**
  * 清理旧备份文件
+ * @param {object} settings - 备份设置
  */
-async function cleanupOldBackups() {
-  const settings = await loadBackupSettings();
+async function cleanupOldBackups(settings) {
+  if (!settings) settings = await loadBackupSettings();
   if (settings.maxBackups <= 0) return;
 
   try {
+    // 构建正则表达式（使用自定义文件夹名称）
+    const folderName = (settings.folderName || 'bro_chat_backups').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const filenameRegex = `^${folderName}/bro_chat_backup_.*\\.json$`;
+
     // 获取下载历史中的备份文件
     const downloads = await new Promise((resolve) => {
       chrome.downloads.search({
-        filenameRegex: '^bro_chat_backups/bro_chat_backup_.*\\.json$',
+        filenameRegex: filenameRegex,
         orderBy: ['-startTime']
       }, resolve);
     });

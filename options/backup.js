@@ -8,6 +8,8 @@ let lastBackupTimeElement;
 let autoBackupToggle;
 let backupIntervalSelect;
 let maxBackupsSelect;
+let folderNameInput;
+let saveAsToggle;
 let statusMessage;
 let totalBackupsCount;
 let storageSizeCount;
@@ -23,6 +25,8 @@ function initializeBackupSettings() {
   autoBackupToggle = document.getElementById('auto-backup-toggle');
   backupIntervalSelect = document.getElementById('backup-interval-select');
   maxBackupsSelect = document.getElementById('max-backups-select');
+  folderNameInput = document.getElementById('folder-name-input');
+  saveAsToggle = document.getElementById('save-as-toggle');
   statusMessage = document.getElementById('backup-status-message');
   totalBackupsCount = document.getElementById('total-backups-count');
   storageSizeCount = document.getElementById('storage-size-count');
@@ -59,6 +63,8 @@ function loadSettings() {
       autoBackupToggle.checked = response.enabled;
       backupIntervalSelect.value = response.intervalHours;
       maxBackupsSelect.value = response.maxBackups;
+      folderNameInput.value = response.folderName || 'bro_chat_backups';
+      saveAsToggle.checked = response.saveAs || false;
       updateNextBackupDisplay();
     }
   });
@@ -68,16 +74,25 @@ function loadSettings() {
  * 保存备份设置
  */
 function saveSettings() {
+  const folderName = folderNameInput.value.trim();
+  if (!folderName) {
+    showStatusMessage('请输入文件夹名称', 'error');
+    return;
+  }
+
   const settings = {
     enabled: autoBackupToggle.checked,
     intervalHours: parseInt(backupIntervalSelect.value),
-    maxBackups: parseInt(maxBackupsSelect.value)
+    maxBackups: parseInt(maxBackupsSelect.value),
+    folderName: folderName,
+    saveAs: saveAsToggle.checked
   };
 
   chrome.runtime.sendMessage({ action: 'updateBackupSettings', settings }, (response) => {
     if (response) {
       showStatusMessage('设置已保存', 'success');
       updateNextBackupDisplay();
+      loadBackupHistory(); // 重新加载备份历史以匹配新文件夹
     } else {
       showStatusMessage('保存失败', 'error');
     }
@@ -185,28 +200,34 @@ function loadStorageSize() {
  * 加载备份历史
  */
 function loadBackupHistory() {
-  chrome.downloads.search({
-    filenameRegex: '^bro_chat_backups/bro_chat_backup_.*\\.json$',
-    orderBy: ['-startTime'],
-    limit: 10
-  }, (results) => {
-    if (!results || results.length === 0) {
-      backupHistoryList.innerHTML = '<div class="empty-history">暂无备份记录</div>';
-      totalBackupsCount.textContent = '0';
-      return;
-    }
+  // 先获取当前设置以获取文件夹名称
+  chrome.runtime.sendMessage({ action: 'getBackupSettings' }, (settings) => {
+    const folderName = (settings?.folderName || 'bro_chat_backups').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const filenameRegex = `^${folderName}/bro_chat_backup_.*\\.json$`;
 
-    totalBackupsCount.textContent = results.length;
+    chrome.downloads.search({
+      filenameRegex: filenameRegex,
+      orderBy: ['-startTime'],
+      limit: 10
+    }, (results) => {
+      if (!results || results.length === 0) {
+        backupHistoryList.innerHTML = '<div class="empty-history">暂无备份记录</div>';
+        totalBackupsCount.textContent = '0';
+        return;
+      }
 
-    backupHistoryList.innerHTML = results.map(item => `
-      <div class="backup-history-item">
-        <div class="backup-history-info">
-          <div class="backup-history-name">${escapeHtml(item.filename)}</div>
-          <div class="backup-history-time">${formatDateTime(new Date(item.startTime))}</div>
+      totalBackupsCount.textContent = results.length;
+
+      backupHistoryList.innerHTML = results.map(item => `
+        <div class="backup-history-item">
+          <div class="backup-history-info">
+            <div class="backup-history-name">${escapeHtml(item.filename)}</div>
+            <div class="backup-history-time">${formatDateTime(new Date(item.startTime))}</div>
+          </div>
+          <div class="backup-history-size">${formatBytes(item.fileSize)}</div>
         </div>
-        <div class="backup-history-size">${formatBytes(item.fileSize)}</div>
-      </div>
-    `).join('');
+      `).join('');
+    });
   });
 }
 

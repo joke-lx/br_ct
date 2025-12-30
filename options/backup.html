@@ -155,6 +155,10 @@
         border-color: #3b82f6;
       }
 
+      .setting-select[type="text"] {
+        min-width: 200px;
+      }
+
       /* 备份历史列表 */
       .backup-history {
         margin-top: 16px;
@@ -278,6 +282,29 @@
               <option value="10">10 个</option>
               <option value="0">不限制</option>
             </select>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-title">备份文件夹名称</div>
+            <div class="setting-description">在 Downloads 文件夹中创建的子文件夹名称</div>
+          </div>
+          <div class="setting-control">
+            <input type="text" class="setting-select" id="folder-name-input" placeholder="bro_chat_backups" />
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-title">每次备份弹出保存对话框</div>
+            <div class="setting-description">开启后每次备份都会提示选择保存位置（可手动选择任意文件夹）</div>
+          </div>
+          <div class="setting-control">
+            <label class="toggle-switch">
+              <input type="checkbox" id="save-as-toggle" />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
         </div>
 
