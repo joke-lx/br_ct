@@ -1,7 +1,10 @@
 /**
  * 填充优化器下拉框
+ * @param {HTMLElement} promptOptimizerSelect - 下拉框元素
+ * @param {Object} templates - PROMPT_TEMPLATES 模板对象（可选，默认使用全局）
  */
-function populateOptimizer(promptOptimizerSelect) {
+function populateOptimizer(promptOptimizerSelect, templates) {
+  const PROMPT_TEMPLATES = templates || (typeof window !== 'undefined' && window.PROMPT_TEMPLATES) || {};
   const optionsContainer = promptOptimizerSelect.querySelector('.custom-select-options');
   const selectedValue = promptOptimizerSelect.querySelector('.selected-value');
   

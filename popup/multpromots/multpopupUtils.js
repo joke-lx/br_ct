@@ -1,4 +1,11 @@
+/**
+ * 多提示词组件 - 工具函数
+ * 负责初始化、事件处理、历史记录管理等核心逻辑
+ */
+
 import { populateOptimizer } from "../promots/promptsUI.js";
+import { PROMPT_TEMPLATES } from "./promptsData.js";
+
 const OPTIMIZER_KEY = "selectedOptimizer";
 const MAX_HISTORY = 5;
 let elements = {};
@@ -23,7 +30,7 @@ function initializePopup() {
     historyOverlay: document.getElementById("history-overlay"),
   };
 
-  populateOptimizer(elements.promptOptimizerSelect);
+  populateOptimizer(elements.promptOptimizerSelect, PROMPT_TEMPLATES);
   setupOptimizerInputSync();
   loadStoredData();
 
