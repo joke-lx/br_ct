@@ -13,6 +13,143 @@
         margin-bottom: 16px;
       }
 
+      /* 书签导入样式 */
+      .bookmark-tree {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 12px;
+        background: #f8f9fa;
+      }
+
+      .bookmark-node {
+        margin: 4px 0;
+      }
+
+      .bookmark-folder {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .bookmark-folder-header {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        background: white;
+        border-radius: 6px;
+        transition: background 0.2s;
+      }
+
+      .bookmark-folder-header:hover {
+        background: #e9ecef;
+      }
+
+      .bookmark-folder-icon {
+        margin-right: 8px;
+        transition: transform 0.2s;
+      }
+
+      .bookmark-folder.expanded .bookmark-folder-icon {
+        transform: rotate(90deg);
+      }
+
+      .bookmark-folder-title {
+        flex: 1;
+        font-weight: 500;
+      }
+
+      .bookmark-folder-count {
+        font-size: 12px;
+        color: #6c757d;
+        margin-left: 8px;
+      }
+
+      .bookmark-children {
+        margin-left: 20px;
+        display: none;
+      }
+
+      .bookmark-folder.expanded .bookmark-children {
+        display: block;
+      }
+
+      .bookmark-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        margin: 2px 0;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .bookmark-item:hover {
+        background: #e9ecef;
+      }
+
+      .bookmark-item.selected {
+        background: #3b82f6;
+        color: white;
+      }
+
+      .bookmark-item-icon {
+        margin-right: 8px;
+      }
+
+      .bookmark-item-title {
+        flex: 1;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .bookmark-item-url {
+        font-size: 11px;
+        color: #6c757d;
+        margin-left: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .bookmark-item.selected .bookmark-item-url {
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .bookmark-import-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .import-target-selector {
+        flex: 1;
+      }
+
+      .loading-spinner {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+      }
+
+      .loading-spinner::after {
+        content: '';
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        border: 3px solid #f0f0f0;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
       .menu-group {
         background: #f8f9fa;
         border: 1px solid #e0e0e0;
@@ -271,6 +408,7 @@
       <section class="section" id="visual-editor">
         <div class="menu-editor-actions">
           <button class="btn btn-primary" id="add-group-btn">➕ 添加分组</button>
+          <button class="btn btn-info" id="import-bookmarks-btn">🔖 从书签导入</button>
           <button class="btn btn-success" id="save-menu-btn">💾 保存配置</button>
           <button class="btn btn-secondary" id="switch-to-json">📝 切换到 JSON 编辑</button>
         </div>
@@ -337,6 +475,36 @@
         <div class="modal-footer">
           <button class="btn btn-secondary" data-action="close-modal" data-modal="item-modal">取消</button>
           <button class="btn btn-primary" id="save-item-btn">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 书签导入模态框 -->
+    <div class="modal-overlay" id="bookmark-import-modal">
+      <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+          <h3 class="modal-title">🔖 从浏览器书签导入</h3>
+          <button class="modal-close" data-action="close-modal" data-modal="bookmark-import-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="import-target-group">导入到分组 *</label>
+            <select id="import-target-group" class="import-target-selector">
+              <option value="">-- 请选择目标分组 --</option>
+            </select>
+            <div class="form-hint">如果还没有分组，请先创建一个分组</div>
+          </div>
+          <div class="form-group">
+            <label>书签列表</label>
+            <div id="bookmark-tree" class="bookmark-tree">
+              <div class="loading-spinner"></div>
+            </div>
+            <div class="form-hint">点击选择书签或文件夹（可多选）</div>
+          </div>
+          <div class="bookmark-import-actions">
+            <button type="button" class="btn btn-secondary" id="select-all-bookmarks">全选/取消</button>
+            <button type="button" class="btn btn-primary" id="import-selected-bookmarks">导入已选 (<span id="selected-count">0</span>)</button>
+          </div>
         </div>
       </div>
     </div>

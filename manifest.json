@@ -32,7 +32,8 @@
     "alarms",
     "clipboardRead",
     "history",
-    "contextMenus"
+    "contextMenus",
+    "bookmarks"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {

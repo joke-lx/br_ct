@@ -33,6 +33,7 @@ function initializeMenuConfig() {
   document.getElementById('add-group-btn').addEventListener('click', () => openGroupModal());
   document.getElementById('save-menu-btn').addEventListener('click', saveMenuConfig);
   document.getElementById('switch-to-json').addEventListener('click', switchToJsonEditor);
+  document.getElementById('import-bookmarks-btn').addEventListener('click', openBookmarkImportModal);
 
   // JSON 编辑器按钮
   document.getElementById('load-json-btn').addEventListener('click', loadJsonEditor);
@@ -43,6 +44,10 @@ function initializeMenuConfig() {
   // 模态框保存按钮
   document.getElementById('save-group-btn').addEventListener('click', saveGroup);
   document.getElementById('save-item-btn').addEventListener('click', saveItem);
+
+  // 书签导入按钮
+  document.getElementById('select-all-bookmarks').addEventListener('click', toggleSelectAllBookmarks);
+  document.getElementById('import-selected-bookmarks').addEventListener('click', importSelectedBookmarks);
 
   // 事件委托处理动态生成的按钮
   menuConfigContent.addEventListener('click', handleMenuContentClick);
@@ -529,3 +534,260 @@ function clearCustomConfig() {
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', initializeMenuConfig);
+
+// ==================== 书签导入功能 ====================
+
+/**
+ * 存储选中的书签
+ */
+let selectedBookmarks = new Set();
+
+/**
+ * 打开书签导入模态框
+ */
+function openBookmarkImportModal() {
+  const modal = document.getElementById('bookmark-import-modal');
+  modal.classList.add('show');
+
+  // 填充分组选择器
+  populateTargetGroupSelector();
+
+  // 加载书签树
+  loadBookmarkTree();
+}
+
+/**
+ * 填充目标分组选择器
+ */
+function populateTargetGroupSelector() {
+  const select = document.getElementById('import-target-group');
+  select.innerHTML = '<option value="">-- 请选择目标分组 --</option>';
+
+  if (currentMenuData && currentMenuData.children) {
+    currentMenuData.children.forEach((group, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = group.name;
+      select.appendChild(option);
+    });
+  }
+
+  // 如果只有一个分组，自动选中
+  if (currentMenuData && currentMenuData.children && currentMenuData.children.length === 1) {
+    select.value = '0';
+  }
+}
+
+/**
+ * 加载书签树
+ */
+function loadBookmarkTree() {
+  const treeContainer = document.getElementById('bookmark-tree');
+  treeContainer.innerHTML = '<div class="loading-spinner"></div>';
+  selectedBookmarks.clear();
+  updateSelectedCount();
+
+  chrome.bookmarks.getTree((bookmarkTree) => {
+    // 跳过根节点，直接渲染子节点
+    const children = [];
+    bookmarkTree.forEach(rootNode => {
+      if (rootNode.children) {
+        children.push(...rootNode.children);
+      }
+    });
+
+    if (children.length === 0) {
+      treeContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #6c757d;">暂无书签</div>';
+      return;
+    }
+
+    treeContainer.innerHTML = '';
+    children.forEach(child => {
+      treeContainer.appendChild(createBookmarkNode(child));
+    });
+  });
+}
+
+/**
+ * 创建书签节点（文件夹或书签）
+ */
+function createBookmarkNode(node, level = 0) {
+  const container = document.createElement('div');
+  container.className = 'bookmark-node';
+
+  if (node.url) {
+    // 这是一个书签
+    const bookmarkItem = document.createElement('div');
+    bookmarkItem.className = 'bookmark-item';
+    bookmarkItem.dataset.id = node.id;
+    bookmarkItem.dataset.url = node.url;
+    bookmarkItem.dataset.title = node.title || '无标题';
+
+    bookmarkItem.innerHTML = `
+      <span class="bookmark-item-icon">🔗</span>
+      <span class="bookmark-item-title">${escapeHtml(node.title || '无标题')}</span>
+      <span class="bookmark-item-url">${escapeHtml(node.url)}</span>
+    `;
+
+    bookmarkItem.addEventListener('click', () => toggleBookmarkSelection(bookmarkItem));
+    container.appendChild(bookmarkItem);
+  } else if (node.children) {
+    // 这是一个文件夹
+    const folder = document.createElement('div');
+    folder.className = 'bookmark-folder';
+    folder.dataset.id = node.id;
+    folder.dataset.title = node.title || '未命名文件夹';
+
+    const header = document.createElement('div');
+    header.className = 'bookmark-folder-header';
+
+    header.innerHTML = `
+      <span class="bookmark-folder-icon">▶</span>
+      <span class="bookmark-folder-title">${escapeHtml(node.title || '未命名文件夹')}</span>
+      <span class="bookmark-folder-count">${node.children.length} 项</span>
+    `;
+
+    header.addEventListener('click', (e) => {
+      e.stopPropagation();
+      folder.classList.toggle('expanded');
+    });
+
+    const children = document.createElement('div');
+    children.className = 'bookmark-children';
+
+    // 为文件夹添加点击选择功能
+    header.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      toggleFolderSelection(folder);
+    });
+
+    // 递归渲染子节点
+    node.children.forEach(child => {
+      children.appendChild(createBookmarkNode(child, level + 1));
+    });
+
+    folder.appendChild(header);
+    folder.appendChild(children);
+    container.appendChild(folder);
+  }
+
+  return container;
+}
+
+/**
+ * 切换书签选中状态
+ */
+function toggleBookmarkSelection(bookmarkItem) {
+  const id = bookmarkItem.dataset.id;
+
+  if (selectedBookmarks.has(id)) {
+    selectedBookmarks.delete(id);
+    bookmarkItem.classList.remove('selected');
+  } else {
+    selectedBookmarks.add(id);
+    bookmarkItem.classList.add('selected');
+  }
+
+  updateSelectedCount();
+}
+
+/**
+ * 切换文件夹选中状态（选中文件夹内所有书签）
+ */
+function toggleFolderSelection(folder) {
+  const folderId = folder.dataset.id;
+  const bookmarks = folder.querySelectorAll('.bookmark-item');
+
+  const allSelected = Array.from(bookmarks).every(b => b.classList.contains('selected'));
+
+  bookmarks.forEach(bookmark => {
+    const id = bookmark.dataset.id;
+    if (allSelected) {
+      selectedBookmarks.delete(id);
+      bookmark.classList.remove('selected');
+    } else {
+      selectedBookmarks.add(id);
+      bookmark.classList.add('selected');
+    }
+  });
+
+  updateSelectedCount();
+}
+
+/**
+ * 全选/取消全选
+ */
+function toggleSelectAllBookmarks() {
+  const allBookmarks = document.querySelectorAll('#bookmark-tree .bookmark-item');
+  const allSelected = Array.from(allBookmarks).every(b => b.classList.contains('selected'));
+
+  if (allSelected) {
+    allBookmarks.forEach(b => {
+      b.classList.remove('selected');
+      selectedBookmarks.delete(b.dataset.id);
+    });
+  } else {
+    allBookmarks.forEach(b => {
+      b.classList.add('selected');
+      selectedBookmarks.add(b.dataset.id);
+    });
+  }
+
+  updateSelectedCount();
+}
+
+/**
+ * 更新选中计数
+ */
+function updateSelectedCount() {
+  document.getElementById('selected-count').textContent = selectedBookmarks.size;
+}
+
+/**
+ * 导入选中的书签
+ */
+function importSelectedBookmarks() {
+  const targetGroupIndex = document.getElementById('import-target-group').value;
+
+  if (targetGroupIndex === '') {
+    alert('请先选择目标分组');
+    return;
+  }
+
+  if (selectedBookmarks.size === 0) {
+    alert('请先选择要导入的书签');
+    return;
+  }
+
+  if (!currentMenuData) {
+    currentMenuData = {
+      name: '菜单',
+      isRoot: true,
+      children: []
+    };
+  }
+
+  const groupIndex = parseInt(targetGroupIndex);
+  const group = currentMenuData.children[groupIndex];
+
+  // 收集所有选中的书签
+  const bookmarkElements = document.querySelectorAll('.bookmark-item.selected');
+  const importedCount = bookmarkElements.length;
+
+  bookmarkElements.forEach(el => {
+    group.children.push({
+      name: el.dataset.title,
+      url: el.dataset.url,
+      children: []
+    });
+  });
+
+  // 清空选择并关闭模态框
+  selectedBookmarks.clear();
+  document.getElementById('bookmark-tree').innerHTML = '';
+  closeModal('bookmark-import-modal');
+
+  // 重新渲染菜单配置
+  renderMenuConfig();
+  showStatusMessage(`成功导入 ${importedCount} 个书签`, 'success');
+}
