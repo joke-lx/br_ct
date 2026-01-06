@@ -19,20 +19,38 @@ const DEFAULT_BACKUP_SETTINGS = {
 /**
  * 初始化备份服务
  */
-export function initBackupService() {
-  // 设置定时监听器
-  chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === BACKUP_ALARM_NAME) {
-      performBackup();
-    }
-  });
+export async function initBackupService() {
+  console.log('[BackupService] 初始化备份服务...');
 
-  // 加载设置并创建定时任务
-  loadBackupSettings().then(settings => {
-    if (settings.enabled) {
-      scheduleBackup(settings.intervalHours);
+  // 检查现有的 alarm
+  const existingAlarms = await chrome.alarms.getAll();
+  console.log('[BackupService] 现有的 alarms:', existingAlarms.map(a => ({ name: a.name, scheduledTime: a.scheduledTime })));
+
+  // 设置定时监听器（每次 SW 启动都会重新设置）
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    console.log('[BackupService] Alarm 触发:', alarm.name, 'scheduledTime:', new Date(alarm.scheduledTime));
+    if (alarm.name === BACKUP_ALARM_NAME) {
+      console.log('[BackupService] 执行自动备份...');
+      performBackup().catch(error => {
+        console.error('[BackupService] 自动备份失败:', error);
+      });
     }
   });
+  console.log('[BackupService] Alarm 监听器已设置');
+
+  // 加载设置并创建/更新定时任务
+  const settings = await loadBackupSettings();
+  console.log('[BackupService] 当前备份设置:', settings);
+
+  if (settings.enabled) {
+    await scheduleBackup(settings.intervalHours);
+  } else {
+    // 如果未启用，确保清除现有的 alarm
+    await chrome.alarms.clear(BACKUP_ALARM_NAME);
+    console.log('[BackupService] 备份未启用，已清除 alarm');
+  }
+
+  console.log('[BackupService] 初始化完成');
 }
 
 /**
@@ -61,13 +79,16 @@ async function saveBackupSettings(settings) {
  * 更新备份设置
  */
 export async function updateBackupSettings(settings) {
+  console.log('[BackupService] 更新备份设置:', settings);
   await saveBackupSettings(settings);
 
   // 重新调度定时任务
-  chrome.alarms.clear(BACKUP_ALARM_NAME);
+  await chrome.alarms.clear(BACKUP_ALARM_NAME);
 
   if (settings.enabled) {
-    scheduleBackup(settings.intervalHours);
+    await scheduleBackup(settings.intervalHours);
+  } else {
+    console.log('[BackupService] 备份已禁用');
   }
 
   return settings;
@@ -94,12 +115,27 @@ export async function getLastBackupTime() {
 /**
  * 调度定时备份任务
  */
-function scheduleBackup(intervalHours) {
+async function scheduleBackup(intervalHours) {
   const intervalMinutes = intervalHours * 60;
+  console.log(`[BackupService] 调度备份任务: ${intervalHours}小时 (${intervalMinutes}分钟) 后执行`);
+
+  // 先清除旧的 alarm
+  await chrome.alarms.clear(BACKUP_ALARM_NAME);
+
+  // 创建新的 alarm
   chrome.alarms.create(BACKUP_ALARM_NAME, {
     delayInMinutes: intervalMinutes,
     periodInMinutes: intervalMinutes
   });
+
+  // 验证 alarm 是否创建成功
+  const alarm = await chrome.alarms.get(BACKUP_ALARM_NAME);
+  if (alarm) {
+    const nextTime = new Date(alarm.scheduledTime);
+    console.log(`[BackupService] Alarm 创建成功，下次备份时间: ${nextTime.toLocaleString('zh-CN')}`);
+  } else {
+    console.error('[BackupService] Alarm 创建失败！');
+  }
 }
 
 /**
@@ -107,18 +143,23 @@ function scheduleBackup(intervalHours) {
  * 导出 chrome.storage.local 的所有数据到 JSON 文件
  */
 export async function performBackup() {
+  console.log('[BackupService] ========== 开始执行备份 ==========');
   try {
     // 获取当前设置
     const settings = await loadBackupSettings();
+    console.log('[BackupService] 当前设置:', settings);
 
     // 获取所有存储数据
+    console.log('[BackupService] 正在获取存储数据...');
     const data = await getAllStorageData();
+    console.log('[BackupService] 存储数据大小:', JSON.stringify(data).length, '字符');
 
     // 生成备份文件名
     const timestamp = new Date();
     const dateStr = formatDate(timestamp);
     const timeStr = formatTime(timestamp);
     const filename = `bro_chat_backup_${dateStr}_${timeStr}.json`;
+    console.log('[BackupService] 备份文件名:', filename);
 
     // 创建 JSON 内容
     const jsonContent = JSON.stringify({
@@ -129,12 +170,14 @@ export async function performBackup() {
     }, null, 2);
 
     // 下载文件
+    console.log('[BackupService] 正在下载文件...');
     await downloadFile(filename, jsonContent, settings);
 
     // 更新最后备份时间
     await saveLastBackupTime(timestamp.getTime());
 
     // 清理旧备份
+    console.log('[BackupService] 正在清理旧备份...');
     await cleanupOldBackups(settings);
 
     // 发送通知
@@ -145,9 +188,10 @@ export async function performBackup() {
       message: `数据备份已完成: ${filename}`
     });
 
+    console.log('[BackupService] ========== 备份成功 ==========');
     return { success: true, filename, time: timestamp.getTime() };
   } catch (error) {
-    console.error('Backup failed:', error);
+    console.error('[BackupService] ========== 备份失败 ==========', error);
     chrome.notifications.create({
       type: 'basic',
       iconUrl: 'icons/icon128.png',
@@ -178,6 +222,8 @@ function getAllStorageData() {
  */
 function downloadFile(filename, content, settings) {
   return new Promise((resolve, reject) => {
+    console.log('[BackupService] downloadFile - 文件名:', filename, '文件夹:', settings.folderName);
+
     // 将内容转换为 base64 Data URI（使用 TextEncoder 处理 UTF-8）
     const encoder = new TextEncoder();
     const data = encoder.encode(content);
@@ -190,6 +236,7 @@ function downloadFile(filename, content, settings) {
 
     // 构建完整路径（包含自定义文件夹名称）
     const fullPath = `${settings.folderName || 'bro_chat_backups'}/${filename}`;
+    console.log('[BackupService] downloadFile - 完整路径:', fullPath);
 
     chrome.downloads.download({
       url: dataUri,
@@ -197,8 +244,10 @@ function downloadFile(filename, content, settings) {
       saveAs: settings.saveAs || false
     }, (downloadId) => {
       if (chrome.runtime.lastError) {
+        console.error('[BackupService] downloadFile - 下载失败:', chrome.runtime.lastError);
         reject(new Error(chrome.runtime.lastError.message));
       } else {
+        console.log('[BackupService] downloadFile - 下载成功, ID:', downloadId);
         resolve(downloadId);
       }
     });
@@ -222,12 +271,18 @@ function saveLastBackupTime(time) {
  */
 async function cleanupOldBackups(settings) {
   if (!settings) settings = await loadBackupSettings();
-  if (settings.maxBackups <= 0) return;
+  if (settings.maxBackups <= 0) {
+    console.log('[BackupService] cleanupOldBackups - maxBackups 设置为 0，跳过清理');
+    return;
+  }
 
   try {
+    console.log('[BackupService] cleanupOldBackups - 开始清理，最多保留:', settings.maxBackups);
+
     // 构建正则表达式（使用自定义文件夹名称）
     const folderName = (settings.folderName || 'bro_chat_backups').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const filenameRegex = `^${folderName}/bro_chat_backup_.*\\.json$`;
+    console.log('[BackupService] cleanupOldBackups - 搜索正则:', filenameRegex);
 
     // 获取下载历史中的备份文件
     const downloads = await new Promise((resolve) => {
@@ -237,20 +292,26 @@ async function cleanupOldBackups(settings) {
       }, resolve);
     });
 
+    console.log('[BackupService] cleanupOldBackups - 找到备份文件:', downloads.length);
+
     // 删除超过数量的旧备份
     if (downloads.length > settings.maxBackups) {
       const toDelete = downloads.slice(settings.maxBackups);
+      console.log('[BackupService] cleanupOldBackups - 需要删除:', toDelete.length);
       for (const item of toDelete) {
         try {
           await chrome.downloads.removeFile(item.id);
           await chrome.downloads.erase({ id: item.id });
+          console.log('[BackupService] cleanupOldBackups - 已删除:', item.filename);
         } catch (e) {
-          // 忽略删除失败
+          console.warn('[BackupService] cleanupOldBackups - 删除失败:', item.filename, e);
         }
       }
+    } else {
+      console.log('[BackupService] cleanupOldBackups - 无需删除');
     }
   } catch (error) {
-    console.error('Cleanup failed:', error);
+    console.error('[BackupService] cleanupOldBackups - 清理失败:', error);
   }
 }
 

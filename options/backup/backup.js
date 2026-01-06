@@ -45,13 +45,22 @@ function initializeBackupSettings() {
   // 加载备份历史
   loadBackupHistory();
 
+  // 更新调试信息
+  updateDebugInfo();
+
   // 事件监听器
   document.getElementById('backup-now-btn').addEventListener('click', performManualBackup);
   document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
 
   // 当自动备份开关改变时更新下次备份显示
-  autoBackupToggle.addEventListener('change', updateNextBackupDisplay);
-  backupIntervalSelect.addEventListener('change', updateNextBackupDisplay);
+  autoBackupToggle.addEventListener('change', () => {
+    updateNextBackupDisplay();
+    updateDebugInfo();
+  });
+  backupIntervalSelect.addEventListener('change', () => {
+    updateNextBackupDisplay();
+    updateDebugInfo();
+  });
 }
 
 /**
@@ -92,6 +101,7 @@ function saveSettings() {
     if (response) {
       showStatusMessage('设置已保存', 'success');
       updateNextBackupDisplay();
+      updateDebugInfo();
       loadBackupHistory(); // 重新加载备份历史以匹配新文件夹
     } else {
       showStatusMessage('保存失败', 'error');
@@ -146,6 +156,7 @@ function updateLastBackupTimeDisplay(timestamp) {
 
 /**
  * 更新下次备份显示
+ * 增强版：从实际的 alarm 获取时间，而不是计算
  */
 function updateNextBackupDisplay() {
   if (!autoBackupToggle.checked) {
@@ -153,18 +164,33 @@ function updateNextBackupDisplay() {
     return;
   }
 
-  chrome.runtime.sendMessage({ action: 'getLastBackupTime' }, (response) => {
+  // 从 chrome.alarms 获取实际的下次备份时间
+  chrome.alarms.get('storage-auto-backup', (alarm) => {
     const intervalHours = parseInt(backupIntervalSelect.value);
 
-    if (!response) {
-      nextBackupCount.textContent = `${intervalHours} 小时后`;
+    if (chrome.runtime.lastError) {
+      console.warn('获取 alarm 失败:', chrome.runtime.lastError);
+      nextBackupCount.textContent = '未知';
       return;
     }
 
-    const lastBackup = new Date(response);
-    const nextBackup = new Date(lastBackup.getTime() + intervalHours * 3600000);
+    if (!alarm) {
+      // 没有 alarm，可能未启用或出错
+      chrome.runtime.sendMessage({ action: 'getLastBackupTime' }, (response) => {
+        if (!response) {
+          nextBackupCount.textContent = `${intervalHours} 小时后（首次）`;
+        } else {
+          // 有上次备份时间但没有 alarm，说明可能有问题
+          nextBackupCount.textContent = '等待调度...';
+        }
+      });
+      return;
+    }
+
+    // 使用实际的 alarm 时间
+    const nextBackupTime = new Date(alarm.scheduledTime);
     const now = new Date();
-    const diffMs = nextBackup - now;
+    const diffMs = nextBackupTime - now;
 
     if (diffMs <= 0) {
       nextBackupCount.textContent = '即将执行';
@@ -297,6 +323,73 @@ function showStatusMessage(message, type = 'success') {
   setTimeout(() => {
     statusMessage.classList.remove('show');
   }, 3000);
+}
+
+/**
+ * 更新调试信息
+ */
+function updateDebugInfo() {
+  const alarmStatusEl = document.getElementById('debug-alarm-status');
+  const alarmTimeEl = document.getElementById('debug-alarm-time');
+  const swStatusEl = document.getElementById('debug-sw-status');
+
+  if (!alarmStatusEl) return; // 调试区域可能不存在
+
+  // 检查 Service Worker 状态
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (reg && reg.active) {
+        swStatusEl.textContent = '运行中';
+        swStatusEl.style.color = 'green';
+      } else {
+        swStatusEl.textContent = '未激活';
+        swStatusEl.style.color = 'orange';
+      }
+    }).catch(() => {
+      swStatusEl.textContent = '不支持';
+      swStatusEl.style.color = 'gray';
+    });
+  } else {
+    swStatusEl.textContent = '不支持';
+    swStatusEl.style.color = 'gray';
+  }
+
+  // 检查 Alarm 状态
+  chrome.alarms.get('storage-auto-backup', (alarm) => {
+    if (chrome.runtime.lastError) {
+      alarmStatusEl.textContent = '错误: ' + chrome.runtime.lastError.message;
+      alarmStatusEl.style.color = 'red';
+      alarmTimeEl.textContent = '-';
+      return;
+    }
+
+    if (!alarm) {
+      alarmStatusEl.textContent = '未设置';
+      alarmStatusEl.style.color = 'orange';
+      alarmTimeEl.textContent = '-';
+    } else {
+      alarmStatusEl.textContent = '已设置';
+      alarmStatusEl.style.color = 'green';
+
+      const scheduledTime = new Date(alarm.scheduledTime);
+      alarmTimeEl.textContent = scheduledTime.toLocaleString('zh-CN');
+
+      // 检查是否过期
+      const now = new Date();
+      if (scheduledTime < now) {
+        alarmTimeEl.textContent += ' (已过期)';
+        alarmTimeEl.style.color = 'red';
+      } else {
+        const diffMs = scheduledTime - now;
+        const diffMins = Math.floor(diffMs / 60000);
+        alarmTimeEl.textContent += ` (${diffMins}分钟后)`;
+        alarmTimeEl.style.color = 'green';
+      }
+    }
+  });
+
+  // 定期刷新调试信息（每30秒）
+  setTimeout(updateDebugInfo, 30000);
 }
 
 // 页面加载时初始化
