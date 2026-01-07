@@ -139,11 +139,30 @@ async function scheduleBackup(intervalHours) {
 }
 
 /**
- * 执行备份
+ * 执行备份（自动备份 - 始终静默下载）
  * 导出 chrome.storage.local 的所有数据到 JSON 文件
+ * 注意：自动备份会强制 saveAs: false，不弹出对话框
  */
 export async function performBackup() {
-  console.log('[BackupService] ========== 开始执行备份 ==========');
+  console.log('[BackupService] ========== 开始执行自动备份 ==========');
+  return await performBackupInternal(false);
+}
+
+/**
+ * 执行手动备份（可选择是否弹出对话框）
+ * @param {boolean} saveAs - 是否弹出保存对话框
+ */
+export async function performManualBackup(saveAs = false) {
+  console.log('[BackupService] ========== 开始执行手动备份 ==========');
+  return await performBackupInternal(saveAs);
+}
+
+/**
+ * 内部备份执行函数
+ * @param {boolean} saveAs - 是否弹出保存对话框
+ */
+async function performBackupInternal(saveAs) {
+  console.log('[BackupService] 执行备份, saveAs:', saveAs);
   try {
     // 获取当前设置
     const settings = await loadBackupSettings();
@@ -169,9 +188,9 @@ export async function performBackup() {
       data: data
     }, null, 2);
 
-    // 下载文件
-    console.log('[BackupService] 正在下载文件...');
-    await downloadFile(filename, jsonContent, settings);
+    // 下载文件（使用传入的 saveAs 参数）
+    console.log('[BackupService] 正在下载文件, saveAs:', saveAs, '(自动备份强制为 false)');
+    await downloadFile(filename, jsonContent, settings, saveAs);
 
     // 更新最后备份时间
     await saveLastBackupTime(timestamp.getTime());
@@ -219,10 +238,11 @@ function getAllStorageData() {
  * @param {string} filename - 文件名
  * @param {string} content - 文件内容
  * @param {object} settings - 备份设置
+ * @param {boolean} saveAs - 是否弹出保存对话框（覆盖 settings.saveAs）
  */
-function downloadFile(filename, content, settings) {
+function downloadFile(filename, content, settings, saveAs) {
   return new Promise((resolve, reject) => {
-    console.log('[BackupService] downloadFile - 文件名:', filename, '文件夹:', settings.folderName);
+    console.log('[BackupService] downloadFile - 文件名:', filename, '文件夹:', settings.folderName, 'saveAs:', saveAs);
 
     // 将内容转换为 base64 Data URI（使用 TextEncoder 处理 UTF-8）
     const encoder = new TextEncoder();
@@ -238,10 +258,14 @@ function downloadFile(filename, content, settings) {
     const fullPath = `${settings.folderName || 'bro_chat_backups'}/${filename}`;
     console.log('[BackupService] downloadFile - 完整路径:', fullPath);
 
+    // 使用传入的 saveAs 参数（自动备份强制 false，手动备份使用用户设置）
+    const actualSaveAs = saveAs !== undefined ? saveAs : (settings.saveAs || false);
+    console.log('[BackupService] downloadFile - 实际 saveAs 值:', actualSaveAs);
+
     chrome.downloads.download({
       url: dataUri,
       filename: fullPath,
-      saveAs: settings.saveAs || false
+      saveAs: actualSaveAs
     }, (downloadId) => {
       if (chrome.runtime.lastError) {
         console.error('[BackupService] downloadFile - 下载失败:', chrome.runtime.lastError);
@@ -341,7 +365,15 @@ function formatTime(date) {
 export function setupBackupMessageListener() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'performBackup') {
+      // 自动备份（定时任务触发）- 始终静默下载
       performBackup().then(sendResponse);
+      return true; // 异步响应
+    }
+    if (message.action === 'performManualBackup') {
+      // 手动备份（用户点击按钮）- 使用用户设置的 saveAs 选项
+      loadBackupSettings().then(settings => {
+        performManualBackup(settings.saveAs || false).then(sendResponse);
+      });
       return true; // 异步响应
     }
     if (message.action === 'getBackupSettings') {
