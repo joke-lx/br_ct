@@ -28,5 +28,7 @@ initVideoPlaneServer();
 initContextMenu();
 
 // 初始化备份服务
-initBackupService();
+initBackupService().catch(error => {
+  console.error('[Background] 初始化备份服务失败:', error);
+});
 setupBackupMessageListener();
