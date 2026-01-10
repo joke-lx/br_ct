@@ -278,8 +278,12 @@ class DomVisibilityController {
     _getElementIdentifier(element) {
         if (element.id) return `#${element.id}`;
         if (element.className) {
-            const classSelector = "." + element.className.trim().split(/\s+/).join(".");
-            return `${element.tagName.toLowerCase()}${classSelector}`;
+            // className 可能是 DOMTokenList 或其他类型，需要转换为字符串
+            const classNameStr = String(element.className || '').trim();
+            if (classNameStr) {
+                const classSelector = "." + classNameStr.split(/\s+/).join(".");
+                return `${element.tagName.toLowerCase()}${classSelector}`;
+            }
         }
         // 尝试生成 XPath
         let xpath = "";
