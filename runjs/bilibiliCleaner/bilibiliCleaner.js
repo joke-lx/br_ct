@@ -14,46 +14,13 @@ class BilibiliCleaner {
     constructor() {
         // 需要隐藏的元素配置（从配置文件提取）
         this.hiddenElementsConfig = [
-            {
-                identifier: "div.video-info-detail-list.video-info-detail-content",
-                xpath: "/html[1]/body[1]/div[2]/div[2]/div[1]/div[1]/div[2]/div[1]",
-                name: "视频信息详情"
-            },
-            {
-                identifier: "div.bili-header__bar.mini-header",
-                xpath: "/html[1]/body[1]/div[2]/div[1]/div[1]/div[1]",
-                name: "顶部导航栏"
-            },
+           
             {
                 identifier: "bili-comments",
                 xpath: "/html[1]/body[1]/div[2]/div[2]/div[1]/div[6]/bili-comments[1]",
                 name: "评论区"
             },
-            {
-                identifier: "img.b-img__inner",
-                xpath: "/html[1]/body[1]/div[2]/div[2]/div[2]/div[1]/div[6]/div[3]/a[1]/div[1]/img[1]",
-                name: "推荐图片"
-            },
-            {
-                identifier: "div.rcmd-tab",
-                xpath: "/html[1]/body[1]/div[2]/div[2]/div[2]/div[1]/div[6]",
-                name: "推荐标签"
-            },
-            {
-                identifier: "div.vcd",
-                xpath: "/html[1]/body[1]/div[2]/div[2]/div[2]/div[1]/div[5]/div[1]/div[1]/a[1]/div[1]",
-                name: "广告层"
-            },
-            {
-                identifier: "div.tag-panel",
-                xpath: "/html[1]/body[1]/div[2]/div[2]/div[1]/div[5]/div[1]",
-                name: "标签面板"
-            },
-            {
-                identifier: "div.up-info-container",
-                xpath: "/html[1]/body[1]/div[2]/div[2]/div[2]/div[1]/div[1]/div[1]",
-                name: "UP主信息"
-            }
+          
         ];
 
         this.processedElements = new WeakSet(); // 使用 WeakSet 记录已处理的元素
