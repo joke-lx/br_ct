@@ -30,21 +30,44 @@ function initializeStorageDebug() {
   // 备份按钮
   document.getElementById('backup-now-btn').addEventListener('click', performManualBackup);
 
-  // 使用事件委托处理折叠/展开
+  // 使用事件委托处理折叠/展开和删除
   debugContent.addEventListener('click', (e) => {
-    const target = e.target.closest('[data-toggle]');
-    if (!target) return;
-
-    const toggleType = target.getAttribute('data-toggle');
-    if (toggleType === 'group') {
-      // 切换分组
-      const content = target.nextElementSibling;
+    // 处理分组折叠
+    const groupToggle = e.target.closest('[data-toggle="group"]');
+    if (groupToggle) {
+      const content = groupToggle.nextElementSibling;
       content.classList.toggle('collapsed');
-    } else if (toggleType === 'item') {
-      // 切换项目
-      const content = target.nextElementSibling;
+      return;
+    }
+
+    // 处理项目折叠
+    const itemToggle = e.target.closest('[data-toggle="item"]');
+    if (itemToggle) {
+      const content = itemToggle.nextElementSibling;
       const isHidden = content.style.display === 'none';
       content.style.display = isHidden ? 'block' : 'none';
+      return;
+    }
+
+    // 处理 JSON 树折叠
+    const jsonToggle = e.target.closest('.json-collapsible');
+    if (jsonToggle) {
+      jsonToggle.classList.toggle('collapsed');
+      const content = jsonToggle.nextElementSibling;
+      if (content) {
+        content.classList.toggle('json-collapsed');
+      }
+      return;
+    }
+
+    // 处理删除按钮
+    const deleteBtn = e.target.closest('.delete-key-btn');
+    if (deleteBtn) {
+      const key = deleteBtn.dataset.key;
+      if (confirm(`确定要删除 key "${key}" 吗？此操作不可恢复！`)) {
+        deleteStorageKey(key);
+      }
+      return;
     }
   });
 }
@@ -55,7 +78,7 @@ function initializeStorageDebug() {
 function loadStorageDebug() {
   chrome.storage.local.get(null, (items) => {
     if (Object.keys(items).length === 0) {
-      debugContent.innerHTML = '';
+      debugContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">存储为空</div>';
       return;
     }
 
@@ -148,6 +171,7 @@ function renderStorageItem(item) {
       <div class="storage-item-header" data-toggle="item">
         <span class="key-name">${escapeHtml(item.key)}</span>
         <span class="key-type">${valueType}</span>
+        <button class="delete-key-btn" data-key="${escapeHtml(item.key)}">删除</button>
       </div>
       <div class="storage-item-content" style="display: none;">
         ${content}
@@ -171,7 +195,7 @@ function getValueType(value) {
 }
 
 /**
- * 渲染值（结构化显示）
+ * 渲染值（结构化显示，支持递归）
  */
 function renderValue(value, key) {
   // 特殊处理 actionsQueue
@@ -184,37 +208,146 @@ function renderValue(value, key) {
     if (value.length === 0) {
       return '<div class="json-null">空数组 []</div>';
     }
-    return `
-      <div class="json-viewer">
-        ${value.map((item, index) => `
-          <div class="array-card">
-            <div class="array-card-header">[${index}] ${getValueType(item)}</div>
-            <div class="array-card-body">${formatValue(item)}</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
+    return renderArray(value);
   }
 
-  // 对象类型
+  // 对象类型 - 递归显示
   if (value !== null && typeof value === 'object') {
-    const keys = Object.keys(value);
-    if (keys.length === 0) {
-      return '<div class="json-null">空对象 {}</div>';
-    }
-    return `
-      <div class="json-viewer">
-        ${Object.entries(value).map(([k, v]) => `
-          <div class="json-object-item">
-            <span class="json-key">${escapeHtml(k)}</span>: <span class="json-${getJsonClass(v)}">${formatValue(v)}</span>
-          </div>
-        `).join('')}
-      </div>
-    `;
+    return renderObject(value);
   }
 
   // 基础类型
   return `<div class="json-viewer"><span class="json-${getJsonClass(value)}">${escapeHtml(String(value))}</span></div>`;
+}
+
+/**
+ * 递归渲染数组
+ */
+function renderArray(arr, depth = 0) {
+  const items = arr.map((item, index) => {
+    return `
+      <div class="json-item">
+        <span class="json-key">[${index}]</span>
+        ${renderJsonValue(item, depth + 1)}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="json-tree">
+      <div class="json-collapsible">Array(${arr.length})</div>
+      <div class="json-children">
+        ${items}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * 递归渲染对象
+ */
+function renderObject(obj, depth = 0) {
+  const keys = Object.keys(obj);
+  if (keys.length === 0) {
+    return '<div class="json-null">空对象 {}</div>';
+  }
+
+  const items = keys.map(key => {
+    return `
+      <div class="json-item">
+        <span class="json-key">${escapeHtml(key)}</span>: ${renderJsonValue(obj[key], depth + 1)}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="json-tree">
+      <div class="json-collapsible">Object {${keys.length}}</div>
+      <div class="json-children">
+        ${items}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * 递归渲染任意 JSON 值
+ */
+function renderJsonValue(value, depth) {
+  // 限制递归深度
+  if (depth > 20) {
+    return '<span class="json-null">... (深度限制)</span>';
+  }
+
+  if (value === null) {
+    return '<span class="json-null">null</span>';
+  }
+
+  if (typeof value === 'string') {
+    const isLong = value.length > 100;
+    const display = isLong ? escapeHtml(value.substring(0, 100)) + '...' : escapeHtml(value);
+    return `<span class="json-string" title="${escapeHtml(value)}">"${display}"</span>`;
+  }
+
+  if (typeof value === 'number') {
+    return `<span class="json-number">${value}</span>`;
+  }
+
+  if (typeof value === 'boolean') {
+    return `<span class="json-boolean">${value}</span>`;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return '<span class="json-null">[]</span>';
+    }
+    const preview = value.slice(0, 3).map(v => getJsonPreview(v)).join(', ');
+    const more = value.length > 3 ? ', ...' : '';
+    return `
+      <div class="json-collapsible">[${value.length}] ${preview}${more}</div>
+      <div class="json-children">
+        ${value.map((item, i) => `
+          <div class="json-item">
+            <span class="json-key">[${i}]</span>: ${renderJsonValue(item, depth + 1)}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  if (typeof value === 'object') {
+    const keys = Object.keys(value);
+    if (keys.length === 0) {
+      return '<span class="json-null">{}</span>';
+    }
+    const preview = keys.slice(0, 3).join(', ');
+    const more = keys.length > 3 ? ', ...' : '';
+    return `
+      <div class="json-collapsible">{${keys.length}} {${preview}${more}}</div>
+      <div class="json-children">
+        ${keys.map(key => `
+          <div class="json-item">
+            <span class="json-key">${escapeHtml(key)}</span>: ${renderJsonValue(value[key], depth + 1)}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  return `<span class="json-null">${String(value)}</span>`;
+}
+
+/**
+ * 获取 JSON 值的预览
+ */
+function getJsonPreview(value) {
+  if (value === null) return 'null';
+  if (typeof value === 'string') return `"${value.length > 20 ? value.substring(0, 20) + '...' : value}"`;
+  if (typeof value === 'boolean') return String(value);
+  if (typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return `[${value.length}]`;
+  if (typeof value === 'object') return `{${Object.keys(value).length}}`;
+  return String(value);
 }
 
 /**
@@ -276,6 +409,16 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+/**
+ * 删除单个存储 key
+ */
+function deleteStorageKey(key) {
+  chrome.storage.local.remove(key, () => {
+    showStatusMessage(`已删除 key: ${key}`, 'success');
+    loadStorageDebug();
+  });
 }
 
 /**
