@@ -1,0 +1,122 @@
+/**
+ * 消息处理模块 - 翻译/OCR功能
+ * 负责处理来自 content script 和 popup 的消息
+ */
+
+import { updateContextMenuVisibility } from './contextMenu.js';
+import { handleOCRRequest } from './ocr.js';
+
+/**
+ * 处理翻译请求
+ */
+function handleTranslate(request, sendResponse) {
+  // 翻译逻辑由 content script 直接调用 API，这里仅作备用
+  sendResponse({
+    success: true,
+    originalText: request.text,
+    translatedText: request.text + ' [翻译由前端处理]'
+  });
+}
+
+/**
+ * 处理添加到收藏列表
+ */
+function handleAddToFavorites(request) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['translation.favorites'], (result) => {
+      const favorites = result['translation.favorites'] || [];
+
+      // 检查是否已存在相同的收藏
+      const exists = favorites.some(fav => fav.text === request.text && fav.url === request.url);
+
+      if (!exists) {
+        favorites.unshift({
+          text: request.text,
+          url: request.url,
+          timestamp: request.timestamp || new Date().toISOString()
+        });
+
+        // 保持收藏列表在200条以内
+        if (favorites.length > 200) {
+          favorites.pop();
+        }
+
+        chrome.storage.local.set({ 'translation.favorites': favorites }, () => {
+          console.log('[Translation] 收藏已添加，当前收藏数量:', favorites.length);
+          resolve({ success: true });
+        });
+      } else {
+        console.log('[Translation] 收藏已存在，未重复添加');
+        resolve({ success: true, message: '已存在' });
+      }
+    });
+  });
+}
+
+/**
+ * 处理打开收藏列表
+ */
+function handleOpenFavorites() {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('modules/translation/favorites/favorites.html')
+  });
+  return { success: true };
+}
+
+/**
+ * 处理更新设置
+ */
+function handleUpdateSettings() {
+  // 更新右键菜单显示状态
+  updateContextMenuVisibility();
+  return { success: true };
+}
+
+/**
+ * 初始化消息处理模块
+ */
+export function setupMessageHandler() {
+  chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+    let response = null;
+    let isAsync = false;
+
+    // 使用 namespaced action
+    switch (request.action) {
+      case 'translation.updateSettings':
+        response = handleUpdateSettings();
+        break;
+
+      case 'translation.translate':
+        handleTranslate(request, sendResponse);
+        break;
+
+      case 'translation.ocr.perform':
+        isAsync = true;
+        handleOCRRequest(request).then(sendResponse);
+        break;
+
+      case 'translation.addToFavorites':
+        isAsync = true;
+        handleAddToFavorites(request).then(sendResponse);
+        break;
+
+      case 'translation.openFavorites':
+        response = handleOpenFavorites();
+        break;
+
+      default:
+        // 不处理非翻译相关的消息
+        return false;
+    }
+
+    // 如果不是异步响应，立即发送响应
+    if (!isAsync && response) {
+      sendResponse(response);
+    }
+
+    // 返回true表示将异步发送响应
+    return isAsync;
+  });
+
+  console.log('[Translation Module] 消息监听器已设置');
+}

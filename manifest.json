@@ -60,9 +60,18 @@
       "js": [
         "runjs/tripleSpace/tripleSpace.js",
         "runjs/goto/goto.js",
-        "runjs/word/word.js"
+        "runjs/word/word.js",
+        "runjs/translation/lib/marked.min.js",
+        "runjs/translation/lib/katex.min.js",
+        "runjs/translation/content.js",
+        "runjs/translation/content-ocr.js"
       ],
-      "css": ["runjs/tripleSpace/tripleSpace.css"],
+      "css": [
+        "runjs/tripleSpace/tripleSpace.css",
+        "runjs/translation/content.css",
+        "runjs/translation/content-ocr.css",
+        "runjs/translation/lib/katex.min.css"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -78,7 +87,9 @@
         "funcs/*.js",
         "runjs/*.js",
         "runjs/**/*.js",
-        "runjs/**/*.css"
+        "runjs/**/*.css",
+        "modules/translation/**/*.js",
+        "modules/translation/**/*.html"
       ],
       "matches": ["<all_urls>"]
     }

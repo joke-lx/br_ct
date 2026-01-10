@@ -9,6 +9,7 @@ import { setTabTransListener, initContextMenu } from './backgroudtask/gotoServer
 import { startServer } from './backgroudtask/word_http_server.js';
 import { init as initVideoPlaneServer } from './backgroudtask/video_plane_server.js';
 import { initBackupService, setupBackupMessageListener } from './backgroudtask/backupService.js';
+import { setupTranslationModule } from './backgroudtask/translation/index.js';
 
 // 初始化标签页更新监听器
 setupTabUpdateListener();
@@ -32,3 +33,6 @@ initBackupService().catch(error => {
   console.error('[Background] 初始化备份服务失败:', error);
 });
 setupBackupMessageListener();
+
+// 初始化翻译/OCR模块
+setupTranslationModule();
