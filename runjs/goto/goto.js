@@ -6,42 +6,60 @@ let menuData = {
 };
 
 // 从后台脚本获取菜单数据
-function loadMenuData() {
-  chrome.runtime.sendMessage({ action: 'getMenuData' }, (response) => {
-    if (response && response.status === 'ok' && response.data) {
-      menuData = response.data;
-      console.log('Menu data loaded:', menuData);
-    } else {
-      console.error('Failed to load menu data:', response);
-    }
+async function loadMenuData() {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ action: 'getMenuData' }, (response) => {
+      if (response && response.status === 'ok' && response.data) {
+        menuData = response.data;
+        console.log('Menu data loaded:', menuData);
+        resolve(menuData);
+      } else {
+        console.error('Failed to load menu data:', response);
+        reject(response);
+      }
+    });
   });
 }
 
 // 获取历史记录数据
-function loadHistoryData() {
-  chrome.runtime.sendMessage({ action: 'getHistory', maxResults: 5 }, (response) => {
-    if (response && response.status === 'ok' && response.data) {
-      // 将历史记录添加到菜单数据中
-      const historyGroup = {
-        name: '🕒 历史记录',
-        children: response.data.map(item => ({
-          name: item.name,
-          url: item.url,
-          children: []
-        }))
-      };
+async function loadHistoryData() {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ action: 'getHistory', maxResults: 5 }, (response) => {
+      if (response && response.status === 'ok' && response.data) {
+        // 将历史记录添加到菜单数据中
+        const historyGroup = {
+          name: '🕒 历史记录',
+          children: response.data.map(item => ({
+            name: item.name,
+            url: item.url,
+            children: []
+          }))
+        };
 
-      menuData.children.unshift(historyGroup);
-      console.log('History data added to menu:', historyGroup);
-    } else {
-      console.error('Failed to load history data:', response);
-      // 如果历史记录加载失败，添加一个空的历史记录分组
-      menuData.children.unshift({
-        name: '🕒 历史记录',
-        children: []
-      });
-    }
+        menuData.children.unshift(historyGroup);
+        console.log('History data added to menu:', historyGroup);
+        resolve(historyGroup);
+      } else {
+        console.error('Failed to load history data:', response);
+        // 如果历史记录加载失败，添加一个空的历史记录分组
+        menuData.children.unshift({
+          name: '🕒 历史记录',
+          children: []
+        });
+        reject(response);
+      }
+    });
   });
+}
+
+// 初始化菜单数据
+async function initMenuData() {
+  try {
+    await loadMenuData();
+    await loadHistoryData();
+  } catch (error) {
+    console.error('Failed to initialize menu data:', error);
+  }
 }
 // ===================================
 
@@ -55,8 +73,7 @@ function loadHistoryData() {
   window.circularMenuInjected = true;
 
   // 初始化数据
-  loadMenuData();
-  loadHistoryData();
+  initMenuData();
 
   // 注入样式
   const style = document.createElement('style');
@@ -78,7 +95,7 @@ function loadHistoryData() {
       align-items: center;
       cursor: pointer;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       user-select: none;
       font-weight: bold;
       color: #667eea;
@@ -106,7 +123,7 @@ function loadHistoryData() {
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
       opacity: 0;
       transform: scale(0);
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       font-size: 11px;
       color: #667eea;
       font-weight: 500;
@@ -115,6 +132,7 @@ function loadHistoryData() {
       text-align: center;
       padding: 5px;
       box-sizing: border-box;
+      word-wrap: break-word;
     }
     .circular-menu-item.show {
       opacity: 1;
@@ -167,8 +185,13 @@ function loadHistoryData() {
     if (isDragging) {
       const x = e.clientX - offsetX;
       const y = e.clientY - offsetY;
-      container.style.left = `${x}px`;
-      container.style.top = `${y}px`;
+      // 限制菜单移动范围在可视区域内
+      const maxX = window.innerWidth - container.offsetWidth;
+      const maxY = window.innerHeight - container.offsetHeight;
+      const clampedX = Math.max(0, Math.min(x, maxX));
+      const clampedY = Math.max(0, Math.min(y, maxY));
+      container.style.left = `${clampedX}px`;
+      container.style.top = `${clampedY}px`;
       container.style.right = 'auto';
       container.style.bottom = 'auto';
       container.style.position = 'fixed';
@@ -209,7 +232,7 @@ function loadHistoryData() {
     mainCircle.innerHTML = '✕';
     mainCircle.title = '点击关闭菜单';
     clearMenuItems(); // 先清除可能存在的旧菜单项
-    showMenu(menuData.children, mainCircle);
+    showMenu(menuData.children);
   });
 
   // 点击关闭菜单
@@ -229,7 +252,7 @@ function loadHistoryData() {
   // ===================================
 
   // 显示一级/二级菜单
-  function showMenu(items, parentElement) {
+  function showMenu(items) {
     clearMenuItems();
     const center = getCircleCenter();
     const radius = 80;
@@ -241,11 +264,7 @@ function loadHistoryData() {
       const angle = angleStep * index - Math.PI;
       const x = Math.cos(angle) * radius;
       const y = Math.sin(angle) * radius;
-      const menuItem = document.createElement('div');
-      menuItem.className = 'circular-menu-item';
-      menuItem.textContent = item.name;
-      menuItem.style.left = `${center.x - 25 + x}px`;
-      menuItem.style.top = `${center.y - 25 + y}px`;
+      const menuItem = createMenuItem(item, center, x, y);
       document.body.appendChild(menuItem);
       currentMenuItems.push(menuItem);
 
@@ -258,17 +277,28 @@ function loadHistoryData() {
           showSubmenu(item.children, menuItem, angle);
         }
       });
-
-      // 点击事件：处理一级菜单项
-      menuItem.addEventListener('click', (e) => {
-        e.stopPropagation();
-        console.log('点击了菜单项:', item.name);
-        // 检查是否有 URL，如果有则执行跳转
-        if (item.url) {
-          handleUrlNavigation(item.url);
-        }
-      });
     });
+  }
+
+  // 创建菜单项
+  function createMenuItem(item, center, x, y) {
+    const menuItem = document.createElement('div');
+    menuItem.className = 'circular-menu-item';
+    menuItem.textContent = item.name;
+    menuItem.style.left = `${center.x - 25 + x}px`;
+    menuItem.style.top = `${center.y - 25 + y}px`;
+
+    // 点击事件：处理菜单项
+    menuItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      console.log('点击了菜单项:', item.name);
+      // 检查是否有 URL，如果有则执行跳转
+      if (item.url) {
+        handleUrlNavigation(item.url);
+      }
+    });
+
+    return menuItem;
   }
 
   // 自动根据父级角度朝外展开 180°
@@ -288,25 +318,11 @@ function loadHistoryData() {
       const angle = startAngle + index * angleStep;
       const x = Math.cos(angle) * radius;
       const y = Math.sin(angle) * radius;
-      const submenuItem = document.createElement('div');
-      submenuItem.className = 'circular-menu-item';
-      submenuItem.textContent = item.name;
-      submenuItem.style.left = `${center.x - 25 + x}px`;
-      submenuItem.style.top = `${center.y - 25 + y}px`;
+      const submenuItem = createMenuItem(item, center, x, y);
       document.body.appendChild(submenuItem);
       activeSubmenus.push(submenuItem);
 
       setTimeout(() => submenuItem.classList.add('show'), index * 50);
-
-      // 点击事件：处理子菜单项
-      submenuItem.addEventListener('click', (e) => {
-        e.stopPropagation();
-        console.log('点击了子菜单项:', item.name);
-        // 检查是否有 URL，如果有则执行跳转
-        if (item.url) {
-          handleUrlNavigation(item.url);
-        }
-      });
     });
   }
 
@@ -326,8 +342,10 @@ function loadHistoryData() {
   function clearSubmenus() {
     activeSubmenus.forEach(item => {
       item.classList.remove('show');
-      // 使用 requestAnimationFrame 或更短的 timeout 来优化动画/清理
-      setTimeout(() => item.remove(), 200);
+      // 使用 requestAnimationFrame 来优化动画/清理
+      requestAnimationFrame(() => {
+        setTimeout(() => item.remove(), 200);
+      });
     });
     activeSubmenus = [];
   }
@@ -336,7 +354,9 @@ function loadHistoryData() {
   function clearMenuItems() {
     currentMenuItems.forEach(item => {
       item.classList.remove('show');
-      setTimeout(() => item.remove(), 200);
+      requestAnimationFrame(() => {
+        setTimeout(() => item.remove(), 200);
+      });
     });
     currentMenuItems = [];
     clearSubmenus();
