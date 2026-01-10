@@ -7,6 +7,7 @@ class DomVisibilityController {
     constructor() {
         this.mode = 'hide'; // 只保留隐藏模式
         this.isPaused = false; // 暂停状态
+        this.isNormalMode = false; // 正常模式状态
         this.currentElement = null;
         this.hiddenElements = new Map(); // 存储隐藏的元素和原始样式
         this.originalStates = new Map(); // 存储所有元素的原始状态（用于回退）
@@ -170,21 +171,33 @@ class DomVisibilityController {
     }
 
     /**
-     * 显示所有隐藏的元素（正常浏览模式）
+     * 切换正常模式和隐藏状态
      */
-    _showAllElements() {
-        this.hiddenElements.forEach((originalStyle, element) => {
-            element.style.display = originalStyle.display;
-            element.style.visibility = originalStyle.visibility;
-            element.style.opacity = originalStyle.opacity;
-            element.style.position = originalStyle.position;
-            element.style.transform = originalStyle.transform;
-        });
-        this.hiddenElements.clear();
+    _toggleNormalMode() {
+        this.isNormalMode = !this.isNormalMode;
+
+        if (this.isNormalMode) {
+            // 进入正常模式：显示所有隐藏的元素
+            this.hiddenElements.forEach((originalStyle, element) => {
+                element.style.display = originalStyle.display;
+                element.style.visibility = originalStyle.visibility;
+                element.style.opacity = originalStyle.opacity;
+                element.style.position = originalStyle.position;
+                element.style.transform = originalStyle.transform;
+            });
+        } else {
+            // 退出正常模式：重新隐藏之前隐藏的元素
+            this.hiddenElements.forEach((_, element) => {
+                element.style.display = 'none';
+                element.style.visibility = 'hidden';
+                element.style.opacity = '0';
+            });
+        }
 
         // 记录操作历史
         this._addToHistory({
-            type: 'showAll'
+            type: 'toggleNormalMode',
+            state: this.isNormalMode
         });
 
         this._updateHiddenElementsList();
@@ -247,7 +260,7 @@ class DomVisibilityController {
             case 'showAll':
                 // 重新隐藏所有元素（需要保存之前的隐藏状态）
                 // 这里需要更复杂的实现，暂时简单处理
-                this._showAllElements();
+                this._toggleNormalMode();
                 break;
         }
 
@@ -321,7 +334,7 @@ class DomVisibilityController {
                 const config = JSON.parse(e.target.result);
                 if (config.hiddenElements && Array.isArray(config.hiddenElements)) {
                     // 先显示所有元素
-                    this._showAllElements();
+                    this._toggleNormalMode();
 
                     // 隐藏配置中指定的元素
                     config.hiddenElements.forEach(configElement => {
@@ -521,7 +534,7 @@ class DomVisibilityController {
         const showAllBtn = document.getElementById('show-all-btn');
         if (showAllBtn) {
             showAllBtn.onclick = () => {
-                this._showAllElements();
+                this._toggleNormalMode();
             };
         }
 
