@@ -28,15 +28,18 @@ const presetConfigs = {
 `
 默认分组: 
   - 01:40-2:29:10 开始
-  - 2:41:56-2:59:09 后续
+  - 02:41:56-02:59:09 后续
 `
 };
 
 // 初始化预设配置
 function initPresetConfigs() {
+  console.log('[VideoPlaneServer] 开始加载预设配置');
   Object.entries(presetConfigs).forEach(([urlPrefix, yaml]) => {
     videoConfigMap.set(urlPrefix, yaml);
+    console.log(`[VideoPlaneServer] 加载预设配置: ${urlPrefix}`);
   });
+  console.log(`[VideoPlaneServer] 预设配置加载完成，共 ${videoConfigMap.size} 个`);
 }
 
 /**
@@ -47,8 +50,7 @@ function initPresetConfigs() {
 function extractUrlPrefix(url) {
   try {
     const urlObj = new URL(url);
-    // 提取 protocol + hostname + pathname 的第一段
-    // 例如: https://www.bilibili.com/video/av12345 -> https://www.bilibili.com/video
+ 
     const pathParts = urlObj.pathname.split('/').filter(p => p);
     if (pathParts.length > 0) {
       return `${urlObj.protocol}//${urlObj.hostname}/${pathParts[0]}`;
@@ -61,28 +63,81 @@ function extractUrlPrefix(url) {
 }
 
 /**
+ * 从 URL 中提取多个可能的前缀用于匹配
+ * @param {string} url 完整 URL
+ * @returns {string[]} 可能的前缀列表
+ */
+function extractPossiblePrefixes(url) {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/').filter(p => p);
+    const prefixes = [];
+
+    if (pathParts.length > 0) {
+      prefixes.push(`${urlObj.protocol}//${urlObj.hostname}/${pathParts[0]}`);
+    }
+
+    if (pathParts.length > 1) {
+      prefixes.push(`${urlObj.protocol}//${urlObj.hostname}/${pathParts[0]}/${pathParts[1]}`);
+    }
+
+    // 添加完整 URL（不含查询参数）
+    prefixes.push(`${urlObj.protocol}//${urlObj.hostname}${urlObj.pathname}`);
+
+    return prefixes;
+  } catch (e) {
+    console.error('URL 解析失败:', e);
+    return [url];
+  }
+}
+
+/**
  * 查找匹配的 YAML 配置
  * @param {string} url 当前页面 URL
  * @returns {string|null} YAML 内容或 null
  */
 function findYamlConfig(url) {
-  const prefix = extractUrlPrefix(url);
+  // 尝试多个可能的前缀
+  const possiblePrefixes = extractPossiblePrefixes(url);
 
-  // 精确匹配
-  if (videoConfigMap.has(prefix)) {
-    console.log(`[VideoPlaneServer] 精确匹配: ${prefix}`);
-    return videoConfigMap.get(prefix);
-  }
+  console.log(`[VideoPlaneServer] 查找配置，URL: ${url}`);
+  console.log(`[VideoPlaneServer] 可能的前缀: ${possiblePrefixes.join(', ')}`);
 
-  // 前缀模糊匹配（检查是否有已存储的配置是当前 URL 的前缀）
-  for (const [storedPrefix, yaml] of videoConfigMap.entries()) {
-    if (url.startsWith(storedPrefix)) {
-      console.log(`[VideoPlaneServer] 前缀匹配: ${storedPrefix}`);
-      return yaml;
+  // 1. 精确匹配（按优先级，更具体的优先）
+  // 按长度降序排序，更长的 URL 优先
+  const sortedPrefixes = [...possiblePrefixes].sort((a, b) => b.length - a.length);
+
+  for (const prefix of sortedPrefixes) {
+    if (videoConfigMap.has(prefix)) {
+      console.log(`[VideoPlaneServer] ✓ 精确匹配: ${prefix}`);
+      return videoConfigMap.get(prefix);
     }
   }
 
-  console.log(`[VideoPlaneServer] 未找到匹配配置: ${prefix}`);
+  // 2. 前缀模糊匹配（检查是否有已存储的配置是当前 URL 的前缀）
+  // 按配置 URL 长度降序排序，更具体的优先
+  const storedKeys = Array.from(videoConfigMap.keys()).sort((a, b) => b.length - a.length);
+
+  for (const storedPrefix of storedKeys) {
+    // 移除 storedPrefix 的末尾斜杠进行比较
+    const normalizedStored = storedPrefix.endsWith('/') ? storedPrefix.slice(0, -1) : storedPrefix;
+
+    // 检查当前 URL 是否以 storedPrefix 开头（忽略查询参数）
+    if (url.startsWith(normalizedStored) || url.startsWith(normalizedStored + '/')) {
+      console.log(`[VideoPlaneServer] ✓ 前缀匹配: ${storedPrefix}`);
+      return videoConfigMap.get(storedPrefix);
+    }
+
+    // 检查 storedPrefix 是否是当前 URL 的前缀（处理带查询参数的情况）
+    const urlWithoutQuery = url.split('?')[0];
+    if (urlWithoutQuery.startsWith(normalizedStored) || urlWithoutQuery === normalizedStored) {
+      console.log(`[VideoPlaneServer] ✓ URL无查询参数前缀匹配: ${storedPrefix}`);
+      return videoConfigMap.get(storedPrefix);
+    }
+  }
+
+  console.log(`[VideoPlaneServer] ✗ 未找到匹配配置`);
+  console.log(`[VideoPlaneServer] 当前所有配置键: ${storedKeys.join(', ')}`);
   return null;
 }
 
@@ -94,7 +149,10 @@ export function setupMessageListener() {
     // 获取视频配置
     if (request.action === "getVideoConfig") {
       const url = request.url;
+      console.log('[VideoPlaneServer] 收到 getVideoConfig 请求:', url);
       const yaml = findYamlConfig(url);
+      console.log('[VideoPlaneServer] 返回的 YAML:', yaml);
+      console.log('[VideoPlaneServer] 当前所有配置键:', Array.from(videoConfigMap.keys()));
       sendResponse({
         status: "success",
         url: url,
@@ -177,10 +235,14 @@ export function setupMessageListener() {
 export function loadStoredConfigs() {
   chrome.storage.local.get(['videoConfigMap'], (result) => {
     if (result.videoConfigMap) {
+      console.log('[VideoPlaneServer] 从存储加载配置，键列表:', Object.keys(result.videoConfigMap));
       Object.entries(result.videoConfigMap).forEach(([urlPrefix, yaml]) => {
         videoConfigMap.set(urlPrefix, yaml);
+        console.log(`[VideoPlaneServer] 从存储加载: ${urlPrefix}`);
       });
       console.log(`[VideoPlaneServer] 已加载 ${videoConfigMap.size} 个配置`);
+    } else {
+      console.log('[VideoPlaneServer] 存储中没有配置');
     }
   });
 }

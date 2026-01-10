@@ -78,17 +78,26 @@
     // 从 YAML 字符串加载配置
     loadConfigFromYaml(yamlText) {
       try {
+        console.log('📥 开始解析 YAML 配置');
+        console.log('原始 YAML 内容:', yamlText);
+
         const yamlData = this.parseSimpleYAML(yamlText);
+        console.log('解析后的 YAML 数据:', yamlData);
 
         this.segments = [];
 
         Object.entries(yamlData).forEach(([sectionName, items]) => {
-          items.forEach((item) => {
+          console.log(`处理分组 "${sectionName}":`, items);
+          items.forEach((item, index) => {
+            console.log(`  - 项 ${index}:`, item);
             const segment = this.parseTimeRange(item.timeRange);
             if (segment) {
               const label = item.label ? `${sectionName} - ${item.label}` : sectionName;
               segment.label = label;
               this.segments.push(segment);
+              console.log(`    ✓ 成功解析片段:`, segment);
+            } else {
+              console.error(`    ✗ 解析失败: ${item.timeRange}`);
             }
           });
         });
@@ -99,6 +108,7 @@
         return true;
       } catch (err) {
         console.error('❌ YAML 解析失败:', err);
+        console.error('错误堆栈:', err.stack);
         this.showMessage('配置加载失败', 'error');
         return false;
       }
@@ -1257,12 +1267,13 @@ Part 1:
     
     // 简单的YAML解析器
     parseSimpleYAML(yamlText) {
+      console.log('📄 parseSimpleYAML 开始解析');
       const lines = yamlText.split('\n');
       const result = {};
       let currentSection = null;
       let currentList = [];
 
-      lines.forEach(line => {
+      lines.forEach((line, lineIndex) => {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('#')) return;
 
@@ -1271,26 +1282,31 @@ Part 1:
           // 保存上一个节
           if (currentSection && currentList.length > 0) {
             result[currentSection] = currentList;
+            console.log(`  保存分组 "${currentSection}":`, currentList);
           }
           currentSection = trimmed.slice(0, -1); // 移除冒号
           currentList = [];
+          console.log(`  第${lineIndex}行: 新分组 "${currentSection}"`);
           return;
         }
 
         // 检查是否是列表项（以空格和-开头）
         if (line.match(/^\s*-\s*/)) {
           const item = trimmed.replace(/^\s*-\s*/, '');
+          console.log(`  第${lineIndex}行: 列表项 "${item}"`);
 
           // 解析时间范围和标签
           const timeRangeMatch = item.match(/(\d{1,2}:\d{2}(?::\d{2})?-\d{1,2}:\d{2}(?::\d{2})?)\s*(.+)?/);
           if (timeRangeMatch) {
             const timeRange = timeRangeMatch[1];
             const label = timeRangeMatch[2] ? timeRangeMatch[2].trim() : '';
-
+            console.log(`    ✓ 正则匹配成功: timeRange="${timeRange}", label="${label}"`);
             currentList.push({
               timeRange,
               label
             });
+          } else {
+            console.error(`    ✗ 正则匹配失败: "${item}"`);
           }
         }
       });
@@ -1298,8 +1314,10 @@ Part 1:
       // 保存最后一个节
       if (currentSection && currentList.length > 0) {
         result[currentSection] = currentList;
+        console.log(`  保存最后一个分组 "${currentSection}":`, currentList);
       }
 
+      console.log('📄 parseSimpleYAML 解析完成，结果:', result);
       return result;
     }
 
