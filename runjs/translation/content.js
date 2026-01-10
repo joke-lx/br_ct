@@ -465,6 +465,11 @@ function hideResultPanel() {
  * 调用 LLM API 处理文本（非流式）
  */
 async function callLLMNonStream(text, prompt) {
+  // 检查 API Key 是否已配置
+  if (!API_CONFIG.apiKey) {
+    throw new Error('API Key 未配置，请在设置页面配置 API Key');
+  }
+
   const apiUrl = `${API_CONFIG.baseURL}/chat/completions`;
 
   // 替换提示词中的占位符
@@ -533,18 +538,27 @@ async function callLLMNonStream(text, prompt) {
  * 调用 LLM API 处理文本（流式，使用 StreamFlowController）
  */
 async function callLLMStream(text, prompt) {
+  console.log('[Translation] callLLMStream 开始调用, text:', text?.substring(0, 50), 'prompt:', prompt?.substring(0, 50));
+
+  // 检查 API Key 是否已配置
+  if (!API_CONFIG.apiKey) {
+    console.error('[Translation] API Key 未配置');
+    throw new Error('API Key 未配置，请在设置页面配置 API Key');
+  }
+
   const apiUrl = `${API_CONFIG.baseURL}/chat/completions`;
 
   // 替换提示词中的占位符
   const finalPrompt = prompt.replace('%s', text);
 
-  currentAbortController = new AbortController();
-
   const resultTextElement = document.getElementById('selection-result-text');
   const thinkingSection = document.getElementById('selection-thinking-section');
   const thinkingContent = document.getElementById('selection-thinking-content');
 
-  if (!resultTextElement) return;
+  if (!resultTextElement) {
+    console.error('[Translation] resultTextElement 不存在');
+    throw new Error('结果面板元素不存在');
+  }
 
   let fullMainText = '';
   let fullThinkingText = '';
@@ -621,6 +635,11 @@ async function callLLMStream(text, prompt) {
     });
   };
 
+  // 创建新的 AbortController 并保存到全局变量
+  const abortController = new AbortController();
+  currentAbortController = abortController;
+  console.log('[Translation] AbortController 已创建');
+
   try {
     const requestBody = {
       model: API_CONFIG.model,
@@ -645,7 +664,7 @@ async function callLLMStream(text, prompt) {
         'Authorization': `Bearer ${API_CONFIG.apiKey}`
       },
       body: JSON.stringify(requestBody),
-      signal: currentAbortController.signal
+      signal: abortController.signal
     });
 
     if (!response.ok) {
@@ -718,7 +737,14 @@ async function callLLMStream(text, prompt) {
     await Promise.all(endPromises);
 
   } catch (error) {
+    console.error('[Translation] callLLMStream 错误:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.substring(0, 200)
+    });
+
     if (error.name === 'AbortError') {
+      console.log('[Translation] 请求被中止');
       if (thinkingFlowController) {
         thinkingFlowController.stop();
       }
@@ -732,7 +758,12 @@ async function callLLMStream(text, prompt) {
       throw new Error('API 调用失败: ' + error.message);
     }
   } finally {
-    currentAbortController = null;
+    console.log('[Translation] callLLMStream 结束, 清理 AbortController');
+    // 只有当全局变量仍指向这个 controller 时才设置为 null
+    // 这样可以避免覆盖更新的请求
+    if (currentAbortController === abortController) {
+      currentAbortController = null;
+    }
   }
 }
 
@@ -756,7 +787,12 @@ function isSelectionInsidePanel(panel) {
  * 处理选中的文本
  */
 async function processSelectedText(selectedText) {
-  if (!selectedText || selectedText === lastSelection) return;
+  // 严格检查：文本必须是非空且不仅仅是空白字符
+  const trimmedText = selectedText?.trim() || '';
+  if (!trimmedText || trimmedText === lastSelection) return;
+
+  // 如果传入的是未 trim 的文本，使用 trim 后的版本
+  selectedText = trimmedText;
 
   // 检查选中的文本是否来自面板内部，如果是则不处理
   if (resultPanel && isSelectionInsidePanel(resultPanel)) {
@@ -786,6 +822,8 @@ async function processSelectedText(selectedText) {
 
   // 获取提示词设置
   chrome.storage.local.get(['translation.settings'], async (result) => {
+    console.log('[Translation] processSelectedText 开始处理, text:', selectedText?.substring(0, 50));
+
     const selectionSettings = result['translation.settings'] || {
       selectionPrompt: '请解释 %s',
       selectionStream: true
@@ -794,19 +832,27 @@ async function processSelectedText(selectedText) {
     const prompt = selectionSettings.selectionPrompt;
     const useStream = selectionSettings.selectionStream;
 
+    console.log('[Translation] 设置: prompt=', prompt, 'useStream=', useStream);
+
     // 取消之前的请求
     if (currentAbortController) {
+      console.log('[Translation] 取消之前的请求');
       currentAbortController.abort();
     }
 
     try {
       if (useStream) {
+        console.log('[Translation] 使用流式调用');
         await callLLMStream(selectedText, prompt);
+        console.log('[Translation] 流式调用成功完成');
       } else {
+        console.log('[Translation] 使用非流式调用');
         const apiResult = await callLLMNonStream(selectedText, prompt);
         await updateResultText(apiResult);
+        console.log('[Translation] 非流式调用成功完成');
       }
     } catch (error) {
+      console.error('[Translation] processSelectedText 错误:', error);
       await showResultPanel(selectedText, '处理失败: ' + error.message);
     }
   });
