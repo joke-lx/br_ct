@@ -15,11 +15,7 @@ class BilibiliCleaner {
         // 需要隐藏的元素配置（从配置文件提取）
         this.hiddenElementsConfig = [
            
-            {
-                identifier: "bili-comments",
-                xpath: "/html[1]/body[1]/div[2]/div[2]/div[1]/div[6]/bili-comments[1]",
-                name: "评论区"
-            },
+        
           
         ];
 

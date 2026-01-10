@@ -20,13 +20,16 @@ const presetConfigs = {
   // Bilibili 示例
   "https://www.bilibili.com/video/BV1hNq1BTEG8": 
   ` 
-
 默认分组:
   - 01:21-01:11:45 前期
   - 01:21:05-01:48:38 大仙
   - 02:21:14-02:47:59 后期
-
-`,
+`,"https://www.bilibili.com/video/BV1g2oiYqEiM":
+`
+默认分组: 
+  - 01:40-2:29:10 开始
+  - 2:41:56-2:59:09 后续
+`
 };
 
 // 初始化预设配置
