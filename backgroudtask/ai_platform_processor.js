@@ -1,17 +1,10 @@
 // ai_platform_processor.js
 
+// 导入统一平台配置
+import { getPlatformUrls } from '../config/platformConfig.js';
+
 // 存储 AI 平台的 URL 映射，并导出
-export const platformUrls = {
-    yuanbao: 'https://yuanbao.tencent.com/chat/',
-    gemini: 'https://gemini.google.com/app',
-    chatgpt: 'https://chatgpt.com',
-    claude: 'https://claude.ai',
-    doubao: 'https://www.doubao.com/chat/',
-    glm: "https://chatglm.cn/main/alltoolsdetail",
-    tongyi: "https://www.qianwen.com",
-    googlestudio: 'https://aistudio.google.com/',
-    grok: 'https://grok.com',
-};
+export const platformUrls = getPlatformUrls();
 
 // ==================== 原有的串行处理逻辑（保持不变） ====================
 

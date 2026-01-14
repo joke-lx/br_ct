@@ -2,57 +2,8 @@
  * 平台显示设置页面
  */
 
-// 平台配置数据
-const PLATFORM_CONFIG = {
-  yuanbao: {
-    name: '元宝',
-    icon: '元',
-    color: '#ff6b35',
-    defaultVisible: true
-  },
-  gemini: {
-    name: 'Gemini',
-    icon: 'G',
-    color: '#4285f4',
-    defaultVisible: true
-  },
-  chatgpt: {
-    name: 'ChatGPT',
-    icon: 'C',
-    color: '#10a37f',
-    defaultVisible: true
-  },
-  claude: {
-    name: 'Claude',
-    icon: 'A',
-    color: '#cc785c',
-    defaultVisible: true
-  },
-  doubao: {
-    name: '豆包',
-    icon: '豆',
-    color: '#ff6900',
-    defaultVisible: true
-  },
-  googlestudio: {
-    name: 'GAS',
-    icon: 'GAS',
-    color: '#5f6368',
-    defaultVisible: true
-  },
-  tongyi: {
-    name: '通义',
-    icon: '通',
-    color: '#ff6600',
-    defaultVisible: true
-  },
-  glm: {
-    name: 'glm',
-    icon: 'g',
-    color: '#62a3d8ff',
-    defaultVisible: true
-  }
-};
+// 导入统一平台配置
+import { PLATFORM_CONFIG } from '../../config/platformConfig.js';
 
 const PLATFORM_VISIBILITY_KEY = 'platformVisibilitySettings';
 

@@ -5,9 +5,13 @@ import {
   loadStoredData,
 } from "./popupUtils.js";
 import { setupDragDropEvents } from "./dragDropHandler.js";
+import { initializePlatformOptions } from "./platformRenderer.js";
 
 document.addEventListener("DOMContentLoaded", async function () {
   try {
+    // 动态生成平台选项（从统一配置）
+    initializePlatformOptions();
+
     // 初始化弹窗
     await initializePopup();
 
