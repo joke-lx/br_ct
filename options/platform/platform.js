@@ -81,17 +81,24 @@ function loadPlatformVisibilitySettings() {
  */
 function savePlatformVisibilitySettings() {
   const settings = {};
+  const platformStates = {};
 
-  // 收集所有平台的可见性设置
+  // 收集所有平台的可见性设置和勾选状态
   Object.keys(PLATFORM_CONFIG).forEach(platformId => {
     const checkbox = document.getElementById(`platform-${platformId}`);
     if (checkbox) {
-      settings[platformId] = checkbox.checked;
+      const isVisible = checkbox.checked;
+      settings[platformId] = isVisible;
+      // 如果平台不可见，同时取消勾选状态
+      platformStates[platformId] = isVisible;
     }
   });
 
-  // 保存到本地存储
-  chrome.storage.local.set({ [PLATFORM_VISIBILITY_KEY]: settings }, () => {
+  // 同时保存可见性设置和平台勾选状态
+  chrome.storage.local.set({
+    [PLATFORM_VISIBILITY_KEY]: settings,
+    platformStates: platformStates
+  }, () => {
     showStatusMessage('设置已保存', 'success');
 
     // 通知 popup 页面更新平台显示
@@ -115,7 +122,8 @@ function resetToDefaults() {
     }
   });
 
-  showStatusMessage('已重置为默认设置', 'success');
+  // 自动保存重置后的设置，同步更新勾选状态
+  savePlatformVisibilitySettings();
 }
 
 /**

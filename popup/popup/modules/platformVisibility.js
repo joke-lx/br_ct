@@ -34,21 +34,35 @@ export async function loadPlatformVisibilitySettings() {
 
 /**
  * 应用平台可见性设置（当设置更新时调用）
+ * 同时更新平台勾选状态
  */
 export function applyPlatformVisibilitySettings(settings) {
   const platformOptions = document.querySelectorAll('.platform-icon-option');
+  const platformStates = {};
 
   platformOptions.forEach(option => {
     const platformId = option.getAttribute('data-platform-id');
     if (platformId) {
-      // 如果设置了可见性为false，则隐藏该平台
-      if (settings.hasOwnProperty(platformId) && !settings[platformId]) {
+      const isVisible = settings.hasOwnProperty(platformId) ? settings[platformId] : true;
+
+      // 应用可见性设置
+      if (!isVisible) {
         option.style.display = 'none';
       } else {
         option.style.display = '';
       }
+
+      // 同步勾选状态：不可见的平台取消勾选
+      const checkbox = option.querySelector('input[type="checkbox"]');
+      if (checkbox) {
+        checkbox.checked = isVisible;
+        platformStates[platformId] = isVisible;
+      }
     }
   });
+
+  // 保存勾选状态到 storage
+  chrome.storage.local.set({ platformStates });
 }
 
 /**
