@@ -10,6 +10,7 @@ export const platformUrls = {
     glm: "https://chatglm.cn/main/alltoolsdetail",
     tongyi: "https://www.qianwen.com",
     googlestudio: 'https://aistudio.google.com/',
+    grok: 'https://grok.com',
 };
 
 // ==================== 原有的串行处理逻辑（保持不变） ====================

@@ -225,6 +225,31 @@ const BUTTON_SELECTORS = [
 ];
 ```
 
+### Grok
+
+```javascript
+const PLATFORM_CONFIG = {
+  name: 'grok',
+  hostname: 'grok.com',
+  clickMode: 'click',
+  inputMode: 'textContent',    // TipTap/ProseMirror 编辑器
+  needActivateInput: true,      // 需要先激活
+  elementTimeout: 5000,
+};
+
+const INPUT_SELECTORS = [
+  { type: 'css', value: 'div.ProseMirror' },
+  { type: 'css', value: 'div.tiptap.ProseMirror' },
+  { type: 'xpath', value: '//p[@data-placeholder="What do you want to know?"]' },
+];
+
+const BUTTON_SELECTORS = [
+  { type: 'xpath', value: '//button[@aria-label="Send message"]' },
+  { type: 'xpath', value: '//button[@aria-label="Send"]' },
+  { type: 'xpath', value: '//button[.//svg]' },
+];
+```
+
 ---
 
 ## 选择器优先级建议
