@@ -12,6 +12,8 @@ let ocrResultPanel = null;
 let currentCroppedImage = null;
 let ocrAbortController = null;
 let ocrIsUserScrolling = false;  // 标记用户是否正在滚动
+let currentOcrResultMarkdown = ''; // 存储当前 OCR 结果的原始 Markdown 文本
+let currentOcrThinkingMarkdown = ''; // 存储当前 OCR 思考过程的原始 Markdown 文本
 
 // API 配置（从浏览器存储获取）
 let OCR_API_CONFIG = {
@@ -564,9 +566,12 @@ async function ocrShowResultPanel(text, imageDataUrl = null) {
   const thinkingSection = document.getElementById('thinking-section');
   if (thinkingSection) thinkingSection.style.display = 'none';
 
-  // 使用 Markdown 渲染
+  // 渲染结果并存储原始 Markdown
   const resultTextElement = document.getElementById('ocr-result-text');
   if (typeof text === 'string') {
+    // 存储原始 Markdown 文本
+    currentOcrResultMarkdown = text;
+    currentOcrThinkingMarkdown = '';
     const html = await ocrRenderMarkdown(text);
     resultTextElement.innerHTML = html;
   } else if (text && typeof text === 'object') {
@@ -574,11 +579,17 @@ async function ocrShowResultPanel(text, imageDataUrl = null) {
     if (text.thinkingContent) {
       const thinkingContent = document.getElementById('thinking-content');
       if (thinkingContent) {
+        // 存储思考过程的原始 Markdown 文本
+        currentOcrThinkingMarkdown = text.thinkingContent;
         const thinkingHtml = await ocrRenderMarkdown(text.thinkingContent);
         thinkingContent.innerHTML = thinkingHtml;
         thinkingSection.style.display = 'block';
       }
+    } else {
+      currentOcrThinkingMarkdown = '';
     }
+    // 存储主回答的原始 Markdown 文本
+    currentOcrResultMarkdown = text.mainContent || '';
     const mainHtml = await ocrRenderMarkdown(text.mainContent || '');
     resultTextElement.innerHTML = mainHtml;
   }
@@ -618,9 +629,12 @@ async function ocrShowResultPanelWithImage(imageDataUrl, text) {
     previewImg.style.display = 'block';
   }
 
-  // 设置加载文字（使用 Markdown 渲染）
+  // 设置加载文字并存储原始 Markdown
   const resultTextElement = document.getElementById('ocr-result-text');
   if (typeof text === 'string') {
+    // 存储原始 Markdown 文本
+    currentOcrResultMarkdown = text;
+    currentOcrThinkingMarkdown = '';
     const html = await ocrRenderMarkdown(text);
     resultTextElement.innerHTML = html;
   }
@@ -638,6 +652,15 @@ async function ocrShowResultPanelWithImage(imageDataUrl, text) {
 async function ocrUpdateResultText(text) {
   const resultTextElement = document.getElementById('ocr-result-text');
   if (resultTextElement) {
+    // 存储原始 Markdown 文本
+    if (typeof text === 'string') {
+      currentOcrResultMarkdown = text;
+      currentOcrThinkingMarkdown = '';
+    } else if (text && typeof text === 'object') {
+      currentOcrResultMarkdown = text.mainContent || '';
+      currentOcrThinkingMarkdown = text.thinkingContent || '';
+    }
+
     const html = await ocrRenderMarkdown(text);
     resultTextElement.innerHTML = html;
   }
@@ -650,10 +673,23 @@ function ocrHideResultPanel() {
   }
 }
 
-// 复制结果
+// 复制结果（复制原始 Markdown 文本）
 function ocrCopyResult() {
-  const text = document.getElementById('ocr-result-text').textContent;
-  navigator.clipboard.writeText(text).then(() => {
+  // 构建要复制的文本：包含思考过程（如果有）和主回答
+  let textToCopy = currentOcrResultMarkdown || '';
+
+  if (currentOcrThinkingMarkdown) {
+    textToCopy = `## 思考过程\n\n${currentOcrThinkingMarkdown}\n\n---\n\n## 识别结果\n\n${currentOcrResultMarkdown}`;
+  }
+
+  if (!textToCopy) {
+    const resultTextElement = document.getElementById('ocr-result-text');
+    if (resultTextElement) {
+      textToCopy = resultTextElement.textContent || '';
+    }
+  }
+
+  navigator.clipboard.writeText(textToCopy).then(() => {
     const btn = document.getElementById('ocr-copy-result');
     const originalText = btn.textContent;
     btn.textContent = '✓ 已复制';
@@ -1120,6 +1156,8 @@ async function callOCRApiStream(imageBase64, prompt = '请识别图片中的所�
       requestAnimationFrame(async () => {
         if (thinkingContent) {
           fullThinkingText += textChunk;
+          // 更新全局变量，保存原始 Markdown
+          currentOcrThinkingMarkdown = fullThinkingText;
           const html = await ocrRenderMarkdown(fullThinkingText);
           thinkingContent.innerHTML = html;
         }
@@ -1140,6 +1178,8 @@ async function callOCRApiStream(imageBase64, prompt = '请识别图片中的所�
         }
 
         fullMainText += textChunk;
+        // 更新全局变量，保存原始 Markdown
+        currentOcrResultMarkdown = fullMainText;
         // 使用 Markdown 渲染
         const html = await ocrRenderMarkdown(fullMainText);
         resultTextElement.innerHTML = html;
