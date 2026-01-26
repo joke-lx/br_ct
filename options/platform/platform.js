@@ -81,23 +81,18 @@ function loadPlatformVisibilitySettings() {
  */
 function savePlatformVisibilitySettings() {
   const settings = {};
-  const platformStates = {};
 
-  // 收集所有平台的可见性设置和勾选状态
+  // 只收集平台可见性设置
   Object.keys(PLATFORM_CONFIG).forEach(platformId => {
     const checkbox = document.getElementById(`platform-${platformId}`);
     if (checkbox) {
-      const isVisible = checkbox.checked;
-      settings[platformId] = isVisible;
-      // 如果平台不可见，同时取消勾选状态
-      platformStates[platformId] = isVisible;
+      settings[platformId] = checkbox.checked;
     }
   });
 
-  // 同时保存可见性设置和平台勾选状态
+  // 只保存可见性设置，不修改平台勾选状态
   chrome.storage.local.set({
-    [PLATFORM_VISIBILITY_KEY]: settings,
-    platformStates: platformStates
+    [PLATFORM_VISIBILITY_KEY]: settings
   }, () => {
     showStatusMessage('设置已保存', 'success');
 
