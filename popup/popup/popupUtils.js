@@ -362,8 +362,12 @@ async function startSending() {
             : originalMessage + " " + templateContent;
     }
 
+    // 只获取可见且被勾选的平台
     const selectedPlatforms = Array.from(elements.platformCheckboxes)
-        .filter((checkbox) => checkbox.checked)
+        .filter((checkbox) => {
+            const option = checkbox.closest('.platform-icon-option');
+            return option && option.style.display !== 'none' && checkbox.checked;
+        })
         .map((checkbox) => checkbox.dataset.platform);
 
     if (!validatePlatformSelection(selectedPlatforms)) {

@@ -34,11 +34,10 @@ export async function loadPlatformVisibilitySettings() {
 
 /**
  * 应用平台可见性设置（当设置更新时调用）
- * 同时更新平台勾选状态
+ * 对不可见的平台取消勾选状态，但保留可见平台的原始勾选状态
  */
 export function applyPlatformVisibilitySettings(settings) {
   const platformOptions = document.querySelectorAll('.platform-icon-option');
-  const platformStates = {};
 
   platformOptions.forEach(option => {
     const platformId = option.getAttribute('data-platform-id');
@@ -48,21 +47,17 @@ export function applyPlatformVisibilitySettings(settings) {
       // 应用可见性设置
       if (!isVisible) {
         option.style.display = 'none';
+        // 对不可见的平台取消勾选状态
+        const checkbox = option.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+          checkbox.checked = false;
+        }
       } else {
         option.style.display = '';
-      }
-
-      // 同步勾选状态：不可见的平台取消勾选
-      const checkbox = option.querySelector('input[type="checkbox"]');
-      if (checkbox) {
-        checkbox.checked = isVisible;
-        platformStates[platformId] = isVisible;
+        // 可见的平台保持原来的勾选状态
       }
     }
   });
-
-  // 保存勾选状态到 storage
-  chrome.storage.local.set({ platformStates });
 }
 
 /**
