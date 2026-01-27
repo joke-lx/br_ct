@@ -8,6 +8,8 @@ let resultPanel = null;
 let lastSelection = '';
 let currentAbortController = null;
 let isUserScrolling = false;
+let currentResultMarkdown = ''; // 存储当前结果的原始 Markdown 文本
+let currentThinkingMarkdown = ''; // 存储当前思考过程的原始 Markdown 文本
 
 // API 配置（从浏览器存储获取）
 let API_CONFIG = {
@@ -408,10 +410,13 @@ async function showResultPanel(originalText, resultText) {
     originalTextElement.textContent = originalText;
   }
 
-  // 渲染结果
+  // 渲染结果并存储原始 Markdown
   const resultTextElement = document.getElementById('selection-result-text');
   if (resultTextElement) {
     if (typeof resultText === 'string') {
+      // 存储原始 Markdown 文本
+      currentResultMarkdown = resultText;
+      currentThinkingMarkdown = '';
       const html = await renderMarkdown(resultText);
       resultTextElement.innerHTML = html;
     } else if (resultText && typeof resultText === 'object') {
@@ -419,11 +424,17 @@ async function showResultPanel(originalText, resultText) {
       if (resultText.thinkingContent) {
         const thinkingContent = document.getElementById('selection-thinking-content');
         if (thinkingContent) {
+          // 存储思考过程的原始 Markdown 文本
+          currentThinkingMarkdown = resultText.thinkingContent;
           const thinkingHtml = await renderMarkdown(resultText.thinkingContent);
           thinkingContent.innerHTML = thinkingHtml;
           thinkingSection.style.display = 'block';
         }
+      } else {
+        currentThinkingMarkdown = '';
       }
+      // 存储主回答的原始 Markdown 文本
+      currentResultMarkdown = resultText.mainContent || '';
       const mainHtml = await renderMarkdown(resultText.mainContent || '');
       resultTextElement.innerHTML = mainHtml;
     }
@@ -438,6 +449,15 @@ async function showResultPanel(originalText, resultText) {
 async function updateResultText(text) {
   const resultTextElement = document.getElementById('selection-result-text');
   if (resultTextElement) {
+    // 存储原始 Markdown 文本
+    if (typeof text === 'string') {
+      currentResultMarkdown = text;
+      currentThinkingMarkdown = '';
+    } else if (text && typeof text === 'object') {
+      currentResultMarkdown = text.mainContent || '';
+      currentThinkingMarkdown = text.thinkingContent || '';
+    }
+
     const html = await renderMarkdown(text);
     resultTextElement.innerHTML = html;
 
@@ -596,6 +616,8 @@ async function callLLMStream(text, prompt) {
       requestAnimationFrame(async () => {
         if (thinkingContent) {
           fullThinkingText += textChunk;
+          // 更新全局变量，保存原始 Markdown
+          currentThinkingMarkdown = fullThinkingText;
           const html = await renderMarkdown(fullThinkingText);
           thinkingContent.innerHTML = html;
         }
@@ -616,6 +638,8 @@ async function callLLMStream(text, prompt) {
         }
 
         fullMainText += textChunk;
+        // 更新全局变量，保存原始 Markdown
+        currentResultMarkdown = fullMainText;
         const html = await renderMarkdown(fullMainText);
         resultTextElement.innerHTML = html;
 
@@ -858,23 +882,33 @@ function copyOriginalText() {
 }
 
 /**
- * 复制结果
+ * 复制结果（复制原始 Markdown 文本）
  */
 function copyResult() {
-  const resultTextElement = document.getElementById('selection-result-text');
-  if (resultTextElement) {
-    const text = resultTextElement.textContent;
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = document.getElementById('selection-copy-result');
-      const originalText = btn.textContent;
-      btn.textContent = '✓ 已复制';
-      setTimeout(() => {
-        btn.textContent = originalText;
-      }, 1500);
-    }).catch(err => {
-      console.error('复制失败:', err);
-    });
+  // 构建要复制的文本：包含思考过程（如果有）和主回答
+  let textToCopy = currentResultMarkdown || '';
+
+  if (currentThinkingMarkdown) {
+    textToCopy = `## 思考过程\n\n${currentThinkingMarkdown}\n\n---\n\n## 回答\n\n${currentResultMarkdown}`;
   }
+
+  if (!textToCopy) {
+    const resultTextElement = document.getElementById('selection-result-text');
+    if (resultTextElement) {
+      textToCopy = resultTextElement.textContent || '';
+    }
+  }
+
+  navigator.clipboard.writeText(textToCopy).then(() => {
+    const btn = document.getElementById('selection-copy-result');
+    const originalText = btn.textContent;
+    btn.textContent = '✓ 已复制';
+    setTimeout(() => {
+      btn.textContent = originalText;
+    }, 1500);
+  }).catch(err => {
+    console.error('复制失败:', err);
+  });
 }
 
 /**
