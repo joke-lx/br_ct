@@ -71,10 +71,17 @@ export function showTempMessage(message, duration = 2000) {
 
 /**
  * 渲染历史消息
+ * @param {HTMLSelectElement} historySelect - 历史记录下拉框元素
+ * @param {Array} history - 历史记录数组
+ * @param {number} maxDisplay - 最多显示的条数，默认5条
  */
-export function populateHistory(historySelect, history) {
+export function populateHistory(historySelect, history, maxDisplay = 5) {
   historySelect.innerHTML = `<option value="">选择历史消息</option>`;
-  history.forEach((msg) => {
+
+  // 只显示最近的几条历史记录
+  const displayHistory = history.slice(0, maxDisplay);
+
+  displayHistory.forEach((msg) => {
     const opt = document.createElement("option");
     opt.value = msg;
     opt.textContent = msg.length > 40 ? msg.slice(0, 40) + "..." : msg;
