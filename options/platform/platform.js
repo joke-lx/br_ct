@@ -81,32 +81,41 @@ function loadPlatformVisibilitySettings() {
  */
 function savePlatformVisibilitySettings() {
   const settings = {};
-  const platformStates = {};
 
-  // 收集所有平台的可见性设置和勾选状态
+  // 收集平台可见性设置
   Object.keys(PLATFORM_CONFIG).forEach(platformId => {
     const checkbox = document.getElementById(`platform-${platformId}`);
     if (checkbox) {
-      const isVisible = checkbox.checked;
-      settings[platformId] = isVisible;
-      // 如果平台不可见，同时取消勾选状态
-      platformStates[platformId] = isVisible;
+      settings[platformId] = checkbox.checked;
     }
   });
 
-  // 同时保存可见性设置和平台勾选状态
-  chrome.storage.local.set({
-    [PLATFORM_VISIBILITY_KEY]: settings,
-    platformStates: platformStates
-  }, () => {
-    showStatusMessage('设置已保存', 'success');
+  // 获取当前的平台勾选状态，只取消不可见平台的勾选
+  chrome.storage.local.get(['platformStates'], (result) => {
+    const platformStates = result.platformStates || {};
 
-    // 通知 popup 页面更新平台显示
-    chrome.runtime.sendMessage({
-      action: 'platformVisibilityUpdated',
-      settings: settings
-    }).catch(() => {
-      console.log('Popup 页面可能未打开，忽略消息错误');
+    // 对不可见的平台，取消其勾选状态
+    Object.keys(settings).forEach(platformId => {
+      if (!settings[platformId]) {
+        platformStates[platformId] = false;
+      }
+      // 可见的平台保持原来的勾选状态
+    });
+
+    // 保存可见性设置和更新后的勾选状态
+    chrome.storage.local.set({
+      [PLATFORM_VISIBILITY_KEY]: settings,
+      platformStates: platformStates
+    }, () => {
+      showStatusMessage('设置已保存', 'success');
+
+      // 通知 popup 页面更新平台显示
+      chrome.runtime.sendMessage({
+        action: 'platformVisibilityUpdated',
+        settings: settings
+      }).catch(() => {
+        console.log('Popup 页面可能未打开，忽略消息错误');
+      });
     });
   });
 }
