@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片OCR批量识别</title>
+    <link rel="stylesheet" href="../options.css">
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+    <div class="ocr-container">
+        <header class="ocr-header">
+            <h1>图片OCR批量识别</h1>
+            <p class="subtitle">粘贴图片，使用多个提示词进行批量识别</p>
+        </header>
+
+        <!-- API配置区域 -->
+        <section class="config-section">
+            <div class="section-header">
+                <h2>API配置</h2>
+                <button id="toggleConfig" class="btn btn-sm">展开</button>
+            </div>
+            <div class="config-content" id="configContent">
+                <div class="config-row">
+                    <label>API Key:</label>
+                    <input type="password" id="apiKey" placeholder="智谱AI API Key" class="config-input">
+                </div>
+                <div class="config-row">
+                    <label>Base URL:</label>
+                    <input type="text" id="baseURL" value="https://open.bigmodel.cn/api/paas/v4" class="config-input">
+                </div>
+                <div class="button-group">
+                    <button id="saveConfigBtn" class="btn btn-primary">保存配置</button>
+                    <button id="testApiBtn" class="btn btn-secondary">测试连接</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 主要内容区域 -->
+        <div class="main-content">
+            <!-- 左侧：提示词和图片 -->
+            <div class="left-panel">
+                <!-- 提示词管理 -->
+                <section class="prompt-section">
+                    <div class="section-header">
+                        <h2>提示词队列</h2>
+                        <button id="addPromptBtn" class="btn btn-sm btn-primary">+ 添加</button>
+                    </div>
+                    <div id="promptList" class="prompt-list"></div>
+                </section>
+
+                <!-- 图片处理区域 -->
+                <section class="image-section">
+                    <h2>图片识别</h2>
+                    <div class="paste-zone" id="pasteZone">
+                        <div class="paste-content" id="pasteContent">
+                            <svg class="paste-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+                                <path d="M9 10h6M9 14h6"/>
+                            </svg>
+                            <p class="paste-hint">粘贴图片</p>
+                            <p class="paste-shortcut">Ctrl+V 或拖拽</p>
+                        </div>
+                        <div class="image-preview" id="imagePreview"></div>
+                    </div>
+
+                    <div class="control-panel">
+                        <div class="queue-info">
+                            <span id="queueStatus">空闲</span>
+                            <span id="queueCount">待处理: 0</span>
+                        </div>
+                        <div class="button-group">
+                            <button id="processBtn" class="btn btn-primary" disabled>开始处理</button>
+                            <button id="clearBtn" class="btn btn-secondary">清除</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 右侧：识别结果 -->
+            <div class="right-panel">
+                <section class="results-section">
+                    <div class="section-header">
+                        <h2>识别结果</h2>
+                        <div class="button-group">
+                            <button id="exportBtn" class="btn btn-sm btn-secondary">导出</button>
+                            <button id="clearResultsBtn" class="btn btn-sm btn-danger">清空历史</button>
+                        </div>
+                    </div>
+                    <div id="resultsContainer" class="results-container"></div>
+                </section>
+
+                <!-- 历史记录 -->
+                <section class="history-section">
+                    <div class="section-header">
+                        <h2>历史记录</h2>
+                        <button id="refreshHistoryBtn" class="btn btn-sm btn-secondary">刷新</button>
+                    </div>
+                    <div id="historyList" class="history-list"></div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载 marked.js 用于 Markdown 渲染 -->
+    <script src="../../runjs/translation/lib/marked.min.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
