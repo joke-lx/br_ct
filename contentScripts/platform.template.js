@@ -6,7 +6,26 @@
  * 1. 修改 PLATFORM_CONFIG 中的配置参数
  * 2. 根据平台特性调整 CLICK_MODE（普通平台用 'click'，GLM 用 'mouseup'）
  * 3. 修改选择器列表（inputSelectors 和 buttonSelectors）
- * 4. 如需自定义输入逻辑，修改 setInputValue() 函数
+ *
+ * 特殊场景处理：
+ *
+ * 【Slate/ProseMirror 等现代编辑器】
+ * 场景：使用 contenteditable 的富文本编辑器，按钮状态不会随 DOM 操作变化
+ * 原因：这些编辑器依赖 beforeinput 事件来更新内部状态
+ * 解决方案：
+ *   - 设置 contenteditableInputMode: 'beforeinput' 或 'auto'
+ *   - 启用 buttonEnableRetry.enabled: true
+ *   - 示例：通义千问 (Tongyi)
+ *
+ * 【GLM 平台】
+ * 场景：点击按钮只需要 mouseup 事件
+ * 原因：GLM 的特殊事件绑定机制
+ * 解决方案：设置 clickMode: 'mouseup'
+ *
+ * 【React 受控组件】
+ * 场景：直接设置 value 不会触发状态更新
+ * 原因：React 覆盖了原生的 value setter
+ * 解决方案：设置 inputMode: 'nativeSetter'
  */
 
 // ==========================================================
@@ -37,6 +56,17 @@ const PLATFORM_CONFIG = {
   // - 'custom': 自定义逻辑
   inputMode: 'value',
 
+  // Contenteditable 特殊处理模式（针对 Slate、ProseMirror 等现代编辑器）
+  // 使用场景：
+  // - 通义千问：使用 Slate 编辑器，按钮状态不会随 DOM 操作变化
+  // - 原因：这些编辑器需要 beforeinput 事件来触发内部状态更新
+  // 解决方案：
+  // - 'beforeinput': 触发 beforeinput 事件 + execCommand('insertText')
+  // - 'typing': 逐字符模拟键盘输入（较慢，但最真实）
+  // - 'direct': 直接设置 textContent（可能不触发状态更新）
+  // - 'auto': 自动检测（优先使用 beforeinput，失败则降级）
+  contenteditableInputMode: 'auto',
+
   // 是否需要先激活输入框（点击 + focus）
   needActivateInput: false,
 
@@ -60,6 +90,17 @@ const PLATFORM_CONFIG = {
 
   // 是否启用智能元素发现（当预定义选择器失败时自动查找）
   enableSmartDiscovery: true,
+
+  // 按钮状态等待重试（针对 Slate 编辑器等异步状态更新的平台）
+  // 使用场景：
+  // - 通义千问：输入后按钮状态需要时间更新
+  // - 原因：编辑器内部状态是异步更新的
+  // 解决方案：等待按钮启用，最多重试 N 次
+  buttonEnableRetry: {
+    enabled: false,          // 是否启用按钮启用重试
+    maxRetries: 5,           // 最大重试次数
+    retryInterval: 200,      // 重试间隔（毫秒）
+  },
 };
 
 // ==========================================================
@@ -395,17 +436,233 @@ function isElementVisible(element) {
 // ==========================================================
 
 /**
+ * 模拟 Contenteditable 元素输入（现代编辑器专用）
+ *
+ * 使用场景：
+ * - 通义千问（Tongyi）：使用 Slate 编辑器，DOM 操作不会触发按钮状态更新
+ * - 其他使用 Slate/ProseMirror 等现代编辑器的平台
+ *
+ * 原因：
+ * - 现代编辑器使用 beforeinput 事件来捕获用户输入意图
+ * - 直接修改 textContent 不会触发编辑器的内部状态更新
+ * - 编辑器需要完整的输入事件链来更新 UI 状态（如按钮启用/禁用）
+ *
+ * @param {Element} element - contenteditable 元素
+ * @param {string} text - 要输入的文本
+ * @param {string} mode - 输入模式：'beforeinput' | 'typing' | 'direct'
+ * @returns {Promise<boolean>}
+ */
+async function simulateContenteditableInput(element, text, mode = 'beforeinput') {
+  if (!element || !text) {
+    logWarning("元素或文本为空");
+    return false;
+  }
+
+  logInfo(`使用 ${mode} 模式输入到 contenteditable 元素，长度: ${text.length}`);
+
+  // 确保元素有焦点
+  element.focus();
+  await delay(50);
+
+  // 清空现有内容
+  document.execCommand('selectAll', false, null);
+  await delay(20);
+  document.execCommand('delete', false, null);
+  await delay(50);
+
+  switch (mode) {
+    case 'beforeinput':
+      // ========== beforeinput 模式（推荐） ==========
+      // 适用：Slate、ProseMirror 等现代编辑器
+      // 原理：触发 beforeinput 事件，让编辑器知道即将有文本输入
+      return await inputWithBeforeInput(element, text);
+
+    case 'typing':
+      // ========== 逐字符输入模式 ==========
+      // 适用：beforeinput 失败时的备选方案
+      // 原理：模拟真实用户逐字输入，最真实但较慢
+      return await inputWithTyping(element, text);
+
+    case 'direct':
+      // ========== 直接设置模式 ==========
+      // 适用：不需要触发编辑器状态的场景
+      // 原理：直接修改 DOM，不触发编辑器事件
+      return inputDirectly(element, text);
+
+    default:
+      logWarning(`未知的 contenteditable 输入模式: ${mode}`);
+      return false;
+  }
+}
+
+/**
+ * 使用 beforeinput 事件输入（现代编辑器推荐）
+ * @param {Element} element - 目标元素
+ * @param {string} text - 输入文本
+ * @returns {Promise<boolean>}
+ */
+async function inputWithBeforeInput(element, text) {
+  try {
+    // 1. 触发 beforeinput 事件（现代编辑器标准）
+    const beforeInputEvent = new InputEvent('beforeinput', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: text,
+    });
+    element.dispatchEvent(beforeInputEvent);
+
+    // 2. 使用 execCommand 插入文本
+    const success = document.execCommand('insertText', false, text);
+
+    if (!success) {
+      logWarning("execCommand 失败，降级到直接设置");
+      element.textContent = text;
+    }
+
+    // 3. 触发后续事件确保状态同步
+    element.dispatchEvent(new InputEvent('input', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: text,
+    }));
+    element.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+    document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
+
+    logInfo("✅ beforeinput 模式输入完成");
+    return true;
+  } catch (e) {
+    logError("beforeinput 模式失败", e);
+    return false;
+  }
+}
+
+/**
+ * 逐字符模拟键盘输入（备选方案）
+ * @param {Element} element - 目标元素
+ * @param {string} text - 输入文本
+ * @param {number} charDelay - 每个字符间延迟（毫秒）
+ * @returns {Promise<boolean>}
+ */
+async function inputWithTyping(element, text, charDelay = 30) {
+  try {
+    // 逐字符输入
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const keyCode = char.charCodeAt(0);
+
+      // keydown 事件
+      element.dispatchEvent(new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        key: char,
+        keyCode: keyCode,
+        which: keyCode,
+      }));
+
+      // keypress 事件
+      element.dispatchEvent(new KeyboardEvent('keypress', {
+        bubbles: true,
+        cancelable: true,
+        key: char,
+        keyCode: keyCode,
+        which: keyCode,
+        charCode: keyCode,
+      }));
+
+      // 插入字符
+      document.execCommand('insertText', false, char);
+
+      // input 事件
+      element.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText',
+        data: char,
+      }));
+
+      // keyup 事件
+      element.dispatchEvent(new KeyboardEvent('keyup', {
+        bubbles: true,
+        cancelable: true,
+        key: char,
+        keyCode: keyCode,
+        which: keyCode,
+      }));
+
+      await delay(charDelay);
+    }
+
+    element.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+    document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
+
+    logInfo("✅ 逐字符输入模式完成");
+    return true;
+  } catch (e) {
+    logError("逐字符输入模式失败", e);
+    return false;
+  }
+}
+
+/**
+ * 直接设置文本内容（不推荐用于现代编辑器）
+ * @param {Element} element - 目标元素
+ * @param {string} text - 输入文本
+ * @returns {boolean}
+ */
+function inputDirectly(element, text) {
+  try {
+    element.textContent = text;
+    element.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+    element.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+    logInfo("✅ 直接设置模式完成");
+    return true;
+  } catch (e) {
+    logError("直接设置模式失败", e);
+    return false;
+  }
+}
+
+/**
  * 设置输入元素的值（根据配置的 inputMode）
  * @param {Element} element - 输入元素
  * @param {string} value - 要设置的值
- * @returns {boolean} 是否成功
+ * @returns {Promise<boolean>|boolean} contenteditable 模式返回 Promise
  */
-function setInputValue(element, value) {
+async function setInputValue(element, value) {
   if (!element) {
     logWarning("输入元素不存在");
     return false;
   }
 
+  // 检测是否为 contenteditable 元素
+  const isContentEditable = element.isContentEditable ||
+                           element.getAttribute('contenteditable') === 'true';
+
+  if (isContentEditable) {
+    // ========== Contenteditable 元素特殊处理 ==========
+    const mode = PLATFORM_CONFIG.contenteditableInputMode;
+
+    if (mode === 'auto') {
+      // 自动模式：优先使用 beforeinput，失败则降级
+      logInfo("contenteditable 自动模式：尝试 beforeinput");
+      const result = await simulateContenteditableInput(element, value.trim(), 'beforeinput');
+      if (!result) {
+        logWarning("beforeinput 失败，降级到直接设置");
+        return inputDirectly(element, value.trim());
+      }
+      return result;
+    } else if (mode === 'beforeinput' || mode === 'typing' || mode === 'direct') {
+      return await simulateContenteditableInput(element, value.trim(), mode);
+    } else {
+      logWarning(`未知的 contenteditable 模式: ${mode}，使用默认方式`);
+      element.textContent = value.trim();
+      return true;
+    }
+  }
+
+  // ========== 普通 input/textarea 元素处理 ==========
   try {
     const trimmedValue = value.trim();
 
@@ -413,11 +670,6 @@ function setInputValue(element, value) {
       case 'value':
         // 用于 input/textarea 元素
         element.value = trimmedValue;
-        break;
-
-      case 'textContent':
-        // 用于 contenteditable 元素
-        element.textContent = trimmedValue;
         break;
 
       case 'nativeSetter':
@@ -435,19 +687,14 @@ function setInputValue(element, value) {
         break;
 
       case 'custom':
-        // 自定义逻辑，根据需要修改
-        if (element.isContentEditable || element.contentEditable === 'true') {
-          element.textContent = trimmedValue;
-        } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+      default:
+        // 默认：根据元素类型自动选择
+        if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
           element.value = trimmedValue;
         } else {
           element.textContent = trimmedValue;
         }
         break;
-
-      default:
-        logWarning(`未知的输入模式: ${PLATFORM_CONFIG.inputMode}`);
-        return false;
     }
 
     logInfo("输入值已设置");
@@ -711,9 +958,10 @@ async function sendChatMessage(message) {
       await delay(PLATFORM_CONFIG.activateDelay);
     }
 
-    // 5. 设置输入值
+    // 5. 设置输入值（可能是异步的，如 contenteditable 逐字符输入）
     logInfo("正在设置输入值...");
-    if (!setInputValue(inputElement, message)) {
+    const inputResult = await setInputValue(inputElement, message);
+    if (!inputResult) {
       logError("设置输入值失败");
       return false;
     }
@@ -724,7 +972,7 @@ async function sendChatMessage(message) {
       return false;
     }
 
-    // 7. 输入后延迟
+    // 7. 输入后延迟（contenteditable 模式可能需要更长延迟）
     await delay(PLATFORM_CONFIG.inputDelay);
 
     // 8. 查找发送按钮
@@ -735,8 +983,17 @@ async function sendChatMessage(message) {
       return false;
     }
 
-    // 9. 点击后延迟
-    await delay(PLATFORM_CONFIG.clickDelay);
+    // 9. 等待按钮启用（针对 Slate 编辑器等异步状态更新的平台）
+    if (PLATFORM_CONFIG.buttonEnableRetry.enabled) {
+      const buttonReady = await waitForButtonEnabled(buttonElement, inputElement, message.trim());
+      if (!buttonReady) {
+        logError("发送按钮未能启用");
+        return false;
+      }
+    } else {
+      // 普通延迟
+      await delay(PLATFORM_CONFIG.clickDelay);
+    }
 
     // 10. 点击发送
     logInfo("正在点击发送按钮...");
@@ -754,6 +1011,60 @@ async function sendChatMessage(message) {
     isSending = false;
     logInfo("发送流程结束，已解锁状态");
   }
+}
+
+/**
+ * 等待按钮启用（针对异步状态更新的编辑器）
+ *
+ * 使用场景：
+ * - 通义千问（Tongyi）：Slate 编辑器状态是异步更新的
+ * - 原因：编辑器需要时间处理输入并更新 UI 状态
+ * - 解决方案：轮询检查按钮是否启用，超时则重试触发输入事件
+ *
+ * @param {Element} buttonElement - 按钮元素
+ * @param {Element} inputElement - 输入元素（用于重新触发事件）
+ * @param {string} message - 消息内容（用于重新触发事件）
+ * @returns {Promise<boolean>} 按钮是否启用
+ */
+async function waitForButtonEnabled(buttonElement, inputElement, message) {
+  const { maxRetries, retryInterval } = PLATFORM_CONFIG.buttonEnableRetry;
+
+  // 检查按钮是否启用的函数
+  const checkButtonEnabled = () => {
+    const buttonClass = buttonElement.className || '';
+    return !buttonClass.includes('disabled') &&
+           !buttonClass.includes('Disabled') &&
+           !buttonElement.disabled;
+  };
+
+  // 如果已经启用，直接返回
+  if (checkButtonEnabled()) {
+    logInfo("发送按钮已启用");
+    return true;
+  }
+
+  // 轮询等待按钮启用
+  for (let i = 0; i < maxRetries; i++) {
+    logWarning(`发送按钮仍处于禁用状态，等待启用... (${i + 1}/${maxRetries})`);
+
+    // 尝试重新触发 input 事件来刷新编辑器状态
+    inputElement.dispatchEvent(new InputEvent('input', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: message,
+    }));
+
+    await delay(retryInterval);
+
+    if (checkButtonEnabled()) {
+      logInfo(`发送按钮在第 ${i + 1} 次重试后启用`);
+      return true;
+    }
+  }
+
+  logError(`发送按钮在 ${maxRetries} 次重试后仍处于禁用状态`);
+  return false;
 }
 
 // ==========================================================
@@ -804,14 +1115,35 @@ if (!window.location.hostname.includes(PLATFORM_CONFIG.hostname)) {
 // 暴露到全局作用域，方便控制台调试
 if (typeof window !== 'undefined') {
   window.__platformScript = {
+    // 配置
     config: PLATFORM_CONFIG,
+
+    // 主函数
     sendChatMessage,
+
+    // 查找工具
     findElementBySelectors,
     waitForElement,
-    triggerClick,
     findInputElementIntelligently,  // 智能发现功能
-    scoreInputElement,                // 评分功能
-    isElementVisible,                 // 可见性检查
+    scoreInputElement,               // 评分功能
+    isElementVisible,                // 可见性检查
+
+    // 点击工具
+    triggerClick,
+    triggerNormalClick,
+    triggerMouseUpClick,
+
+    // 输入工具
+    setInputValue,
+    simulateContenteditableInput,   // Contenteditable 特殊处理
+    inputWithBeforeInput,           // beforeinput 模式
+    inputWithTyping,                // 逐字符输入模式
+    inputDirectly,                  // 直接设置模式
+
+    // 其他工具
+    activateInput,
+    triggerInputEvents,
+    waitForButtonEnabled,           // 按钮启用等待
   };
   logInfo("调试工具已暴露到 window.__platformScript");
 }

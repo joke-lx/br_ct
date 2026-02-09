@@ -95,84 +95,163 @@ function triggerClick(element) {
   }
 }
 
+/**
+ * 模拟真实键盘输入（一次性插入，使用 beforeinput 事件）
+ * @param {Element} element - 目标输入元素
+ * @param {string} text - 要输入的文本
+ * @returns {Promise<boolean>}
+ */
+async function simulateKeyboardInput(element, text) {
+  if (!element || !text) {
+    console.warn("元素或文本为空");
+    return false;
+  }
+
+  console.log(`开始模拟输入，文本长度: ${text.length}`);
+
+  // 确保元素有焦点
+  element.focus();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  // 清空现有内容
+  document.execCommand('selectAll', false, null);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  document.execCommand('delete', false, null);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  // 创建 beforeinput 事件（现代编辑器使用）
+  const beforeInputEvent = new InputEvent('beforeinput', {
+    bubbles: true,
+    cancelable: true,
+    inputType: 'insertText',
+    data: text,
+  });
+
+  // 触发 beforeinput 事件
+  element.dispatchEvent(beforeInputEvent);
+
+  // 使用 execCommand 一次性插入所有文本
+  const success = document.execCommand('insertText', false, text);
+
+  if (!success) {
+    // 回退方案：直接设置 textContent
+    console.warn("execCommand 失败，使用回退方案");
+    element.textContent = text;
+  }
+
+  // 触发 input 事件
+  const inputEvent = new InputEvent('input', {
+    bubbles: true,
+    cancelable: true,
+    inputType: 'insertText',
+    data: text,
+  });
+  element.dispatchEvent(inputEvent);
+
+  // 触发 change 事件
+  element.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+
+  // 触发 selectionchange
+  document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
+
+  console.log(`✅ 输入完成，共 ${text.length} 个字符`);
+  return true;
+}
+
 // ==========================================================
-//          通义千问 输入框 & 按钮选择器 (已修复)
+//          通义千问 输入框 & 按钮选择器 (2025-02 修复)
 // ==========================================================
 const inputSelectors = [
   // ==========================================================
-  // 👇 【核心修复】优先使用更稳定、更通用的选择器
+  // 👇 【核心修复】新版千问使用 Slate 编辑器 (contenteditable div)
   // ==========================================================
-  // 1. 最佳选择：在主容器内查找 textarea。这个选择器不依赖动态class和具体层级，最稳定。
+  // 1. 最佳选择：通过 role="textbox" 和 contenteditable 属性定位
+  {
+    type: "css",
+    value: 'div[role="textbox"][contenteditable="true"]',
+  },
+  // 2. 通过 data-slate-editor 属性定位
+  {
+    type: "css",
+    value: 'div[data-slate-editor="true"]',
+  },
+  // 3. 通过 placeholder 文本定位
+  {
+    type: "xpath",
+    value: '//div[@data-placeholder="向千问提问"]',
+  },
+  // 4. 完整的 CSS 路径（基于用户提供的 HTML 结构）
+  {
+    type: "css",
+    value: 'div.slateEditorWrapper-yF7NWU div[role="textbox"]',
+  },
+  // 5. XPath 备选方案
+  {
+    type: "xpath",
+    value: '//div[@role="textbox"][@contenteditable="true"]',
+  },
+  // 6. 完整 XPath 路径
+  {
+    type: "xpath",
+    value: '//*[@id="message-list-scroller"]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]',
+  },
+  // 7. 绝对路径（最后备选）
+  {
+    type: "xpath",
+    value: '/html[1]/body[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]',
+  },
+
+  // ==========================================================
+  // 👇 旧版选择器（保留，优先级最低）
+  // ==========================================================
   {
     type: "css",
     value: "#tongyi-content-wrapper textarea",
   },
-  // 2. 备选方案：使用 Ant Design 的固定 class，也非常稳定。
   {
     type: "css",
     value: "textarea.ant-input",
   },
-  // 3. 备选方案：使用你提供的完整CSS路径（包含动态class），作为后备。
-  {
-    type: "css",
-    value:
-      "#tongyi-content-wrapper > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > textarea:nth-of-type(1)",
-  },
-  // 4. 备选方案：对应的完整XPath路径。
-  {
-    type: "xpath",
-    value:
-      '//*[@id="tongyi-content-wrapper"]/div[1]/div[2]/div[1]/div[2]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[1]/textarea[1]',
-  },
-  // 5. 绝对路径XPath（最不推荐，但作为最后保障）。
-  {
-    type: "xpath",
-    value:
-      "/html[1]/body[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/div[1]/div[2]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[1]/textarea[1]",
-  },
-
-  // ==========================================================
-  // 👇 旧的选择器（保留，但优先级最低）
-  // ==========================================================
-  {
-    type: "xpath",
-    value:
-      '//*[@id="tongyi-content-wrapper"]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[1]/div[1]/div[1]/textarea[1]',
-  },
-  {
-    type: "css",
-    value:
-      "#tongyi-content-wrapper > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > textarea:nth-of-type(1)",
-  },
-  {
-    type: "xpath",
-    value:
-      "/html[1]/body[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[1]/div[1]/div[1]/textarea[1]",
-  },
 ];
 
 const buttonSelectors = [
-  // 通义千问 发送按钮
-  { type: "css", value: "div.operateBtn-JsB9e2" },
-  {
-    type: "xpath",
-    value:
-      '//*[@id="tongyi-content-wrapper"]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[2]/div[3]/div[2]',
-  },
+  // ==========================================================
+  // 👇 【新版】发送按钮选择器
+  // ==========================================================
+  // 1. 通过图标类型定位（最稳定）
   {
     type: "css",
-    value:
-      "#tongyi-content-wrapper > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(3) > div:nth-of-type(2)",
+    value: 'div[data-icon-type="qwpcicon-sendChat"]',
   },
+  // 2. 通过类名定位（注意可能包含 disabled 类）
+  {
+    type: "css",
+    value: 'div[class*="operateBtn"]',
+  },
+  // 3. 查找包含发送图标的父级 div
   {
     type: "xpath",
-    value:
-      "/html[1]/body[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/div[1]/div[3]/div[2]/div[1]/div[2]/div[3]/div[2]",
+    value: '//div[@data-icon-type="qwpcicon-sendChat"]/ancestor::div[contains(@class, "operateBtn")]',
   },
+  // 4. 完整 XPath 路径
+  {
+    type: "xpath",
+    value: '//*[@id="message-list-scroller"]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[2]/div[3]',
+  },
+  // 5. 绝对路径
+  {
+    type: "xpath",
+    value: '/html[1]/body[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[2]/div[3]',
+  },
+
+  // ==========================================================
+  // 👇 旧版选择器（保留，优先级最低）
+  // ==========================================================
+  { type: "css", value: "div.operateBtn-JsB9e2" },
 ];
 
 // ==========================================================
-//                     主逻辑：发送消息（已修复输入激活问题）
+//                     主逻辑：发送消息（2025-02 修复版）
 // ==========================================================
 let isSending = false; // 状态锁
 
@@ -198,36 +277,62 @@ async function sendChatMessage(message) {
       return false;
     }
 
-    // ========== 关键修复：激活输入框并注入文本 ==========
+    // ========== 关键修复：针对 contenteditable 的输入处理 ==========
     console.log("正在激活输入框...");
 
-    // 1. 点击激活（触发组件挂载/交互状态）
+    // 1. 点击激活并聚焦
     triggerClick(inputElement);
-    inputElement.focus(); // 显式聚焦
+    inputElement.focus();
 
-    // 2. 使用原生 value setter 设置内容（兼容 React 受控组件）
-    const nativeSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLTextAreaElement.prototype,
-      "value"
-    )?.set;
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
+    // 2. 检测元素类型并使用相应的方法
     const finalMessage = message.trim();
-    if (nativeSetter) {
-      nativeSetter.call(inputElement, finalMessage);
+    const isContentEditable = inputElement.isContentEditable ||
+                             inputElement.getAttribute('contenteditable') === 'true';
+
+    if (isContentEditable) {
+      // ========== Contenteditable 元素处理（Slate 编辑器） ==========
+      console.log("检测到 contenteditable 元素，使用逐字符键盘模拟输入");
+
+      // 使用键盘模拟输入（会触发 Slate 编辑器的完整状态更新）
+      await simulateKeyboardInput(inputElement, finalMessage);
+
+      // 额外触发一些事件确保状态同步
+      inputElement.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+      document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
+
+      console.log("✅ 键盘模拟输入完成");
+
     } else {
-      // 回退方案（极少见）
-      inputElement.value = finalMessage;
+      // ========== Textarea/Input 元素处理（旧版兼容） ==========
+      console.log("检测到 textarea/input 元素，使用 value 属性");
+
+      // 使用原生 value setter 设置内容（兼容 React 受控组件）
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        "value"
+      )?.set;
+
+      if (nativeSetter) {
+        nativeSetter.call(inputElement, finalMessage);
+      } else {
+        inputElement.value = finalMessage;
+      }
+
+      // 派发标准 input 和 change 事件
+      inputElement.dispatchEvent(
+        new Event("input", { bubbles: true, cancelable: true })
+      );
+      inputElement.dispatchEvent(
+        new Event("change", { bubbles: true, cancelable: true })
+      );
     }
 
-    // 3. 派发标准 input 和 change 事件
-    inputElement.dispatchEvent(
-      new Event("input", { bubbles: true, cancelable: true })
-    );
-    inputElement.dispatchEvent(
-      new Event("change", { bubbles: true, cancelable: true })
-    );
-
     console.log("✅ 输入内容已成功注入并激活");
+
+    // 等待输入被处理（Slate 编辑器需要更长的时间来更新按钮状态）
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // ========== 查找并点击发送按钮 ==========
     console.log("正在查找发送按钮...");
@@ -237,8 +342,37 @@ async function sendChatMessage(message) {
       return false;
     }
 
-    // 短暂等待确保输入被处理
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    // 检查按钮是否被禁用
+    const checkButtonEnabled = () => {
+      const buttonClass = buttonElement.className || '';
+      return !buttonClass.includes('disabled') && !buttonElement.disabled;
+    };
+
+    // 如果按钮被禁用，等待其启用（最多重试 5 次，每次 200ms）
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    while (!checkButtonEnabled() && retryCount < maxRetries) {
+      console.warn(`发送按钮仍处于禁用状态，等待启用... (${retryCount + 1}/${maxRetries})`);
+
+      // 尝试重新触发 input 事件
+      inputElement.dispatchEvent(
+        new InputEvent('input', {
+          bubbles: true,
+          cancelable: true,
+          inputType: 'insertText',
+          data: finalMessage,
+        })
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      retryCount++;
+    }
+
+    if (!checkButtonEnabled()) {
+      console.error("发送按钮在重试后仍处于禁用状态，可能输入未生效");
+      return false;
+    }
 
     if (triggerClick(buttonElement)) {
       console.log("✅ 消息发送成功");
@@ -297,11 +431,23 @@ if (!window.location.hostname.includes("qianwen")) {
 
 /**
  * @fileoverview
- * 通义千问聊天机器人内容脚本 - 修复增强版
- * ✅ 已解决：输入框选择器失效问题
- * ✅ 方法：引入更稳定、更通用的选择器，并调整优先级
- * ✅ 已解决：输入后聚焦即清空的问题
- * ✅ 方法：先 click + focus 激活组件，再通过原生 value setter + input 事件注入内容
- * ✅ 兼容 React/Ant Design 受控输入框
- * ✅ 保留原有重试、状态锁、异步通信等健壮机制
+ * 通义千问聊天机器人内容脚本 - 2025-02 修复版
+ * ✅ 已解决：新版千问从 textarea 改为 Slate contenteditable 编辑器
+ * ✅ 方法：使用 beforeinput 事件 + execCommand('insertText') 一次性注入
+ * ✅ 已解决：按钮状态不随 DOM 操作变化的问题
+ * ✅ 方法：触发现代编辑器的 beforeinput 事件（Slate 等编辑器使用）
+ * ✅ 更新：输入框选择器适配新的 DOM 结构 (role="textbox", data-slate-editor)
+ * ✅ 更新：按钮选择器适配新的图标定位方式 (data-icon-type="qwpcicon-sendChat")
+ * ✅ 兼容：保留对旧版 textarea 的支持，自动降级
+ * ✅ 保留：原有状态锁、异步通信等健壮机制
+ *
+ * 新版 DOM 结构：
+ * - 输入框: div[role="textbox"][contenteditable="true"][data-placeholder="向千问提问"]
+ * - 按钮: div[data-icon-type="qwpcicon-sendChat"] (在 operateBtn 父容器内)
+ *
+ * Slate 编辑器特殊处理：
+ * - 触发 beforeinput 事件（现代编辑器标准）
+ * - 使用 execCommand('insertText') 一次性插入全部文本
+ * - 完整事件链：beforeinput -> insertText -> input -> change -> selectionchange
+ * - 按钮启用重试机制，确保状态同步
  */
