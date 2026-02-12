@@ -1,3 +1,5 @@
+// 蒙版+复制 
+
 function main() {
   // 封装一个使用 document.execCommand 的回退函数
   function fallbackCopyTextToClipboard(textToCopy, tooltipEl) {

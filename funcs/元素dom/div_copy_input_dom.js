@@ -1,3 +1,6 @@
+
+// 创建一个dom 输入html 识别对应的内容
+
 function main() {
   // --- 剪贴板复制回退函数 (与之前相同，确保兼容性) ---
   function fallbackCopyTextToClipboard(textToCopy, statusEl) {

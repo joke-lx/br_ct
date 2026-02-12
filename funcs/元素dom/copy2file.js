@@ -1,3 +1,5 @@
+// 保存剪切板为文件 然后下载 
+
 function main() {
   (async function () {
     // 提示用户交互触发

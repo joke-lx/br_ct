@@ -1,3 +1,5 @@
+// dev - 元素相关的监听 
+
 (function () {
   // 防止重复注入
   if (document.getElementById("ai-stream-monitor-panel")) {

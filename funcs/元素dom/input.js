@@ -1,4 +1,5 @@
 
+// 获得表单数据 
 function main(){
 (function() {
     'use strict';
