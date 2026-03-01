@@ -24,6 +24,33 @@ function initializeOptions() {
       }
     });
   });
+
+  // 监听来自 iframe 的消息（用于倒计时面板和流水表之间的导航）
+  window.addEventListener('message', (event) => {
+    if (event.data.action === 'navigateToHistory') {
+      frame.src = 'countdown/history.html';
+      // 更新激活状态
+      navItems.forEach(nav => nav.classList.remove('active'));
+      const countdownNav = document.querySelector('[data-page="countdown/index.html"]');
+      if (countdownNav) {
+        countdownNav.classList.add('active');
+      }
+    } else if (event.data.action === 'navigateToTimers') {
+      frame.src = 'countdown/index.html';
+      // 更新激活状态
+      navItems.forEach(nav => nav.classList.remove('active'));
+      const countdownNav = document.querySelector('[data-page="countdown/index.html"]');
+      if (countdownNav) {
+        countdownNav.classList.add('active');
+      }
+    } else if (event.data.action === 'refreshTimers') {
+      // 通知刷新
+      const currentSrc = frame.src;
+      if (currentSrc.includes('countdown/index.html')) {
+        frame.contentWindow.postMessage({ action: 'refresh' }, '*');
+      }
+    }
+  });
 }
 
 // 页面加载时初始化
