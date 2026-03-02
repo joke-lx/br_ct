@@ -205,9 +205,9 @@ class HistoryManager {
 
                 const realElapsedText = this.formatElapsedTime(realElapsed);
                 const plannedElapsed = this.formatDuration(record.duration);
-                const accuracy = this.calculateAccuracyWithValue(record.duration * 60 * 1000, realElapsed);
-                const isOvertime = realElapsed > record.duration * 60 * 1000;
-                const overtimeInfo = isOvertime ? this.formatOvertime(realElapsed, record.duration * 60 * 1000) : null;
+                const accuracy = this.calculateAccuracyWithValue(record.duration * 1000, realElapsed);
+                const isOvertime = realElapsed > record.duration * 1000;
+                const overtimeInfo = isOvertime ? this.formatOvertime(realElapsed, record.duration * 1000) : null;
 
                 return `
                     <div class="record-card ${isOvertime ? 'overtime' : ''}" style="--record-color: ${record.timerColor}" data-record-id="${record.id}">
@@ -287,7 +287,7 @@ class HistoryManager {
         document.getElementById('totalCompletions').textContent = totalCompletions;
         document.getElementById('totalTime').textContent = this.formatTotalTime(totalTime);
         document.getElementById('todayCompletions').textContent = todayCompletions;
-        document.getElementById('avgTime').textContent = this.formatDuration(Math.round(avgTime / 60000));
+        document.getElementById('avgTime').textContent = this.formatDuration(Math.round(avgTime / 1000));
     }
 
     // 打开克隆弹窗
@@ -405,7 +405,7 @@ class HistoryManager {
 
     // 计算准确度（使用 record 对象）
     calculateAccuracy(record) {
-        const planned = record.duration * 60 * 1000;
+        const planned = record.duration * 1000;
         const actual = record.realElapsed || 0;
         const diff = Math.abs(actual - planned);
         const percent = Math.round((1 - diff / planned) * 100);
@@ -452,6 +452,7 @@ class HistoryManager {
         const hours = Math.floor(ms / (1000 * 60 * 60));
         const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((ms % (1000 * 60)) / 1000);
+        const milliseconds = ms % 1000;
 
         if (hours > 0) {
             return `${hours}时${minutes}分${seconds}秒`;
@@ -459,7 +460,14 @@ class HistoryManager {
         if (minutes > 0) {
             return `${minutes}分${seconds}秒`;
         }
-        return `${seconds}秒`;
+        if (seconds > 0) {
+            return `${seconds}秒`;
+        }
+        // 少于1秒时显示毫秒
+        if (milliseconds > 0) {
+            return `${milliseconds}毫秒`;
+        }
+        return '0秒';
     }
 
     // 格式化总时间
@@ -474,20 +482,39 @@ class HistoryManager {
     }
 
     // 格式化时长（分钟转为可读格式）
-    formatDuration(minutes) {
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
+    formatDuration(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
 
         if (hours > 0) {
-            return `${hours}小时${mins}分钟`;
+            return `${hours}小时${mins}分钟${secs}秒`;
         }
-        return `${mins}分钟`;
+        if (mins > 0) {
+            return `${mins}分${secs}秒`;
+        }
+        return `${secs}秒`;
     }
 
     // 格式化超时时长
     formatOvertime(realElapsed, plannedElapsed) {
         const overtimeMs = realElapsed - plannedElapsed;
-        return '+' + this.formatElapsedTime(overtimeMs);
+        const hours = Math.floor(overtimeMs / (1000 * 60 * 60));
+        const minutes = Math.floor((overtimeMs % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((overtimeMs % (1000 * 60)) / 1000);
+        const milliseconds = overtimeMs % 1000;
+
+        if (hours > 0) {
+            return `+${hours}时${minutes}分${seconds}秒`;
+        }
+        if (minutes > 0) {
+            return `+${minutes}分${seconds}秒`;
+        }
+        if (seconds > 0) {
+            return `+${seconds}秒`;
+        }
+        // 少于1秒时显示毫秒
+        return `+${milliseconds}毫秒`;
     }
 
     // HTML 转义

@@ -106,7 +106,7 @@ class CountdownManager {
         this.timers.forEach(timer => {
             if (timer.status === 'running' && timer.startedAt) {
                 const elapsed = now - timer.startedAt;
-                const remaining = (timer.duration * 60 * 1000) - elapsed;
+                const remaining = (timer.duration * 1000) - elapsed;
                 if (remaining <= 0 && !timer.notifiedAt) {
                     // 已经过期但还未通知
                     this.finishTimer(timer.id);
@@ -130,7 +130,7 @@ class CountdownManager {
                 const display = document.querySelector(`[data-timer-id="${timer.id}"] .timer-display`);
                 if (display) {
                     const elapsed = now - timer.startedAt;
-                    const remaining = (timer.duration * 60 * 1000) - elapsed;
+                    const remaining = (timer.duration * 1000) - elapsed;
                     display.textContent = this.formatTime(remaining);
 
                     // 检查是否结束（第一次到0时触发通知）
@@ -143,7 +143,7 @@ class CountdownManager {
                 const display = document.querySelector(`[data-timer-id="${timer.id}"] .timer-display`);
                 if (display) {
                     const elapsed = now - timer.startedAt;
-                    const remaining = (timer.duration * 60 * 1000) - elapsed;
+                    const remaining = (timer.duration * 1000) - elapsed;
                     display.textContent = this.formatTime(remaining);
                 }
             }
@@ -213,15 +213,27 @@ class CountdownManager {
         });
 
         // 时长输入框滚轮支持
-        const durationInput = document.getElementById('timerDuration');
-        durationInput.addEventListener('wheel', (e) => {
+        const minutesInput = document.getElementById('timerDurationMinutes');
+        const secondsInput = document.getElementById('timerDurationSeconds');
+
+        // 分钟输入框滚轮
+        minutesInput.addEventListener('wheel', (e) => {
             e.preventDefault();
-            const currentValue = parseInt(durationInput.value) || 0;
-            const delta = e.deltaY > 0 ? -1 : 1; // 向下滚动减少，向上滚动增加
-            const newValue = Math.max(1, currentValue + delta); // 最小值为1
-            durationInput.value = newValue;
-            // 触发 input 事件以便其他逻辑能感知到变化
-            durationInput.dispatchEvent(new Event('input', { bubbles: true }));
+            const currentValue = parseInt(minutesInput.value) || 0;
+            const delta = e.deltaY > 0 ? -1 : 1;
+            const newValue = Math.max(0, currentValue + delta);
+            minutesInput.value = newValue;
+        }, { passive: false });
+
+        // 秒输入框滚轮（支持按住Shift快速调整）
+        secondsInput.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const currentValue = parseInt(secondsInput.value) || 0;
+            // 按住Shift时每次调整10秒，否则调整1秒
+            const step = e.shiftKey ? 10 : 1;
+            const delta = e.deltaY > 0 ? -step : step;
+            const newValue = Math.max(0, Math.min(59, currentValue + delta));
+            secondsInput.value = newValue;
         }, { passive: false });
 
         // ESC 关闭弹窗
@@ -363,17 +375,17 @@ class CountdownManager {
     // 获取计时器显示
     getTimerDisplay(timer) {
         if (timer.status === 'idle' || timer.status === 'paused') {
-            return this.formatTime(timer.duration * 60 * 1000);
+            return this.formatTime(timer.duration * 1000);
         } else if (timer.status === 'running') {
             const now = Date.now();
             const elapsed = now - timer.startedAt;
-            const remaining = (timer.duration * 60 * 1000) - elapsed;
+            const remaining = (timer.duration * 1000) - elapsed;
             return this.formatTime(remaining);
         } else if (timer.status === 'finished') {
             // 显示负数（超出的时间），持续更新
             const now = Date.now();
             const elapsed = now - timer.startedAt;
-            const overTime = (timer.duration * 60 * 1000) - elapsed;
+            const overTime = (timer.duration * 1000) - elapsed;
             return this.formatTime(overTime);
         }
         return '00:00:00';
@@ -636,7 +648,8 @@ class CountdownManager {
         const title = document.getElementById('modalTitle');
         const nameInput = document.getElementById('timerName');
         const descInput = document.getElementById('timerDesc');
-        const durationInput = document.getElementById('timerDuration');
+        const minutesInput = document.getElementById('timerDurationMinutes');
+        const secondsInput = document.getElementById('timerDurationSeconds');
 
         this.currentEditId = timerId;
 
@@ -646,7 +659,10 @@ class CountdownManager {
             if (timer) {
                 nameInput.value = timer.name;
                 descInput.value = timer.desc || '';
-                durationInput.value = timer.duration;
+                // 将总秒数转换为分钟和秒
+                const totalSeconds = timer.duration;
+                minutesInput.value = Math.floor(totalSeconds / 60);
+                secondsInput.value = totalSeconds % 60;
                 this.selectColor(timer.color);
             }
         } else {
@@ -657,7 +673,8 @@ class CountdownManager {
             title.textContent = '新建倒计时';
             nameInput.value = '';
             descInput.value = '';
-            durationInput.value = '';
+            minutesInput.value = 25;
+            secondsInput.value = 0;
             this.selectColor('#3b82f6');
         }
 
@@ -684,7 +701,9 @@ class CountdownManager {
     saveTimer() {
         const name = document.getElementById('timerName').value.trim();
         const desc = document.getElementById('timerDesc').value.trim();
-        const duration = parseInt(document.getElementById('timerDuration').value);
+        const minutes = parseInt(document.getElementById('timerDurationMinutes').value) || 0;
+        const seconds = parseInt(document.getElementById('timerDurationSeconds').value) || 0;
+        const duration = minutes * 60 + seconds; // 转换为总秒数
 
         if (!name) {
             alert('请输入倒计时名称');
@@ -692,7 +711,7 @@ class CountdownManager {
         }
 
         if (!duration || duration < 1) {
-            alert('请输入有效的时长（至少1分钟）');
+            alert('请输入有效的时长（至少1秒）');
             return;
         }
 

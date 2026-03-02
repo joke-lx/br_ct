@@ -526,6 +526,31 @@ body {
     border-color: #3b82f6;
 }
 
+/* 时长输入组合 */
+.duration-inputs {
+    display: flex;
+    gap: 12px;
+}
+
+.duration-input-group {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.duration-input-group .form-input {
+    padding-right: 40px;
+}
+
+.duration-unit {
+    position: absolute;
+    right: 12px;
+    font-size: 13px;
+    color: #6c757d;
+    pointer-events: none;
+}
+
 .form-textarea {
     min-height: 80px;
     resize: vertical;
