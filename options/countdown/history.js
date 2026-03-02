@@ -7,6 +7,7 @@ class HistoryManager {
         this.filteredHistory = [];
         this.currentDeleteId = null;
         this.cloneData = null;
+        this.saveDebounce = null;
         this.init();
     }
 
@@ -17,6 +18,18 @@ class HistoryManager {
         if (Notification.permission === 'default') {
             Notification.requestPermission();
         }
+        // 启动定时刷新，每秒更新一次真实耗时
+        this.startRealtimeUpdate();
+    }
+
+    // 启动实时更新
+    startRealtimeUpdate() {
+        setInterval(() => {
+            // 只在有记录且页面可见时更新
+            if (this.history.length > 0 && !document.hidden) {
+                this.render();
+            }
+        }, 1000);
     }
 
     // 从 chrome.storage.sync 加载流水记录
@@ -170,58 +183,100 @@ class HistoryManager {
 
         emptyState.classList.remove('show');
 
-        list.innerHTML = this.filteredHistory.map(record => {
-            const formattedDate = this.formatDateTime(record.createdAt);
-            const realElapsed = this.formatElapsedTime(record.realElapsed);
-            const plannedElapsed = this.formatDuration(record.duration);
-            const accuracy = this.calculateAccuracy(record);
+        // 先获取当前运行中的计时器数据
+        chrome.storage.sync.get(['countdownTimers'], (result) => {
+            const timers = result.countdownTimers || [];
 
-            return `
-                <div class="record-card" style="--record-color: ${record.timerColor}" data-record-id="${record.id}">
-                    <div class="record-header">
-                        <div class="record-title">${this.escapeHtml(record.timerName)}</div>
-                        <div class="record-time">${formattedDate}</div>
-                    </div>
-                    ${record.timerDesc ? `<div class="record-desc">${this.escapeHtml(record.timerDesc)}</div>` : ''}
-                    <div class="record-stats">
-                        <div class="record-stat">
-                            <span class="record-stat-label">计划时长:</span>
-                            <span class="record-stat-value">${plannedElapsed}</span>
-                        </div>
-                        <div class="record-stat">
-                            <span class="record-stat-label">真实耗时:</span>
-                            <span class="record-stat-value highlight">${realElapsed}</span>
-                        </div>
-                        <div class="record-stat">
-                            <span class="record-stat-label">准确度:</span>
-                            <span class="record-stat-value">${accuracy}</span>
-                        </div>
-                    </div>
-                    <div class="record-actions">
-                        <button class="record-action-btn clone" data-id="${record.id}">📋 克隆创建时钟</button>
-                        <button class="record-action-btn delete" data-id="${record.id}">🗑️ 删除</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
+            list.innerHTML = this.filteredHistory.map(record => {
+                const formattedDate = this.formatDateTime(record.createdAt);
 
-        // 绑定按钮事件
-        list.querySelectorAll('.record-action-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = e.target.dataset.id;
-                if (e.target.classList.contains('clone')) {
-                    this.openCloneModal(id);
-                } else if (e.target.classList.contains('delete')) {
-                    this.openDeleteModal(id);
+                // 动态计算真实耗时
+                let realElapsed;
+                const timer = timers.find(t => t.id === record.timerId && (t.status === 'finished' || t.status === 'running'));
+                if (timer && timer.startedAt) {
+                    // 计时器还在运行或已结束，实时计算真实耗时
+                    realElapsed = Date.now() - timer.startedAt;
+                    // 实时更新流水记录
+                    this.updateRecordRealElapsed(record.id, realElapsed);
+                } else {
+                    // 使用已保存的值
+                    realElapsed = record.realElapsed || 0;
                 }
+
+                const realElapsedText = this.formatElapsedTime(realElapsed);
+                const plannedElapsed = this.formatDuration(record.duration);
+                const accuracy = this.calculateAccuracyWithValue(record.duration * 60 * 1000, realElapsed);
+                const isOvertime = realElapsed > record.duration * 60 * 1000;
+                const overtimeInfo = isOvertime ? this.formatOvertime(realElapsed, record.duration * 60 * 1000) : null;
+
+                return `
+                    <div class="record-card ${isOvertime ? 'overtime' : ''}" style="--record-color: ${record.timerColor}" data-record-id="${record.id}">
+                        <div class="record-header">
+                            <div class="record-title">${this.escapeHtml(record.timerName)}${isOvertime ? ' <span class="overtime-badge">⏰ 超时</span>' : ''}</div>
+                            <div class="record-time">${formattedDate}</div>
+                        </div>
+                        ${record.timerDesc ? `<div class="record-desc">${this.escapeHtml(record.timerDesc)}</div>` : ''}
+                        <div class="record-stats">
+                            <div class="record-stat">
+                                <span class="record-stat-label">计划时长:</span>
+                                <span class="record-stat-value">${plannedElapsed}</span>
+                            </div>
+                            <div class="record-stat">
+                                <span class="record-stat-label">真实耗时:</span>
+                                <span class="record-stat-value highlight ${isOvertime ? 'overtime-text' : ''}">${realElapsedText}</span>
+                            </div>
+                            ${overtimeInfo ? `
+                            <div class="record-stat">
+                                <span class="record-stat-label">超时时长:</span>
+                                <span class="record-stat-value overtime-text">${overtimeInfo}</span>
+                            </div>
+                            ` : ''}
+                            <div class="record-stat">
+                                <span class="record-stat-label">准确度:</span>
+                                <span class="record-stat-value">${accuracy}</span>
+                            </div>
+                        </div>
+                        <div class="record-actions">
+                            <button class="record-action-btn clone" data-id="${record.id}">📋 克隆创建时钟</button>
+                            <button class="record-action-btn delete" data-id="${record.id}">🗑️ 删除</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 绑定按钮事件
+            list.querySelectorAll('.record-action-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.target.dataset.id;
+                    if (e.target.classList.contains('clone')) {
+                        this.openCloneModal(id);
+                    } else if (e.target.classList.contains('delete')) {
+                        this.openDeleteModal(id);
+                    }
+                });
             });
         });
+    }
+
+    // 更新流水记录的真实耗时
+    updateRecordRealElapsed(recordId, realElapsed) {
+        const record = this.history.find(r => r.id === recordId);
+        if (record) {
+            record.realElapsed = realElapsed;
+            // 节流保存，避免频繁写入
+            if (!this.saveDebounce) {
+                this.saveDebounce = setTimeout(() => {
+                    this.saveHistory();
+                    this.saveDebounce = null;
+                }, 1000);
+            }
+        }
     }
 
     // 更新统计数据
     updateStats() {
         const totalCompletions = this.history.length;
-        const totalTime = this.history.reduce((sum, r) => sum + r.realElapsed, 0);
+        const totalTime = this.history.reduce((sum, r) => sum + (r.realElapsed || 0), 0);
 
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -348,16 +403,27 @@ class HistoryManager {
         URL.revokeObjectURL(url);
     }
 
-    // 计算准确度
+    // 计算准确度（使用 record 对象）
     calculateAccuracy(record) {
         const planned = record.duration * 60 * 1000;
-        const actual = record.realElapsed;
+        const actual = record.realElapsed || 0;
         const diff = Math.abs(actual - planned);
         const percent = Math.round((1 - diff / planned) * 100);
 
         if (percent >= 95) return '🎯 完美';
         if (percent >= 80) return '👍 准确';
-        if (percent >= 60) return '� 一般';
+        if (percent >= 60) return ' 一般';
+        return '⚠️ 偏差较大';
+    }
+
+    // 计算准确度（直接使用值）
+    calculateAccuracyWithValue(plannedMs, actualMs) {
+        const diff = Math.abs(actualMs - plannedMs);
+        const percent = Math.round((1 - diff / plannedMs) * 100);
+
+        if (percent >= 95) return '🎯 完美';
+        if (percent >= 80) return '👍 准确';
+        if (percent >= 60) return ' 一般';
         return '⚠️ 偏差较大';
     }
 
@@ -416,6 +482,12 @@ class HistoryManager {
             return `${hours}小时${mins}分钟`;
         }
         return `${mins}分钟`;
+    }
+
+    // 格式化超时时长
+    formatOvertime(realElapsed, plannedElapsed) {
+        const overtimeMs = realElapsed - plannedElapsed;
+        return '+' + this.formatElapsedTime(overtimeMs);
     }
 
     // HTML 转义

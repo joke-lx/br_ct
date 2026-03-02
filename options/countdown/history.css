@@ -210,6 +210,14 @@ body {
     overflow: hidden;
 }
 
+.record-card.overtime {
+    background: linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%);
+}
+
+.record-card.overtime::before {
+    background: linear-gradient(180deg, #ef4444, #f97316);
+}
+
 .record-card::before {
     content: '';
     position: absolute;
@@ -242,6 +250,25 @@ body {
 .record-time {
     font-size: 12px;
     color: #6c757d;
+}
+
+.overtime-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    color: white;
+    border-radius: 10px;
+    margin-left: 8px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.overtime-text {
+    color: #ef4444 !important;
 }
 
 .record-desc {

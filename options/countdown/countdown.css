@@ -117,6 +117,27 @@ body {
     min-height: 200px;
     display: flex;
     flex-direction: column;
+    cursor: grab;
+}
+
+.timer-card:active {
+    cursor: grabbing;
+}
+
+/* 拖拽时的样式 */
+.timer-card-ghost {
+    opacity: 0.4;
+    background: #f8f9fa;
+}
+
+.timer-card-chosen {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    transform: scale(1.02);
+    z-index: 100;
+}
+
+.timer-card-drag {
+    opacity: 0.8;
 }
 
 .timer-card::before {
@@ -486,6 +507,22 @@ body {
 
 .form-input:focus, .form-textarea:focus {
     outline: none;
+    border-color: #3b82f6;
+}
+
+/* 时长输入框滚轮提示 */
+.wheel-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: #6c757d;
+    margin-left: 8px;
+}
+
+.wheel-input {
+    cursor: ns-resize;
+}
+
+.wheel-input:hover {
     border-color: #3b82f6;
 }
 

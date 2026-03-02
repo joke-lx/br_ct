@@ -4,10 +4,12 @@ console.log("countdown.js loaded");
 class CountdownManager {
     constructor() {
         this.timers = [];
+        this.timerOrder = []; // 保存排序后的ID顺序
         this.currentEditId = null;
         this.currentDeleteId = null;
         this.selectedColor = '#3b82f6';
         this.timerIntervals = new Map(); // 存储每个计时器的 interval
+        this.sortableInstance = null; // SortableJS 实例
         this.init();
     }
 
@@ -20,8 +22,11 @@ class CountdownManager {
 
     // 从 chrome.storage.sync 加载倒计时
     loadTimers() {
-        chrome.storage.sync.get(['countdownTimers'], (result) => {
+        chrome.storage.sync.get(['countdownTimers', 'countdownTimerOrder'], (result) => {
             this.timers = result.countdownTimers || [];
+            this.timerOrder = result.countdownTimerOrder || [];
+            // 按保存的顺序排序计时器
+            this.sortTimersByOrder();
             // 恢复运行中的计时器
             this.restoreRunningTimers();
             this.render();
@@ -38,6 +43,63 @@ class CountdownManager {
         });
     }
 
+    // 保存排序顺序
+    saveTimerOrder() {
+        chrome.storage.sync.set({ countdownTimerOrder: this.timerOrder }, () => {
+            if (chrome.runtime.lastError) {
+                console.error('Failed to save timer order:', chrome.runtime.lastError);
+            }
+        });
+    }
+
+    // 按保存的顺序排序计时器
+    sortTimersByOrder() {
+        if (this.timerOrder.length === 0) return;
+
+        this.timers.sort((a, b) => {
+            const aIndex = this.timerOrder.indexOf(a.id);
+            const bIndex = this.timerOrder.indexOf(b.id);
+            // 如果ID不在顺序列表中，放到最后
+            const aOrder = aIndex === -1 ? 999 : aIndex;
+            const bOrder = bIndex === -1 ? 999 : bIndex;
+            return aOrder - bOrder;
+        });
+    }
+
+    // 初始化拖拽排序
+    initSortable() {
+        const grid = document.getElementById('countdownGrid');
+        if (!grid || typeof Sortable === 'undefined') return;
+
+        // 如果已存在实例，先销毁
+        if (this.sortableInstance) {
+            this.sortableInstance.destroy();
+        }
+
+        this.sortableInstance = Sortable.create(grid, {
+            animation: 200,
+            ghostClass: 'timer-card-ghost',
+            chosenClass: 'timer-card-chosen',
+            dragClass: 'timer-card-drag',
+            handle: '.timer-card', // 整个卡片都可拖拽
+            onEnd: (evt) => {
+                // 更新内部顺序
+                const newOrder = [];
+                const cards = grid.querySelectorAll('.timer-card');
+                cards.forEach(card => {
+                    newOrder.push(card.dataset.timerId);
+                });
+                this.timerOrder = newOrder;
+
+                // 更新 timers 数组顺序
+                this.sortTimersByOrder();
+
+                // 保存到 storage
+                this.saveTimerOrder();
+            }
+        });
+    }
+
     // 恢复运行中的计时器
     restoreRunningTimers() {
         const now = Date.now();
@@ -45,8 +107,8 @@ class CountdownManager {
             if (timer.status === 'running' && timer.startedAt) {
                 const elapsed = now - timer.startedAt;
                 const remaining = (timer.duration * 60 * 1000) - elapsed;
-                if (remaining <= 0) {
-                    // 已经过期
+                if (remaining <= 0 && !timer.notifiedAt) {
+                    // 已经过期但还未通知
                     this.finishTimer(timer.id);
                 }
             }
@@ -71,10 +133,18 @@ class CountdownManager {
                     const remaining = (timer.duration * 60 * 1000) - elapsed;
                     display.textContent = this.formatTime(remaining);
 
-                    // 检查是否结束
-                    if (remaining <= 0 && !timer.finishedAt) {
+                    // 检查是否结束（第一次到0时触发通知）
+                    if (remaining <= 0 && !timer.notifiedAt) {
                         this.finishTimer(timer.id);
                     }
+                }
+            } else if (timer.status === 'finished' && timer.startedAt) {
+                // finished 状态也继续更新显示（显示负数时间）
+                const display = document.querySelector(`[data-timer-id="${timer.id}"] .timer-display`);
+                if (display) {
+                    const elapsed = now - timer.startedAt;
+                    const remaining = (timer.duration * 60 * 1000) - elapsed;
+                    display.textContent = this.formatTime(remaining);
                 }
             }
         });
@@ -142,6 +212,18 @@ class CountdownManager {
             }
         });
 
+        // 时长输入框滚轮支持
+        const durationInput = document.getElementById('timerDuration');
+        durationInput.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const currentValue = parseInt(durationInput.value) || 0;
+            const delta = e.deltaY > 0 ? -1 : 1; // 向下滚动减少，向上滚动增加
+            const newValue = Math.max(1, currentValue + delta); // 最小值为1
+            durationInput.value = newValue;
+            // 触发 input 事件以便其他逻辑能感知到变化
+            durationInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }, { passive: false });
+
         // ESC 关闭弹窗
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -203,6 +285,9 @@ class CountdownManager {
 
         // 绑定卡片事件
         this.bindCardEvents();
+
+        // 初始化拖拽排序
+        this.initSortable();
     }
 
     // 绑定卡片事件
@@ -285,7 +370,7 @@ class CountdownManager {
             const remaining = (timer.duration * 60 * 1000) - elapsed;
             return this.formatTime(remaining);
         } else if (timer.status === 'finished') {
-            // 显示负数（超出的时间）
+            // 显示负数（超出的时间），持续更新
             const now = Date.now();
             const elapsed = now - timer.startedAt;
             const overTime = (timer.duration * 60 * 1000) - elapsed;
@@ -375,6 +460,7 @@ class CountdownManager {
         timer.startedAt = null;
         timer.pausedAt = null;
         timer.finishedAt = null;
+        timer.notifiedAt = null; // 清除通知标记
         this.saveTimers();
         this.render();
     }
@@ -388,29 +474,100 @@ class CountdownManager {
         timer.startedAt = Date.now();
         timer.pausedAt = null;
         timer.finishedAt = null;
+        timer.notifiedAt = null; // 清除通知标记，允许再次通知
         this.saveTimers();
         this.render();
     }
 
-    // 完成计时器
+    // 完成计时器（到0时不停止，只是记录并提醒）
     finishTimer(timerId) {
         const timer = this.timers.find(t => t.id === timerId);
         if (!timer) return;
 
-        timer.status = 'finished';
-        timer.finishedAt = Date.now();
+        // 只有第一次到0时才记录流水和发送通知
+        if (!timer.notifiedAt) {
+            timer.status = 'finished';
+            timer.finishedAt = Date.now();
+            timer.notifiedAt = Date.now(); // 记录已通知的时间
 
-        // 计算真实耗时
-        const realElapsed = timer.finishedAt - timer.startedAt;
+            // 计算真实耗时
+            const realElapsed = timer.finishedAt - timer.startedAt;
 
-        // 保存流水记录
-        this.saveHistoryRecord(timer, realElapsed);
+            // 保存流水记录
+            this.saveHistoryRecord(timer, realElapsed);
 
-        this.saveTimers();
-        this.render();
+            this.saveTimers();
+            this.render();
 
-        // 显示通知
-        this.showNotification(timer);
+            // 显示系统通知（更强提醒）
+            this.showSystemNotification(timer);
+
+            // 可选：播放提示音
+            this.playNotificationSound();
+        }
+    }
+
+    // 显示系统通知（更强的提醒）
+    showSystemNotification(timer) {
+        // 请求通知权限
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    this.createNotification(timer);
+                }
+            });
+        } else if (Notification.permission === 'granted') {
+            this.createNotification(timer);
+        }
+    }
+
+    // 创建通知对象
+    createNotification(timer) {
+        const notification = new Notification('⏰ 倒计时结束！', {
+            body: `${timer.name} 已到达设定时间！\n点击查看详情`,
+            icon: chrome.runtime.getURL('icons/icon128.png'),
+            badge: chrome.runtime.getURL('icons/icon48.png'),
+            tag: `countdown-${timer.id}`, // 相同tag的通知会替换之前的
+            requireInteraction: true, // 需要用户交互才会关闭
+            vibrate: [200, 100, 200], // 震动模式（支持的设备）
+            data: { timerId: timer.id }
+        });
+
+        // 点击通知时聚焦到窗口
+        notification.onclick = (event) => {
+            event.preventDefault();
+            window.focus();
+            notification.close();
+        };
+
+        // 30秒后自动关闭
+        setTimeout(() => {
+            notification.close();
+        }, 30000);
+    }
+
+    // 播放提示音
+    playNotificationSound() {
+        try {
+            // 使用 Web Audio API 播放简单的提示音
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800; // 频率
+            oscillator.type = 'sine'; // 波形
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        } catch (e) {
+            console.log('播放提示音失败:', e);
+        }
     }
 
     // 保存流水记录
