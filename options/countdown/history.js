@@ -203,11 +203,14 @@ class HistoryManager {
                     realElapsed = record.realElapsed || 0;
                 }
 
+                // 基于秒级别计算（四舍五入）
+                const realElapsedSeconds = Math.round(realElapsed / 1000);
                 const realElapsedText = this.formatElapsedTime(realElapsed);
                 const plannedElapsed = this.formatDuration(record.duration);
-                const accuracy = this.calculateAccuracyWithValue(record.duration * 1000, realElapsed);
-                const isOvertime = realElapsed > record.duration * 1000;
-                const overtimeInfo = isOvertime ? this.formatOvertime(realElapsed, record.duration * 1000) : null;
+                const accuracy = this.calculateAccuracyWithValue(record.duration, realElapsedSeconds);
+                const isOvertime = realElapsedSeconds > record.duration;
+                const overtimeSeconds = realElapsedSeconds - record.duration;
+                const overtimeInfo = isOvertime ? this.formatOvertimeSeconds(overtimeSeconds) : null;
 
                 return `
                     <div class="record-card ${isOvertime ? 'overtime' : ''}" style="--record-color: ${record.timerColor}" data-record-id="${record.id}">
@@ -405,10 +408,10 @@ class HistoryManager {
 
     // 计算准确度（使用 record 对象）
     calculateAccuracy(record) {
-        const planned = record.duration * 1000;
-        const actual = record.realElapsed || 0;
+        const planned = record.duration;
+        const actual = Math.round((record.realElapsed || 0) / 1000);
         const diff = Math.abs(actual - planned);
-        const percent = Math.round((1 - diff / planned) * 100);
+        const percent = planned > 0 ? Math.round((1 - diff / planned) * 100) : 100;
 
         if (percent >= 95) return '🎯 完美';
         if (percent >= 80) return '👍 准确';
@@ -417,9 +420,9 @@ class HistoryManager {
     }
 
     // 计算准确度（直接使用值）
-    calculateAccuracyWithValue(plannedMs, actualMs) {
-        const diff = Math.abs(actualMs - plannedMs);
-        const percent = Math.round((1 - diff / plannedMs) * 100);
+    calculateAccuracyWithValue(plannedSeconds, actualSeconds) {
+        const diff = Math.abs(actualSeconds - plannedSeconds);
+        const percent = plannedSeconds > 0 ? Math.round((1 - diff / plannedSeconds) * 100) : 100;
 
         if (percent >= 95) return '🎯 完美';
         if (percent >= 80) return '👍 准确';
@@ -449,10 +452,11 @@ class HistoryManager {
 
     // 格式化耗时
     formatElapsedTime(ms) {
-        const hours = Math.floor(ms / (1000 * 60 * 60));
-        const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((ms % (1000 * 60)) / 1000);
-        const milliseconds = ms % 1000;
+        // 四舍五入到秒
+        const totalSeconds = Math.round(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
 
         if (hours > 0) {
             return `${hours}时${minutes}分${seconds}秒`;
@@ -460,14 +464,7 @@ class HistoryManager {
         if (minutes > 0) {
             return `${minutes}分${seconds}秒`;
         }
-        if (seconds > 0) {
-            return `${seconds}秒`;
-        }
-        // 少于1秒时显示毫秒
-        if (milliseconds > 0) {
-            return `${milliseconds}毫秒`;
-        }
-        return '0秒';
+        return `${seconds}秒`;
     }
 
     // 格式化总时间
@@ -497,12 +494,20 @@ class HistoryManager {
     }
 
     // 格式化超时时长
+    // 基于秒的超时格式化（旧函数，保留兼容）
     formatOvertime(realElapsed, plannedElapsed) {
-        const overtimeMs = realElapsed - plannedElapsed;
-        const hours = Math.floor(overtimeMs / (1000 * 60 * 60));
-        const minutes = Math.floor((overtimeMs % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((overtimeMs % (1000 * 60)) / 1000);
-        const milliseconds = overtimeMs % 1000;
+        const realSeconds = Math.round(realElapsed / 1000);
+        const plannedSeconds = Math.round(plannedElapsed / 1000);
+        return this.formatOvertimeSeconds(realSeconds - plannedSeconds);
+    }
+
+    // 基于秒的超时格式化
+    formatOvertimeSeconds(overtimeSeconds) {
+        if (overtimeSeconds <= 0) return '+0秒';
+
+        const hours = Math.floor(overtimeSeconds / 3600);
+        const minutes = Math.floor((overtimeSeconds % 3600) / 60);
+        const seconds = overtimeSeconds % 60;
 
         if (hours > 0) {
             return `+${hours}时${minutes}分${seconds}秒`;
@@ -510,11 +515,7 @@ class HistoryManager {
         if (minutes > 0) {
             return `+${minutes}分${seconds}秒`;
         }
-        if (seconds > 0) {
-            return `+${seconds}秒`;
-        }
-        // 少于1秒时显示毫秒
-        return `+${milliseconds}毫秒`;
+        return `+${seconds}秒`;
     }
 
     // HTML 转义
