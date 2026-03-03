@@ -5,7 +5,7 @@
 
 // DOM 元素
 let selectionPromptInput, selectionStreamToggle, selectionThinkingToggle;
-let ocrPromptInput, ocrStreamToggle, ocrThinkingToggle;
+let ocrPromptInput, ocrStreamToggle, ocrThinkingToggle, ocrSilentModeToggle;
 let flowRateControl, flowRateSlider, flowRateValue, flowRateWarning;
 let ocrShortcutInput, clearOcrShortcutBtn;
 let favoritesShortcutInput, clearFavoritesShortcutBtn;
@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
   ocrPromptInput = document.getElementById('ocrPromptInput');
   ocrStreamToggle = document.getElementById('ocrStreamToggle');
   ocrThinkingToggle = document.getElementById('ocrThinkingToggle');
+  ocrSilentModeToggle = document.getElementById('ocrSilentModeToggle');
   flowRateControl = document.getElementById('flowRateControl');
   flowRateSlider = document.getElementById('flowRateSlider');
   flowRateValue = document.getElementById('flowRateValue');
@@ -74,6 +75,7 @@ function bindEvents() {
     updateFlowRateControlVisibility();
   });
   ocrThinkingToggle.addEventListener('change', saveOCRSettings);
+  ocrSilentModeToggle.addEventListener('change', saveOCRSettings);
 
   // 流速控制
   flowRateSlider.addEventListener('input', updateFlowRateDisplay);
@@ -121,6 +123,7 @@ function loadSettings() {
     ocrPromptInput.value = settings.ocrPrompt || '请识别图片中的所有文字内容';
     ocrStreamToggle.checked = settings.ocrStream || false;
     ocrThinkingToggle.checked = settings.ocrThinking || false;
+    ocrSilentModeToggle.checked = settings.ocrSilentMode || false;
     flowRateSlider.value = settings.flowRate || 3;
 
     updateFlowRateDisplay();
@@ -167,9 +170,11 @@ function saveOCRSettings() {
     settings.ocrPrompt = ocrPromptInput.value;
     settings.ocrStream = ocrStreamToggle.checked;
     settings.ocrThinking = ocrThinkingToggle.checked;
+    settings.ocrSilentMode = ocrSilentModeToggle.checked;
 
     chrome.storage.local.set({ 'translation.settings': settings }, () => {
       console.log('[Translation] OCR 设置已保存');
+      notifySettingsChanged();
     });
   });
 }
