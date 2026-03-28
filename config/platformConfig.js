@@ -82,6 +82,14 @@ export const PLATFORM_CONFIG = {
     color: '#000000',
     url: 'https://grok.com',
     defaultVisible: true
+  },
+  notionai: {
+    name: 'NotionAI',
+    icon: 'N',
+    shortIcon: 'N',
+    color: '#000000',
+    url: 'https://www.notion.so/chat',
+    defaultVisible: true
   }
 };
 
