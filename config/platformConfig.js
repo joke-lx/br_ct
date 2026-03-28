@@ -90,6 +90,14 @@ export const PLATFORM_CONFIG = {
     color: '#000000',
     url: 'https://www.notion.so/chat',
     defaultVisible: true
+  },
+  zai: {
+    name: 'Zai',
+    icon: 'Z',
+    shortIcon: 'Z',
+    color: '#8b5cf6',
+    url: 'https://chat.z.ai/',
+    defaultVisible: true
   }
 };
 
