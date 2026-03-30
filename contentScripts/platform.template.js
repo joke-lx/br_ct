@@ -7,6 +7,10 @@
  * 2. 根据平台特性调整 CLICK_MODE（普通平台用 'click'，GLM 用 'mouseup'）
  * 3. 修改选择器列表（inputSelectors 和 buttonSelectors）
  *
+ * 兜底机制：
+ * - 当选择器失败时，自动查找第一个可用的输入框/按钮
+ * - 无需复杂配置，开箱即用
+ *
  * 特殊场景处理：
  *
  * 【Slate/ProseMirror 等现代编辑器】
@@ -198,17 +202,17 @@ function findElementBySelectors(selectors) {
 }
 
 /**
- * 异步等待元素出现 - 支持超时和重试，超时后尝试智能发现
+ * 异步等待元素出现 - 支持超时和重试，超时后使用兜底机制
  * @param {Array<Object>} selectors - 选择器配置数组
  * @param {number} timeout - 超时时间（毫秒）
- * @param {boolean} enableSmartDiscovery - 是否启用智能发现作为后备（默认使用配置）
+ * @param {string} elementType - 元素类型 ('input' | 'button')
  * @returns {Promise<Element|null>} 找到的元素或超时后的 null
  */
-async function waitForElement(selectors, timeout, enableSmartDiscovery) {
+async function waitForElement(selectors, timeout, elementType = 'input') {
   const startTime = Date.now();
   const endTime = startTime + timeout;
   let attemptCount = 0;
-  const smartDiscovery = enableSmartDiscovery !== undefined ? enableSmartDiscovery : PLATFORM_CONFIG.enableSmartDiscovery;
+  const smartDiscovery = PLATFORM_CONFIG.enableSmartDiscovery;
 
   return new Promise((resolve) => {
     const checkElement = () => {
@@ -224,13 +228,16 @@ async function waitForElement(selectors, timeout, enableSmartDiscovery) {
       if (Date.now() >= endTime) {
         logWarning(`元素查找超时 (${timeout}ms)，共尝试 ${attemptCount} 次`);
 
-        // 尝试智能发现作为后备方案
+        // 尝试兜底机制
         if (smartDiscovery) {
-          logInfo("预定义选择器失败，启动智能元素发现...");
-          const smartElement = findInputElementIntelligently();
-          if (smartElement) {
-            logInfo("智能发现成功找到输入元素！");
-            resolve(smartElement);
+          logInfo("预定义选择器失败，启动兜底机制...");
+          const fallbackElement = elementType === 'button'
+            ? findButtonElementIntelligently()
+            : findInputElementIntelligently();
+
+          if (fallbackElement) {
+            logInfo("兜底机制成功找到元素！");
+            resolve(fallbackElement);
             return;
           }
         }
@@ -247,188 +254,84 @@ async function waitForElement(selectors, timeout, enableSmartDiscovery) {
 }
 
 // ==========================================================
-//                     智能元素发现（递归查找）
+//                     智能元素发现（兜底机制）
 // ==========================================================
 
 /**
- * 智能查找可输入元素 - 递归搜索页面中的可输入元素
- * 当预定义选择器失败时作为备用方案
- * @returns {Element|null} 找到的最可能的输入元素
+ * 兜底机制：查找第一个可用的输入元素
+ * 当预定义选择器失败时自动调用
+ * @returns {Element|null} 找到的第一个可输入元素
  */
 function findInputElementIntelligently() {
-  logInfo("启动智能元素发现，递归搜索可输入元素...");
+  logInfo("选择器失败，启动兜底机制查找输入元素...");
 
-  // 按优先级定义的候选元素查询
-  const candidates = [];
-
-  // 1. 查找所有可能的可输入元素
-  // 1.1 textarea 元素（最常见的聊天输入框）
-  const textareas = Array.from(document.querySelectorAll('textarea:not([readonly]):not([disabled])'));
-  for (const el of textareas) {
-    if (isElementVisible(el)) {
-      const score = scoreInputElement(el);
-      candidates.push({ element: el, score, type: 'textarea' });
-    }
-  }
-
-  // 1.2 contenteditable 元素（富文本编辑器）
-  const contentEditables = Array.from(document.querySelectorAll('[contenteditable="true"]:not([readonly])'));
-  for (const el of contentEditables) {
-    if (isElementVisible(el)) {
-      const score = scoreInputElement(el);
-      candidates.push({ element: el, score, type: 'contenteditable' });
-    }
-  }
-
-  // 1.3 input 元素（类型为 text, search, email 等）
-  const inputs = Array.from(document.querySelectorAll('input[type="text"]:not([readonly]):not([disabled]), input[type="search"]:not([readonly]):not([disabled]), input[type="email"]:not([readonly]):not([disabled]), input:not([type]):not([readonly]):not([disabled])'));
-  for (const el of inputs) {
-    if (isElementVisible(el)) {
-      const score = scoreInputElement(el);
-      candidates.push({ element: el, score, type: 'input' });
-    }
-  }
-
-  if (candidates.length === 0) {
-    logWarning("智能发现未找到可输入元素");
-    return null;
-  }
-
-  // 按得分排序，选择最佳候选
-  candidates.sort((a, b) => b.score - a.score);
-
-  const best = candidates[0];
-  logInfo(`智能发现找到输入元素: ${best.type}, 得分: ${best.score.toFixed(2)}`);
-
-  // 输出前3个候选元素供调试
-  if (candidates.length > 1) {
-    logInfo(`其他候选元素: ${candidates.slice(1, 4).map(c => `${c.type}(${c.score.toFixed(1)})`).join(', ')}`);
-  }
-
-  return best.element;
-}
-
-/**
- * 评估输入元素作为目标的可能性得分
- * @param {Element} element - 输入元素
- * @returns {number} 得分（0-100，越高越可能是目标）
- */
-function scoreInputElement(element) {
-  let score = 0;
-
-  // 获取元素位置信息
-  const rect = element.getBoundingClientRect();
-
-  // 1. 可见性得分 (0-30)
-  if (rect.width > 0 && rect.height > 0) {
-    // 元素在视口内
-    const isInViewport = (
-      rect.top >= 0 &&
-      rect.left >= 0 &&
-      rect.bottom <= window.innerHeight &&
-      rect.right <= window.innerWidth
-    );
-    if (isInViewport) score += 15;
-    else score += 5; // 部分可见
-
-    // 元素大小（聊天输入框通常较大）
-    const area = rect.width * rect.height;
-    if (area > 50000) score += 10;      // 大于 200x250
-    else if (area > 20000) score += 7;  // 大于 140x140
-    else if (area > 10000) score += 5;  // 大于 100x100
-    else if (area > 5000) score += 3;   // 大于 70x70
-  }
-
-  // 2. 位置得分 (0-25) - 越靠下越可能是聊天输入框
-  const windowHeight = window.innerHeight;
-  const relativeTop = rect.top / windowHeight;
-  if (relativeTop > 0.7) score += 15;   // 底部 30%
-  else if (relativeTop > 0.5) score += 10; // 下半部分
-  else if (relativeTop > 0.3) score += 5;  // 中下部
-
-  // 3. 标签类型得分 (0-20)
-  const tagName = element.tagName.toLowerCase();
-  if (tagName === 'textarea') score += 20;      // textarea 最可能是聊天输入
-  else if (element.isContentEditable) score += 15; // contenteditable 次之
-  else if (tagName === 'input') score += 5;    // input 可能是搜索框
-
-  // 4. 属性特征得分 (0-25)
-  const placeholder = (element.placeholder || '').toLowerCase();
-  const ariaLabel = (element.getAttribute('aria-label') || '').toLowerCase();
-  const className = (element.className || '').toLowerCase();
-  const id = (element.id || '').toLowerCase();
-
-  // 常见的聊天输入框特征
-  const chatKeywords = [
-    'message', 'prompt', 'input', 'chat', 'send', 'text',
-    '提问', '输入', '发送', '消息', '对话', '回答'
+  // 按优先级查找：textarea > contenteditable > input
+  const selectors = [
+    'textarea:not([readonly]):not([disabled])',
+    '[contenteditable="true"]:not([readonly])',
+    'input[type="text"]:not([readonly]):not([disabled])',
+    'input[type="search"]:not([readonly]):not([disabled])',
+    'input:not([type]):not([readonly]):not([disabled])'
   ];
 
-  const hasChatKeyword = chatKeywords.some(keyword =>
-    placeholder.includes(keyword) ||
-    ariaLabel.includes(keyword) ||
-    className.includes(keyword) ||
-    id.includes(keyword)
-  );
-
-  if (hasChatKeyword) score += 15;
-
-  // placeholder 存在（有 placeholder 更可能是用户输入区域）
-  if (placeholder) score += 5;
-
-  // 避免选择隐藏或极小的元素
-  if (rect.width < 50 || rect.height < 20) {
-    score -= 20;
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    if (element && isElementVisible(element)) {
+      logInfo(`兜底机制找到输入元素: ${selector}`);
+      return element;
+    }
   }
 
-  // 如果元素是只读或已禁用（应该在前面的过滤中排除，但双重保险）
-  if (element.readOnly || element.disabled) {
-    score -= 50;
-  }
-
-  return Math.max(0, score);
+  logWarning("兜底机制未找到任何可输入元素");
+  return null;
 }
 
 /**
- * 检查元素是否可见
+ * 兜底机制：查找第一个可用的按钮元素
+ * 当预定义选择器失败时自动调用
+ * @returns {Element|null} 找到的第一个可点击元素
+ */
+function findButtonElementIntelligently() {
+  logInfo("选择器失败，启动兜底机制查找按钮元素...");
+
+  // 按优先级查找：带发送相关属性的按钮 > 普通按钮
+  const selectors = [
+    'button[aria-label*="send" i], button[aria-label*="submit" i], button[aria-label*="发送" i], button[aria-label*="提交" i]',
+    'button:not([disabled])',
+    '[role="button"]:not([aria-disabled="true"])'
+  ];
+
+  for (const selector of selectors) {
+    const elements = document.querySelectorAll(selector);
+    for (const element of elements) {
+      if (isElementVisible(element)) {
+        logInfo(`兜底机制找到按钮元素: ${selector}`);
+        return element;
+      }
+    }
+  }
+
+  logWarning("兜底机制未找到任何可点击按钮");
+  return null;
+}
+
+/**
+ * 检查元素是否可见（简化版）
  * @param {Element} element - 要检查的元素
  * @returns {boolean} 是否可见
  */
 function isElementVisible(element) {
   if (!element) return false;
 
-  // 检查基本的显示属性
   const style = window.getComputedStyle(element);
   if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
     return false;
   }
 
-  // 检查是否在 DOM 中
-  if (!document.body.contains(element)) {
-    return false;
-  }
+  if (!document.body.contains(element)) return false;
 
-  // 检查尺寸
   const rect = element.getBoundingClientRect();
-  if (rect.width === 0 || rect.height === 0) {
-    return false;
-  }
-
-  // 检查是否被 overflow:hidden 遮挡
-  let parent = element.parentElement;
-  while (parent && parent !== document.body) {
-    const parentStyle = window.getComputedStyle(parent);
-    if (parentStyle.overflow === 'hidden' || parentStyle.overflow === 'auto') {
-      const parentRect = parent.getBoundingClientRect();
-      if (rect.bottom < parentRect.top || rect.top > parentRect.bottom ||
-          rect.right < parentRect.left || rect.left > parentRect.right) {
-        return false;
-      }
-    }
-    parent = parent.parentElement;
-  }
-
-  return true;
+  return rect.width > 0 && rect.height > 0;
 }
 
 // ==========================================================
@@ -977,7 +880,7 @@ async function sendChatMessage(message) {
 
     // 8. 查找发送按钮
     logInfo("正在查找发送按钮...");
-    const buttonElement = await waitForElement(BUTTON_SELECTORS, PLATFORM_CONFIG.elementTimeout);
+    const buttonElement = await waitForElement(BUTTON_SELECTORS, PLATFORM_CONFIG.elementTimeout, 'button');
     if (!buttonElement) {
       logError("未找到发送按钮");
       return false;
@@ -1124,9 +1027,9 @@ if (typeof window !== 'undefined') {
     // 查找工具
     findElementBySelectors,
     waitForElement,
-    findInputElementIntelligently,  // 智能发现功能
-    scoreInputElement,               // 评分功能
-    isElementVisible,                // 可见性检查
+    findInputElementIntelligently,   // 输入框兜底
+    findButtonElementIntelligently,  // 按钮兜底
+    isElementVisible,
 
     // 点击工具
     triggerClick,
@@ -1135,15 +1038,15 @@ if (typeof window !== 'undefined') {
 
     // 输入工具
     setInputValue,
-    simulateContenteditableInput,   // Contenteditable 特殊处理
-    inputWithBeforeInput,           // beforeinput 模式
-    inputWithTyping,                // 逐字符输入模式
-    inputDirectly,                  // 直接设置模式
+    simulateContenteditableInput,
+    inputWithBeforeInput,
+    inputWithTyping,
+    inputDirectly,
 
     // 其他工具
     activateInput,
     triggerInputEvents,
-    waitForButtonEnabled,           // 按钮启用等待
+    waitForButtonEnabled,
   };
   logInfo("调试工具已暴露到 window.__platformScript");
 }

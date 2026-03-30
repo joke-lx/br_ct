@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Bro Chat (AI Assistant) is a browser extension that provides a unified interface for interacting with multiple AI platforms. It automates message sending across different AI platforms by simulating user interactions, and provides various utility features including a circular navigation menu, backup system, function execution, translation/OCR, and video control capabilities.
 
-**Supported AI Platforms**: Yuanbao, Gemini, ChatGPT, Claude, Doubao, GLM, Tongyi, Google Studio
+**Supported AI Platforms**: Yuanbao, Gemini, ChatGPT, Claude, Doubao, GLM, Tongyi, Google Studio, Grok, Notion AI
 
 ## Development Commands
 
@@ -61,6 +61,9 @@ ext/
 ├── manifest.json                    # Manifest v3 configuration
 ├── background.js                    # Service worker entry point
 │
+├── config/                          # Unified configuration
+│   └── platformConfig.js            # Platform registry (add new platforms here)
+│
 ├── popup/                           # Extension popup UI
 │   ├── popup.html
 │   ├── popup/
@@ -91,6 +94,8 @@ ext/
 │   ├── yuanbao.js
 │   ├── tongyi.js
 │   ├── googlestudio.js
+│   ├── grok.js
+│   ├── notionai.js
 │   └── platform.template.js         # Template for new platforms
 │
 ├── backgroudtask/                   # Background service modules
@@ -433,39 +438,51 @@ The circular menu ([runjs/goto/goto.js](runjs/goto/goto.js)) provides:
 
 ### Adding a New AI Platform
 
-1. **Create Content Script** [contentScripts/{platform}.js](contentScripts/):
-   ```javascript
-   if (window.{platform}Injected) return;
-   window.{platform}Injected = true;
+**统一配置架构**: 所有平台配置集中在 [config/platformConfig.js](config/platformConfig.js)，添加新平台只需修改 2 个文件：
 
-   const SELECTORS = {
-     input: '//xpath_to_input',
-     sendButton: '//xpath_to_send_button'
-   };
+#### 步骤 1: 创建 Content Script
+复制 [contentScripts/platform.template.js](contentScripts/platform.template.js) 创建新文件 `contentScripts/{platform}.js`
 
-   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-     if (message.action === 'sendMessage') {
-       // Implementation using XPath selectors
-     }
-   });
-   ```
+```javascript
+// 修改平台配置
+const PLATFORM_CONFIG = {
+  name: 'YourPlatform',        // 平台名称
+  hostname: 'example.com',     // 域名检查
+  // ... 其他配置保持默认
+};
 
-2. **Update [ai_platform_processor.js](backgroudtask/ai_platform_processor.js)**:
-   ```javascript
-   export const platformUrls = {
-     // ...existing
-     '{platform}': 'https://{platform-domain}.com'
-   }
-   ```
+// 配置选择器
+const INPUT_SELECTORS = [
+  { type: 'css', value: 'your_input_selector' },
+];
 
-3. **Add to popup** [popup/popup.html](popup/popup.html):
-   ```html
-   <label class="platform-icon-option" data-platform-id="{platform}">
-     <input type="checkbox" data-platform="{platform}">
-     <div class="icon-wrapper">{icon}</div>
-     <div class="platform-label">{name}</div>
-   </label>
-   ```
+const BUTTON_SELECTORS = [
+  { type: 'css', value: 'your_button_selector' },
+];
+```
+
+#### 步骤 2: 更新平台配置
+在 [config/platformConfig.js](config/platformConfig.js) 中添加:
+
+```javascript
+export const PLATFORM_CONFIG = {
+  // ...existing platforms
+  yourplatform: {
+    name: 'YourPlatform',
+    icon: 'Y',
+    shortIcon: 'Y',
+    color: '#ff0000',
+    url: 'https://example.com',
+    defaultVisible: true
+  }
+};
+```
+
+#### 自动生效的模块（无需手动修改）:
+- ✅ Popup 平台选项 (动态从 PLATFORM_CONFIG 生成)
+- ✅ 设置页面平台列表
+- ✅ HTTP API 平台验证
+- ✅ AI 消息处理器
 
 ### Adding a New Function
 

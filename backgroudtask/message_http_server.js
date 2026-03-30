@@ -1,7 +1,13 @@
 /**
  * HTTP 消息发送服务器
  * 允许通过 HTTP 请求触发 AI 消息发送，无需使用 UI 界面
+ *
+ * 平台配置统一从 config/platformConfig.js 读取
+ * 添加新平台时只需修改 platformConfig.js，无需修改此文件
  */
+
+// 导入统一平台配置
+import { PLATFORM_CONFIG, getPlatformIds } from '../config/platformConfig.js';
 
 // 可配置的端口和域名
 const SERVER_PORT = 8902;
@@ -9,6 +15,28 @@ const SERVER_DOMAIN = 'localhost'; // 可以改为 '0.0.0.0' 允许外部访问
 
 // 消息发送 API 服务器
 let httpServer = null;
+
+/**
+ * 获取有效的平台 ID 列表
+ * 从 PLATFORM_CONFIG 动态读取，无需硬编码
+ */
+function getValidPlatformIds() {
+  return Object.keys(PLATFORM_CONFIG);
+}
+
+/**
+ * 获取平台列表（用于 API 响应）
+ * 从 PLATFORM_CONFIG 动态读取，无需硬编码
+ */
+function getPlatformsList() {
+  return Object.entries(PLATFORM_CONFIG).map(([platformId, config]) => ({
+    id: platformId,
+    name: config.name,
+    icon: config.icon,
+    color: config.color,
+    url: config.url
+  }));
+}
 
 /**
  * 启动 HTTP 消息服务器
@@ -106,8 +134,8 @@ async function handleSendMessage(request, sendResponse) {
     return;
   }
 
-  // 验证平台名称
-  const validPlatforms = ['yuanbao', 'gemini', 'chatgpt', 'claude', 'doubao', 'googlestudio', 'tongyi'];
+  // 验证平台名称（从 PLATFORM_CONFIG 动态读取）
+  const validPlatforms = getValidPlatformIds();
   const invalidPlatforms = platforms.filter(p => !validPlatforms.includes(p));
 
   if (invalidPlatforms.length > 0) {
@@ -180,17 +208,10 @@ async function handleSendMessage(request, sendResponse) {
 
 /**
  * 处理获取平台列表请求
+ * 从 PLATFORM_CONFIG 动态读取，无需硬编码
  */
 async function handleGetPlatforms(sendResponse) {
-  const platforms = [
-    { id: 'yuanbao', name: '元宝', icon: '元' },
-    { id: 'gemini', name: 'Gemini', icon: 'G' },
-    { id: 'chatgpt', name: 'ChatGPT', icon: 'C' },
-    { id: 'claude', name: 'Claude', icon: 'A' },
-    { id: 'doubao', name: '豆包', icon: '豆' },
-    { id: 'googlestudio', name: 'GAS', icon: 'GAS' },
-    { id: 'tongyi', name: '通义', icon: '通' }
-  ];
+  const platforms = getPlatformsList();
 
   sendResponse({
     success: true,

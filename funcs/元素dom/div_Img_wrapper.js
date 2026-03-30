@@ -1,4 +1,237 @@
-kont-size: 18px; font-weight: 600; margin: 0 0 16px 0; color: #212529;">资源嗅探结果</h2>';
+/**
+ * 实时资源选择器 (Resource Picker) 类。
+ * 将所有 UI 元素、状态和事件处理逻辑封装在一起，提高可维护性。
+ */
+class ResourcePicker {
+    constructor() {
+        this.isLocked = false;
+        this.currentElement = null;
+        this.htmlId = 'target-element-html-content';
+
+        // 1. UI 元素初始化
+        this.overlay = this._createOverlay();
+        this.tooltip = this._createTooltip();
+        this.container = this._createContainer();
+
+        // 2. 启动事件监听
+        this._startPicking();
+
+        console.log("实时资源嗅探已启动 (零资源时显示 HTML 结构)");
+        // 暴露清理方法，以便外部脚本可以停止工具
+        window.__pickerCleanup = this.cleanup.bind(this);
+    }
+
+    // --- 辅助 UI 创建方法 ---
+
+    _createOverlay() {
+        const overlay = document.createElement("div");
+        Object.assign(overlay.style, {
+            position: "absolute",
+            border: "2px solid #6c757d",
+            background: "rgba(108, 117, 125, 0.2)",
+            pointerEvents: "none",
+            zIndex: "999999",
+            transition: "all 0.15s ease-in-out"
+        });
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+
+    _createTooltip() {
+        const tooltip = document.createElement("div");
+        Object.assign(tooltip.style, {
+            position: "fixed",
+            background: "#212529",
+            color: "#f8f9fa",
+            fontSize: "12px",
+            padding: "6px 10px",
+            borderRadius: "6px",
+            zIndex: "1000000",
+            pointerEvents: "none",
+            fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
+            fontWeight: "500",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)"
+        });
+        document.body.appendChild(tooltip);
+        return tooltip;
+    }
+
+    _createContainer() {
+        const container = document.createElement("div");
+        Object.assign(container.style, {
+            position: "fixed",
+            top: "10px",
+            right: "10px",
+            width: "320px",
+            maxHeight: "90vh",
+            overflowY: "auto",
+            background: "#f8f9fa",
+            border: "1px solid #dee2e6",
+            borderRadius: "8px",
+            padding: "16px",
+            zIndex: "1000001",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
+            fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
+            fontSize: "14px",
+            color: "#212529",
+            display: "block",
+            userSelect: "text",
+            lineHeight: "1.5"
+        });
+        document.body.appendChild(container);
+        return container;
+    }
+
+    // --- 核心工具方法 ---
+
+    /**
+     * 将 URL 转换为绝对 URL 或处理 Data URI
+     */
+    _addResource(set, url) {
+        if (url && typeof url === 'string' && url.trim().length > 0) {
+            if (url.startsWith('data:')) {
+                const typeMatch = url.match(/^data:([^;,]+)/);
+                const type = typeMatch ? typeMatch[1] : 'unknown';
+                const sizeKB = Math.ceil((url.length * 0.75) / 1024);
+                set.add(`[DATA URI] Type: ${type}, Size: ${sizeKB} KB`);
+            } else {
+                set.add(new URL(url, window.location.href).href);
+            }
+        }
+    }
+
+    /**
+     * 嗅探当前元素及其子元素中的资源
+     */
+    _gatherResources(element) {
+        const resources = {
+            images: new Set(),
+            links: new Set(),
+            media: new Set(),
+            other: new Set()
+        };
+        if (!element) return { images: [], links: [], media: [], other: [] };
+
+        // 收集所有 IMG 元素 (包括自身)
+        const elementsToCheck = element.tagName === 'IMG' ? [element] : Array.from(element.querySelectorAll('img'));
+
+        elementsToCheck.forEach(img => {
+            this._addResource(resources.images, img.src);
+            if (img.srcset) {
+                img.srcset.split(',').forEach(part => {
+                    this._addResource(resources.images, part.trim().split(/\s+/)[0]);
+                });
+            }
+            const lazySrc = img.getAttribute('data-src') || img.getAttribute('data-original') || img.getAttribute('data-srcset');
+            if (lazySrc) {
+                if (lazySrc.includes(',')) {
+                    lazySrc.split(',').forEach(part => {
+                        this._addResource(resources.images, part.trim().split(/\s+/)[0]);
+                    });
+                } else {
+                    this._addResource(resources.images, lazySrc);
+                }
+            }
+        });
+
+        element.querySelectorAll('video, audio').forEach(media => {
+            this._addResource(resources.media, media.src);
+        });
+        element.querySelectorAll('source').forEach(source => {
+            if (source.type && source.type.startsWith('image/')) {
+                this._addResource(resources.images, source.srcset || source.src);
+            } else {
+                this._addResource(resources.media, source.src);
+            }
+        });
+
+        element.querySelectorAll('a[href]').forEach(a => {
+            this._addResource(resources.links, a.href);
+        });
+
+        element.querySelectorAll('link[href]').forEach(link => {
+            const rel = link.getAttribute('rel');
+            if (rel && (rel.includes('icon') || rel.includes('apple-touch-icon'))) {
+                this._addResource(resources.images, link.href);
+            } else if (rel && rel !== 'stylesheet') {
+                this._addResource(resources.other, `[LINK:${rel}] ${link.href}`);
+            }
+        });
+
+        return {
+            images: Array.from(resources.images),
+            links: Array.from(resources.links),
+            media: Array.from(resources.media),
+            other: Array.from(resources.other)
+        };
+    }
+
+    /**
+     * 检查资源是否为空
+     */
+    _hasNoResources(resources) {
+        return (
+            resources.images.length === 0 &&
+            resources.links.length === 0 &&
+            resources.media.length === 0 &&
+            resources.other.length === 0
+        );
+    }
+
+    /**
+     * 对 HTML 代码进行简单的格式化，以便于阅读
+     * 保持与原代码中格式化逻辑的一致性，使用四个空格缩进
+     */
+    _formatHTML(html) {
+        let result = '';
+        let indent = 0;
+        const INDENT_SPACES = '    '; 
+        
+        const tokens = html.match(/<(?:\w+|[^>]+)>/g) || [];
+        let lastIndex = 0;
+
+        tokens.forEach(token => {
+            const textContent = html.substring(lastIndex, html.indexOf(token, lastIndex)).trim();
+            if (textContent.length > 0) {
+                if (result.length > 0 && result.slice(-1) !== '\n') {
+                     result += '\n' + INDENT_SPACES.repeat(indent);
+                }
+                result += textContent;
+            }
+
+            if (token.startsWith('</')) { 
+                indent--;
+                result += '\n' + INDENT_SPACES.repeat(indent) + token;
+            } else if (token.endsWith('/>') || token.endsWith('-->')) { 
+                result += '\n' + INDENT_SPACES.repeat(indent) + token;
+            } else if (token.startsWith('<')) { 
+                if (result.length > 0 && !result.endsWith('\n')) {
+                    result += '\n';
+                }
+                result += INDENT_SPACES.repeat(indent) + token;
+                indent++;
+            }
+            lastIndex = html.indexOf(token, lastIndex) + token.length;
+        });
+        
+        const remainingText = html.substring(lastIndex).trim();
+        if (remainingText.length > 0) {
+             if (result.length > 0 && !result.endsWith('\n')) {
+                result += '\n' + INDENT_SPACES.repeat(indent);
+            }
+            result += remainingText;
+        }
+
+        return result.trim().replace(/\n\s*\n/g, '\n');
+    }
+
+    // --- UI 渲染方法 ---
+
+    /**
+     * 生成资源列表的 HTML 并更新容器 (预览模式)
+     */
+    _createResourceListHTML(resources) {
+        let html = '<h2 style="font-size: 18px; font-weightkont-size: 18px; font-weight: 600; margin: 0 0 16px 0; color: #212529;">资源嗅探结果</h2>';
 
         const buttonText = this.isLocked ? "✅ 已锁定 (点击解锁)" : "🖱️ 实时预览 (点击锁定)";
         const buttonStyle = this.isLocked ?
