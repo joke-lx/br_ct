@@ -468,6 +468,53 @@ _bindPathButtonEvent(element) {
 }
 
 /**
+ * 绑定快速复制全部路径按钮事件
+ * 格式: css:xxx;xpath:xxx;jsPath:xxx;fullXPath:xxx
+ */
+_bindCopyAllPathsEvent(element) {
+  const copyAllBtn = document.getElementById('copy-all-paths-btn');
+  if (!copyAllBtn) return;
+
+  copyAllBtn.onclick = () => {
+    const paths = this._generateSelectors(element);
+    // 格式化所有路径为 css:xxx;xpath:xxx;jsPath:xxx;fullXPath:xxx 格式
+    const allPathsText = `css:${paths.css};xpath:${paths.xpath};jsPath:${paths.jsPath};fullXPath:${paths.fullXPath}`;
+
+    navigator.clipboard.writeText(allPathsText).then(() => {
+      // 复制成功视觉反馈
+      const originalText = copyAllBtn.innerText;
+      const originalBg = copyAllBtn.style.background;
+      const originalBorder = copyAllBtn.style.borderColor;
+
+      copyAllBtn.innerText = "✓ 已复制全部路径";
+      copyAllBtn.style.background = '#218838';
+      copyAllBtn.style.borderColor = '#218838';
+
+      setTimeout(() => {
+        copyAllBtn.innerText = originalText;
+        copyAllBtn.style.background = originalBg;
+        copyAllBtn.style.borderColor = originalBorder;
+      }, 1500);
+    }).catch(err => {
+      // 复制失败视觉反馈
+      const originalText = copyAllBtn.innerText;
+      const originalBg = copyAllBtn.style.background;
+      const originalBorder = copyAllBtn.style.borderColor;
+
+      copyAllBtn.innerText = "✗ 复制失败";
+      copyAllBtn.style.background = '#c82333';
+      copyAllBtn.style.borderColor = '#c82333';
+
+      setTimeout(() => {
+        copyAllBtn.innerText = originalText;
+        copyAllBtn.style.background = originalBg;
+        copyAllBtn.style.borderColor = originalBorder;
+      }, 1500);
+    });
+  };
+}
+
+/**
  * HTML 转义函数：将特殊字符转换为文本实体，避免被解析为 HTML
  * @param {string} str - 需要转义的原始文本
  * @returns {string} 转义后的安全文本
@@ -498,6 +545,7 @@ _escapeHtml(str) {
     html += `<button id="toggle-resource-picker" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #6c757d; border-radius: 6px; cursor: pointer; background: #6c757d; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">✅ 已锁定 (点击解锁)</button>`;
     html += `<button id="close-all-picker" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #dc3545; border-radius: 6px; cursor: pointer; background: #dc3545; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">完全关闭</button>`;
     html += `<button id="get-paths-btn" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #17a2b8; border-radius: 6px; cursor: pointer; background: #17a2b8; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">获得多种可能路径</button>`;
+    html += `<button id="copy-all-paths-btn" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #28a745; border-radius: 6px; cursor: pointer; background: #28a745; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">📋 快速复制全部路径</button>`;
     html += `</div>`;
 
     // 总是显示资源列表（如果有资源的话）
@@ -554,6 +602,7 @@ _escapeHtml(str) {
     this._bindHtmlCollapseEvent();
     this._bindButtonEvents();
     this._bindPathButtonEvent(element);
+    this._bindCopyAllPathsEvent(element);
 }
 
 /**
