@@ -515,6 +515,53 @@ _bindPathButtonEvent(element) {
 }
 
 /**
+ * 绑定快速复制全部路径按钮事件
+ * 格式: css:xxx;xpath:xxx;jsPath:xxx;fullXPath:xxx
+ */
+_bindCopyAllPathsEvent(element) {
+  const copyAllBtn = document.getElementById('copy-all-paths-btn');
+  if (!copyAllBtn) return;
+
+  copyAllBtn.onclick = () => {
+    const paths = this._generateSelectors(element);
+    // 格式化所有路径为 css:xxx;xpath:xxx;jsPath:xxx;fullXPath:xxx 格式
+    const allPathsText = `css:${paths.css};xpath:${paths.xpath};jsPath:${paths.jsPath};fullXPath:${paths.fullXPath}`;
+
+    navigator.clipboard.writeText(allPathsText).then(() => {
+      // 复制成功视觉反馈
+      const originalText = copyAllBtn.innerText;
+      const originalBg = copyAllBtn.style.background;
+      const originalBorder = copyAllBtn.style.borderColor;
+
+      copyAllBtn.innerText = "✓ 已复制全部路径";
+      copyAllBtn.style.background = '#218838';
+      copyAllBtn.style.borderColor = '#218838';
+
+      setTimeout(() => {
+        copyAllBtn.innerText = originalText;
+        copyAllBtn.style.background = originalBg;
+        copyAllBtn.style.borderColor = originalBorder;
+      }, 1500);
+    }).catch(err => {
+      // 复制失败视觉反馈
+      const originalText = copyAllBtn.innerText;
+      const originalBg = copyAllBtn.style.background;
+      const originalBorder = copyAllBtn.style.borderColor;
+
+      copyAllBtn.innerText = "✗ 复制失败";
+      copyAllBtn.style.background = '#c82333';
+      copyAllBtn.style.borderColor = '#c82333';
+
+      setTimeout(() => {
+        copyAllBtn.innerText = originalText;
+        copyAllBtn.style.background = originalBg;
+        copyAllBtn.style.borderColor = originalBorder;
+      }, 1500);
+    });
+  };
+}
+
+/**
  * HTML 转义函数：将特殊字符转换为文本实体，避免被解析为 HTML
  * @param {string} str - 需要转义的原始文本
  * @returns {string} 转义后的安全文本

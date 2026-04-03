@@ -428,3 +428,48 @@
   z-index: 2147483646;
   cursor: crosshair;
 }
+
+/* ========== 静默模式指示灯样式 ========== */
+.ocr-silent-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ocr-status-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* 加载中 - 闪烁的黄色 */
+.ocr-status-light.status-loading {
+  background: #ffc107;
+  animation: ocr-pulse-yellow 1s ease-in-out infinite;
+}
+
+@keyframes ocr-pulse-yellow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px #ffc107; }
+  50% { opacity: 0.5; box-shadow: 0 0 8px #ffc107; }
+}
+
+/* 成功 - 绿色 */
+.ocr-status-light.status-success {
+  background: #28a745;
+  box-shadow: 0 0 6px #28a745;
+}
+
+/* 失败 - 红色 */
+.ocr-status-light.status-error {
+  background: #dc3545;
+  box-shadow: 0 0 6px #dc3545;
+}

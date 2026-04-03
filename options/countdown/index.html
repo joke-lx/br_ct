@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>倒计时面板</title>
     <link rel="stylesheet" href="countdown.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
     <div class="countdown-container">
@@ -54,8 +55,17 @@
                     <textarea id="timerDesc" class="form-textarea" placeholder="添加一些备注..."></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="timerDuration">时长（分钟）*</label>
-                    <input type="number" id="timerDuration" class="form-input" min="1" placeholder="例如：25">
+                    <label>时长 * <span class="wheel-hint">🖱️ 可用滚轮调整，按住Shift调整秒</span></label>
+                    <div class="duration-inputs">
+                        <div class="duration-input-group">
+                            <input type="number" id="timerDurationMinutes" class="form-input wheel-input" min="0" value="25" placeholder="分">
+                            <span class="duration-unit">分</span>
+                        </div>
+                        <div class="duration-input-group">
+                            <input type="number" id="timerDurationSeconds" class="form-input wheel-input" min="0" max="59" value="0" placeholder="秒">
+                            <span class="duration-unit">秒</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>主题色</label>
