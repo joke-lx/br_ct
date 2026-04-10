@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <title>AI Assistant - 多端AI调度工具</title>
     <!-- 引入外部CSS文件 -->
-    <link rel="stylesheet" href="./promots/promptsUI.css" />
-    <link rel="stylesheet" href="popup/popup.css" />
+    <link rel="stylesheet" href="./prompts/promptsUI.css" />
+    <link rel="stylesheet" href="main.css" />
   </head>
   <body>
     <!-- 标题容器：包含标题 + 横向目录 -->
@@ -13,9 +13,10 @@
       <h1>AI Assistant</h1>
       <!-- 横向展开目录：默认隐藏，hover标题时显示 -->
       <div class="header-nav-menu">
-        <a href="popup.html" class="header-nav-item active">主页</a>
-        <a href="./func_execute/functioncall.html" class="header-nav-item">函数库</a>
-        <a href="./translation/translation.html" class="header-nav-item">划词翻译</a>
+        <a href="main.html" class="header-nav-item active">主页</a>
+        <a href="../func_execute/functioncall.html" class="header-nav-item">函数库</a>
+        <a href="../translation/translation.html" class="header-nav-item">划词翻译</a>
+        <a href="../binddom/binddom.html" class="header-nav-item">快捷绑定</a>>
    
 
         <span id="open-options" class="header-nav-item">设置</span>
@@ -65,6 +66,6 @@
     </div>
 
     <!-- 脚本引用 -->
-    <script src="popup/popup.js" type="module"></script>
+    <script src="main.js" type="module"></script>
   </body>
 </html>

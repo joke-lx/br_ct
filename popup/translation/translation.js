@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function bindEvents() {
   // 返回按钮
   document.getElementById('back-to-popup').addEventListener('click', () => {
-    window.location.href = '../popup.html';
+    window.location.href = '../main/main.html';
   });
 
   // 划词翻译设置

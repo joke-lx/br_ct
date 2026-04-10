@@ -14,7 +14,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_popup": "popup/popup.html",
+    "default_popup": "popup/main/main.html",
     "default_title": "AI Assistant"
   },
   "options_ui": {
@@ -85,6 +85,7 @@
       "resources": [
         "contentScripts/*.js",
         "funcs/*.js",
+        "funcs/**/*.js",
         "runjs/*.js",
         "runjs/**/*.js",
         "runjs/**/*.css",

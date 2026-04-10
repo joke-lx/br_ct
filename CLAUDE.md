@@ -65,15 +65,24 @@ ext/
 │   └── platformConfig.js            # Platform registry (add new platforms here)
 │
 ├── popup/                           # Extension popup UI
-│   ├── popup.html
-│   ├── popup/
-│   │   ├── popup.js                 # Main popup logic
-│   │   ├── popupUtils.js            # Core utilities
-│   │   └── dragDropHandler.js       # Drag-drop input
-│   ├── promots/                     # Message templates
+│   ├── main/                        # Main popup module
+│   │   ├── main.html               # Entry point
+│   │   ├── main.js                 # Main popup logic
+│   │   ├── mainUtils.js            # Core utilities
+│   │   ├── main.css                # Styles
+│   │   ├── dragDropHandler.js       # Drag-drop input
+│   │   ├── platformRenderer.js      # Platform options renderer
+│   │   ├── modules/                 # Sub-modules
+│   │   │   ├── storage.js
+│   │   │   ├── platformVisibility.js
+│   │   │   └── uiHelpers.js
+│   │   └── prompts/                # Message templates
+│   │       ├── prompts.js
+│   │       ├── promptsUI.js
+│   │       └── groups/              # Prompt groups
 │   ├── func_execute/                # Function execution UI
 │   ├── translation/                 # Translation interface
-│   └── multpromots/                 # Multiple prompts interface
+│   └── binddom/                     # DOM binding UI
 │
 ├── options/                         # Settings pages (iframe-based multi-page)
 │   ├── options.html                 # Main settings wrapper with sidebar
@@ -656,7 +665,7 @@ Before committing changes:
 - [backgroudtask/func_executor.js](backgroudtask/func_executor.js) - Function executor
 - [backgroudtask/gotoServer.js](backgroudtask/gotoServer.js) - Navigation/menu server
 - [backgroudtask/backupService.js](backgroudtask/backupService.js) - Backup service
-- [popup/popup/popupUtils.js](popup/popup/popupUtils.js) - Popup core logic
+- [popup/main/mainUtils.js](popup/main/mainUtils.js) - Popup core logic
 - [runjs/goto/goto.js](runjs/goto/goto.js) - Circular menu
 - [contentScripts/platform.template.js](contentScripts/platform.template.js) - Platform template
 

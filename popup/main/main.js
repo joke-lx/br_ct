@@ -1,9 +1,9 @@
-// popup.js
+// main.js
 import {
   initializePopup,
   setupEventListeners,
   loadStoredData,
-} from "./popupUtils.js";
+} from "./mainUtils.js";
 import { setupDragDropEvents } from "./dragDropHandler.js";
 import { initializePlatformOptions } from "./platformRenderer.js";
 

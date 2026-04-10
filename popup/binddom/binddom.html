@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>快捷绑定设置</title>
+  <link rel="stylesheet" href="binddom.css">
+</head>
+<body>
+  <div class="binddom-container">
+    <!-- 标题容器 -->
+    <div class="header">
+      <h1 id="back-to-popup">‹ 快捷绑定</h1>
+    </div>
+
+    <div class="main-content">
+      <!-- 功能说明 -->
+      <div class="setting-section">
+        <div class="section-title">
+          <span>📌 功能说明</span>
+        </div>
+        <div class="info-box">
+          <p>将键盘快捷键绑定到特定页面上的元素，点击即可自动点击该元素。</p>
+          <p>支持多个 URL 共享同一个快捷键，每个 URL 可绑定多个元素。</p>
+        </div>
+      </div>
+
+      <!-- 快捷键设置 -->
+      <div class="setting-section">
+        <div class="section-title">
+          <span>⌨️ 快捷键设置</span>
+        </div>
+        <div class="setting-item">
+          <label class="setting-label">绑定快捷键</label>
+          <div class="shortcut-input-wrapper">
+            <input
+              type="text"
+              id="binddomShortcutInput"
+              class="shortcut-input"
+              placeholder="点击设置快捷键..."
+              readonly
+            >
+            <button id="clearBinddomShortcutBtn" class="shortcut-clear-btn" title="清除快捷键">✕</button>
+          </div>
+          <small class="setting-hint">
+            按下组合键（如 Ctrl+B）绑定元素，按 Esc 取消拾取
+          </small>
+        </div>
+      </div>
+
+      <!-- 当前绑定列表 -->
+      <div class="setting-section">
+        <div class="section-title">
+          <span>🔗 当前绑定</span>
+          <button id="addBindingBtn" class="add-btn">+ 添加绑定</button>
+        </div>
+        <div id="bindingsList" class="bindings-list">
+          <!-- 动态生成绑定列表 -->
+        </div>
+        <div id="emptyState" class="empty-state">
+          <p>暂无绑定</p>
+          <small>点击上方「添加绑定」开始创建</small>
+        </div>
+      </div>
+
+      <!-- 添加/编辑绑定弹窗 -->
+      <div id="bindingModal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 id="modalTitle">添加绑定</h2>
+            <button id="closeModalBtn" class="close-modal-btn">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="setting-item">
+              <label class="setting-label">目标 URL</label>
+              <input
+                type="text"
+                id="bindingUrlInput"
+                class="setting-input"
+                placeholder="https://example.com/page"
+              >
+              <small class="setting-hint">支持完整 URL 或仅域名（如 github.com）</small>
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">选择器</label>
+              <div class="selector-input-wrapper">
+                <input
+                  type="text"
+                  id="bindingSelectorInput"
+                  class="setting-input"
+                  placeholder="点击「拾取元素」按钮后在页面上选择"
+                  readonly
+                >
+                <button id="pickElementBtn" class="pick-btn">🎯 拾取元素</button>
+              </div>
+              <small class="setting-hint">使用元素选择器定位目标元素</small>
+            </div>
+            <div class="setting-item">
+              <label class="setting-label">描述（可选）</label>
+              <input
+                type="text"
+                id="bindingDescInput"
+                class="setting-input"
+                placeholder="如：关闭按钮、提交表单"
+              >
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button id="cancelBindingBtn" class="cancel-btn">取消</button>
+            <button id="saveBindingBtn" class="save-btn">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部按钮 -->
+    <div class="footer">
+      <button id="executeBindingBtn" class="footer-btn primary">🚀 执行绑定</button>
+      <div class="footer-info">
+        <span id="statusText">就绪</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="binddom.js" type="module"></script>
+</body>
+</html>

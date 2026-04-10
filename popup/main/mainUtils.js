@@ -1,6 +1,6 @@
-// popupUtils.js - 核心popup功能模块
-import { populateOptimizer } from "../promots/promptsUI.js";
-import { PROMPT_TEMPLATES } from "../promots/prompts.js";
+// mainUtils.js - 核心popup功能模块
+import { populateOptimizer } from "./prompts/promptsUI.js";
+import { PROMPT_TEMPLATES } from "./prompts/prompts.js";
 import {
   STORAGE_KEYS,
   saveMessageContent,

@@ -83,6 +83,12 @@ export function setupMessageListener() {
       executeFunctionScript(request.file, sendResponse);
       return true;
     }
+
+    // BindDom: 执行绑定点击
+    if (request.action === "binddom.executeClick") {
+      executeFunctionScript("元素dom/binddom/binddom_wrapper.js", sendResponse);
+      return true;
+    }
   });
 }
 
