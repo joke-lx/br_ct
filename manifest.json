@@ -52,6 +52,10 @@
     "copy_file": {
       "suggested_key": { "default": "Alt+F" },
       "description": "获得剪切板内容保存为文件"
+    },
+    "binddom_execute": {
+      "suggested_key": { "default": "Alt+B" },
+      "description": "执行 BindDom 绑定点击"
     }
   },
   "content_scripts": [

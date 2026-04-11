@@ -4,7 +4,6 @@
 
 // Storage keys
 const CONFIG_KEY = 'binddom.bindings';
-const SHORTCUT_KEY = 'binddom.shortcut';
 
 // DOM 元素
 let bindingsList, emptyState, statusText;
@@ -63,11 +62,7 @@ function bindEvents() {
   // 拾取元素 - 注入 picker.js
   document.getElementById('pickBtn').addEventListener('click', togglePick);
 
-  // 快捷键设置
-  document.getElementById('shortcutInput').addEventListener('click', startRecord);
-  document.getElementById('clearShortcut').addEventListener('click', clearShortcut);
-
-  // 执行绑定 - 注入 binddom.js
+  // 执行绑定 - 使用 background 处理
   document.getElementById('executeBtn').addEventListener('click', executeOnCurrentPage);
 
   // 输入验证
@@ -82,10 +77,9 @@ function validateForm() {
 // ==================== 数据操作 ====================
 
 function loadData() {
-  chrome.storage.local.get([CONFIG_KEY, SHORTCUT_KEY], (r) => {
+  chrome.storage.local.get(CONFIG_KEY, (r) => {
     currentBindings = r[CONFIG_KEY] || [];
     renderBindings();
-    if (r[SHORTCUT_KEY]) loadShortcut(r[SHORTCUT_KEY]);
   });
 }
 
@@ -111,11 +105,20 @@ function renderBindings() {
       </div>
       <div class="binding-selector">${escapeHtml(b.selector)}</div>
       <div class="binding-actions">
-        <button onclick="editBinding(${i})">✏️</button>
-        <button onclick="deleteBinding(${i})">🗑️</button>
+        <button data-bindex="edit:${i}">✏️</button>
+        <button data-bindex="delete:${i}">🗑️</button>
       </div>
     </div>
   `).join('');
+
+  // 事件委托
+  bindingsList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-bindex]');
+    if (!btn) return;
+    const [action, index] = btn.dataset.bindex.split(':');
+    if (action === 'edit') editBinding(parseInt(index));
+    if (action === 'delete') deleteBinding(parseInt(index));
+  });
 }
 
 function escapeHtml(s) {
@@ -170,7 +173,7 @@ function saveBinding() {
   setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
 }
 
-window.editBinding = function(i) {
+function editBinding(i) {
   editingIndex = i;
   const binding = currentBindings[i];
   document.getElementById('modalTitle').textContent = '编辑绑定';
@@ -179,9 +182,9 @@ window.editBinding = function(i) {
   descInput.value = binding.desc || '';
   modal.style.display = 'flex';
   saveBtn.disabled = true;
-};
+}
 
-window.deleteBinding = function(i) {
+function deleteBinding(i) {
   if (confirm('确定删除？')) {
     currentBindings.splice(i, 1);
     saveData();
@@ -189,7 +192,7 @@ window.deleteBinding = function(i) {
     statusText.textContent = '✓ 已删除';
     setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
   }
-};
+}
 
 // ==================== 元素拾取（注入 picker.js） ====================
 
@@ -349,112 +352,17 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// ==================== 快捷键 ====================
-
-let isRecording = false;
-
-function startRecord() {
-  if (isRecording) return;
-  isRecording = true;
-
-  const input = document.getElementById('shortcutInput');
-  input.value = '请按下快捷键...';
-  input.classList.add('recording');
-
-  const onKey = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const mods = [];
-    if (e.ctrlKey) mods.push('Ctrl');
-    if (e.altKey) mods.push('Alt');
-    if (e.shiftKey) mods.push('Shift');
-    if (e.metaKey) mods.push('Meta');
-
-    if (mods.length === 0) return;
-
-    // 如果只按了修饰键（如 Ctrl、Alt），不保存
-    const isModifierOnly = ['Control', 'Alt', 'Shift', 'Meta'].includes(e.key);
-    if (isModifierOnly && mods.length === 1) return;
-
-    const key = isModifierOnly ? '' : e.key;
-    const shortcut = { ctrlKey: e.ctrlKey, altKey: e.altKey, shiftKey: e.shiftKey, metaKey: e.metaKey, key };
-
-    chrome.storage.local.set({ [SHORTCUT_KEY]: shortcut }, () => {
-      const display = key ? mods.join('+') + '+' + key : mods.join('+');
-      input.value = display;
-      statusText.textContent = '✓ 快捷键已设置';
-      setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
-    });
-
-    finishRecord();
-  };
-
-  const finishRecord = () => {
-    isRecording = false;
-    input.classList.remove('recording');
-    document.removeEventListener('keydown', onKey);
-    input.removeEventListener('blur', finishRecord);
-  };
-
-  document.addEventListener('keydown', onKey);
-  input.addEventListener('blur', finishRecord, { once: true });
-}
-
-function loadShortcut(shortcut) {
-  const parts = [];
-  if (shortcut.ctrlKey) parts.push('Ctrl');
-  if (shortcut.altKey) parts.push('Alt');
-  if (shortcut.shiftKey) parts.push('Shift');
-  if (shortcut.metaKey) parts.push('Meta');
-  // 排除修饰键作为最终按键
-  if (shortcut.key && !['Control', 'Alt', 'Shift', 'Meta'].includes(shortcut.key)) {
-    parts.push(shortcut.key);
-  }
-  document.getElementById('shortcutInput').value = parts.join('+');
-}
-
-function clearShortcut() {
-  chrome.storage.local.remove(SHORTCUT_KEY);
-  document.getElementById('shortcutInput').value = '';
-  statusText.textContent = '✓ 已清除快捷键';
-  setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
-}
-
-// ==================== 执行绑定（注入 binddom.js） ====================
+// ==================== 执行绑定 ====================
 
 function executeOnCurrentPage() {
   statusText.textContent = '正在执行...';
 
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (!tabs[0]) {
-      statusText.textContent = '未找到活动标签页';
-      return;
+  chrome.runtime.sendMessage({ action: 'binddom.executeClick' }, (response) => {
+    if (response && response.success) {
+      statusText.textContent = '✓ 执行成功';
+    } else {
+      statusText.textContent = response?.message || '✗ 执行失败';
     }
-
-    // 注入运行时脚本
-    chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
-      files: ['runjs/binddom/binddom.js']
-    }, (results) => {
-      if (chrome.runtime.lastError) {
-        statusText.textContent = '注入失败';
-        setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
-        return;
-      }
-
-      // 触发执行
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'binddom.execute' }, (response) => {
-        if (response && response.success) {
-          statusText.textContent = '✓ 执行成功';
-        } else {
-          statusText.textContent = '✗ 未找到匹配绑定';
-        }
-        setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
-      }).catch(() => {
-        statusText.textContent = '✗ 执行失败';
-        setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
-      });
-    });
+    setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
   });
 }

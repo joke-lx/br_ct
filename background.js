@@ -11,6 +11,7 @@ import { startServer } from './backgroudtask/word_http_server.js';
 import { init as initVideoPlaneServer } from './backgroudtask/video_plane_server.js';
 import { initBackupService, setupBackupMessageListener } from './backgroudtask/backupService.js';
 import { setupTranslationModule } from './backgroudtask/translation/index.js';
+import { setupBinddomCommandListener, setupBinddomMessageListener } from './backgroudtask/binddom/index.js';
 
 // 初始化标签页更新监听器
 setupTabUpdateListener();
@@ -43,3 +44,8 @@ setupBackupMessageListener();
 
 // 初始化翻译/OCR模块
 setupTranslationModule();
+
+// 初始化 BindDom 模块
+setupBinddomCommandListener();
+setupBinddomMessageListener();
+console.log('[Background] BindDom 模块初始化完成');
