@@ -11,6 +11,11 @@ export const OCR_MENU_ID = 'translationOCR';
  * 创建右键菜单项
  */
 function createContextMenus() {
+  // 先删除已存在的菜单（如果存在）
+  chrome.contextMenus.remove(MENU_ID, () => {});
+  chrome.contextMenus.remove(OCR_MENU_ID, () => {});
+
+  // 创建新菜单
   chrome.contextMenus.create({
     id: MENU_ID,
     title: '📝 翻译 "%s"',
@@ -78,9 +83,23 @@ function handleContextMenuClick(info, tab) {
 /**
  * 初始化右键菜单模块
  */
+let contextMenuSetup = false;
+
 export function setupContextMenu() {
+  if (contextMenuSetup) {
+    return;
+  }
+  contextMenuSetup = true;
+
   // 监听扩展安装事件，创建右键菜单
-  chrome.runtime.onInstalled.addListener(createContextMenus);
+  chrome.runtime.onInstalled.addListener(() => {
+    // 使用 try-catch 避免重复创建错误
+    try {
+      createContextMenus();
+    } catch (e) {
+      // 忽略重复创建错误
+    }
+  });
 
   // 监听右键菜单点击事件
   chrome.contextMenus.onClicked.addListener(handleContextMenuClick);

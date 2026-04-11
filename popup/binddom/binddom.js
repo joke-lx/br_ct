@@ -1,204 +1,97 @@
 /**
- * 快捷绑定设置页面
- * 管理 URL → 选择器 的快捷键绑定
+ * BindDom 设置页面 - 中控台
  */
 
-// Storage key
-const STORAGE_KEY = 'binddom.config';
+// Storage keys
+const CONFIG_KEY = 'binddom.bindings';
+const SHORTCUT_KEY = 'binddom.shortcut';
 
 // DOM 元素
-let binddomShortcutInput, clearBinddomShortcutBtn;
-let bindingsList, emptyState, addBindingBtn;
-let bindingModal, modalTitle;
-let bindingUrlInput, bindingSelectorInput, bindingDescInput;
-let pickElementBtn, saveBindingBtn, cancelBindingBtn, closeModalBtn;
-let statusText;
+let bindingsList, emptyState, statusText;
+let modal, urlInput, selectorInput, descInput, saveBtn;
 
 // 状态
-let isRecordingShortcut = false;
-let isPickingElement = false;
 let currentBindings = [];
 let editingIndex = null;
+let isPicking = false;
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
+  // 重置状态，允许处理 pending 数据
+  pendingProcessed = false;
+  lastPendingTimestamp = 0;
+
   initElements();
-  loadConfig();
+  loadData();
   bindEvents();
+  startPolling(); // 开始轮询检查 pending 数据
 });
 
-// 获取 DOM 元素
 function initElements() {
-  binddomShortcutInput = document.getElementById('binddomShortcutInput');
-  clearBinddomShortcutBtn = document.getElementById('clearBinddomShortcutBtn');
   bindingsList = document.getElementById('bindingsList');
   emptyState = document.getElementById('emptyState');
-  addBindingBtn = document.getElementById('addBindingBtn');
-  bindingModal = document.getElementById('bindingModal');
-  modalTitle = document.getElementById('modalTitle');
-  bindingUrlInput = document.getElementById('bindingUrlInput');
-  bindingSelectorInput = document.getElementById('bindingSelectorInput');
-  bindingDescInput = document.getElementById('bindingDescInput');
-  pickElementBtn = document.getElementById('pickElementBtn');
-  saveBindingBtn = document.getElementById('saveBindingBtn');
-  cancelBindingBtn = document.getElementById('cancelBindingBtn');
-  closeModalBtn = document.getElementById('closeModalBtn');
   statusText = document.getElementById('statusText');
+  modal = document.getElementById('bindingModal');
+  urlInput = document.getElementById('bindingUrlInput');
+  selectorInput = document.getElementById('bindingSelectorInput');
+  descInput = document.getElementById('bindingDescInput');
+  saveBtn = document.getElementById('saveBindingBtn');
 }
 
-// 绑定事件
 function bindEvents() {
   // 返回
-  document.getElementById('back-to-popup').addEventListener('click', () => {
+  document.getElementById('back').addEventListener('click', () => {
     window.location.href = '../main/main.html';
   });
 
-  // 快捷键设置
-  binddomShortcutInput.addEventListener('click', startShortcutRecording);
-  clearBinddomShortcutBtn.addEventListener('click', clearShortcut);
+  // 手动添加
+  document.getElementById('addBtnManual').addEventListener('click', () => openModal(false));
 
-  // 添加绑定
-  addBindingBtn.addEventListener('click', () => openModal());
+  // 拾取器添加 - 直接启动拾取器，popup 可以关闭
+  document.getElementById('addBtnPicker').addEventListener('click', () => {
+    // 直接启动拾取器
+    startPick();
+    // 关闭 popup（拾取器在页面中独立运行）
+    window.close();
+  });
 
   // 弹窗按钮
-  closeModalBtn.addEventListener('click', closeModal);
-  cancelBindingBtn.addEventListener('click', closeModal);
-  saveBindingBtn.addEventListener('click', saveBinding);
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  document.getElementById('cancelBtn').addEventListener('click', closeModal);
+  saveBtn.addEventListener('click', saveBinding);
 
-  // 拾取元素
-  pickElementBtn.addEventListener('click', startElementPicking);
+  // 拾取元素 - 注入 picker.js
+  document.getElementById('pickBtn').addEventListener('click', togglePick);
 
-  // 执行绑定
-  document.getElementById('executeBindingBtn').addEventListener('click', executeBinding);
+  // 快捷键设置
+  document.getElementById('shortcutInput').addEventListener('click', startRecord);
+  document.getElementById('clearShortcut').addEventListener('click', clearShortcut);
 
-  // 点击空白关闭弹窗
-  bindingModal.addEventListener('click', (e) => {
-    if (e.target === bindingModal) closeModal();
-  });
+  // 执行绑定 - 注入 binddom.js
+  document.getElementById('executeBtn').addEventListener('click', executeOnCurrentPage);
 
-  // 监听来自 content script 的拾取结果
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'binddom.elementPicked') {
-      handleElementPicked(request.selector);
-    }
-    if (request.action === 'binddom.triggerResult') {
-      handleTriggerResult(request.success);
-    }
-  });
+  // 输入验证
+  urlInput.addEventListener('input', validateForm);
+  selectorInput.addEventListener('input', validateForm);
 }
 
-// ==================== 快捷键相关 ====================
-
-function startShortcutRecording() {
-  if (isRecordingShortcut) return;
-
-  isRecordingShortcut = true;
-  binddomShortcutInput.classList.add('recording');
-  binddomShortcutInput.value = '请按下快捷键组合...';
-
-  document.addEventListener('keydown', recordShortcut);
-  document.addEventListener('keyup', finishShortcutRecording);
+function validateForm() {
+  saveBtn.disabled = !urlInput.value.trim() || !selectorInput.value.trim();
 }
 
-function recordShortcut(e) {
-  e.preventDefault();
-  e.stopPropagation();
+// ==================== 数据操作 ====================
 
-  const modifiers = [];
-  if (e.ctrlKey) modifiers.push('Ctrl');
-  if (e.altKey) modifiers.push('Alt');
-  if (e.shiftKey) modifiers.push('Shift');
-  if (e.metaKey) modifiers.push('Meta');
-
-  const mainKey = e.key;
-
-  if (modifiers.length === 0) {
-    binddomShortcutInput.value = '请至少按下一个修饰键 (Ctrl/Alt/Shift/Meta)';
-    return;
-  }
-
-  const shortcutString = [...modifiers, mainKey].join('+');
-  binddomShortcutInput.value = shortcutString;
-}
-
-function finishShortcutRecording(e) {
-  e.preventDefault();
-  e.stopPropagation();
-
-  isRecordingShortcut = false;
-  binddomShortcutInput.classList.remove('recording');
-
-  document.removeEventListener('keydown', recordShortcut);
-  document.removeEventListener('keyup', finishShortcutRecording);
-
-  const shortcutString = binddomShortcutInput.value;
-  if (!shortcutString || shortcutString.includes('请按下')) {
-    return;
-  }
-
-  // 保存快捷键
-  const shortcut = parseShortcutString(shortcutString);
-  saveShortcut(shortcut);
-
-  statusText.textContent = '快捷键已设置';
-  setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
-}
-
-function parseShortcutString(shortcutString) {
-  const parts = shortcutString.split('+');
-  return {
-    ctrlKey: parts.includes('Ctrl'),
-    altKey: parts.includes('Alt'),
-    shiftKey: parts.includes('Shift'),
-    metaKey: parts.includes('Meta'),
-    key: parts[parts.length - 1]
-  };
-}
-
-function saveShortcut(shortcut) {
-  chrome.storage.local.set({ 'binddom.shortcut': shortcut }, () => {
-    console.log('[BindDom] 快捷键已保存:', shortcut);
-    notifyAllTabs();
-  });
-}
-
-function loadShortcut() {
-  chrome.storage.local.get(['binddom.shortcut'], (result) => {
-    if (result['binddom.shortcut']) {
-      const shortcut = result['binddom.shortcut'];
-      const parts = [];
-      if (shortcut.ctrlKey) parts.push('Ctrl');
-      if (shortcut.altKey) parts.push('Alt');
-      if (shortcut.shiftKey) parts.push('Shift');
-      if (shortcut.metaKey) parts.push('Meta');
-      parts.push(shortcut.key);
-      binddomShortcutInput.value = parts.join('+');
-    }
-  });
-}
-
-function clearShortcut() {
-  chrome.storage.local.remove('binddom.shortcut');
-  binddomShortcutInput.value = '';
-  notifyAllTabs();
-  statusText.textContent = '快捷键已清除';
-  setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
-}
-
-// ==================== 绑定列表相关 ====================
-
-function loadConfig() {
-  chrome.storage.local.get([STORAGE_KEY], (result) => {
-    currentBindings = result[STORAGE_KEY] || [];
+function loadData() {
+  chrome.storage.local.get([CONFIG_KEY, SHORTCUT_KEY], (r) => {
+    currentBindings = r[CONFIG_KEY] || [];
     renderBindings();
-    loadShortcut();
+    if (r[SHORTCUT_KEY]) loadShortcut(r[SHORTCUT_KEY]);
   });
 }
 
-function saveConfig() {
-  chrome.storage.local.set({ [STORAGE_KEY]: currentBindings }, () => {
+function saveData() {
+  chrome.storage.local.set({ [CONFIG_KEY]: currentBindings }, () => {
     console.log('[BindDom] 配置已保存');
-    notifyAllTabs();
   });
 }
 
@@ -210,210 +103,109 @@ function renderBindings() {
   }
 
   emptyState.style.display = 'none';
-  bindingsList.innerHTML = currentBindings.map((binding, index) => `
-    <div class="binding-item" data-index="${index}">
-      <div class="binding-header">
-        <div>
-          <div class="binding-url">${escapeHtml(binding.url)}</div>
-          ${binding.desc ? `<div class="binding-desc">${escapeHtml(binding.desc)}</div>` : ''}
-        </div>
-        <div class="binding-actions">
-          <button class="binding-btn edit" title="编辑" data-action="edit">✏️</button>
-          <button class="binding-btn delete" title="删除" data-action="delete">🗑️</button>
-        </div>
+  bindingsList.innerHTML = currentBindings.map((b, i) => `
+    <div class="binding-item">
+      <div class="binding-info">
+        <div class="binding-url">${escapeHtml(b.url)}</div>
+        ${b.desc ? `<div class="binding-desc">${escapeHtml(b.desc)}</div>` : ''}
       </div>
-      <div class="binding-selector">${escapeHtml(binding.selector)}</div>
+      <div class="binding-selector">${escapeHtml(b.selector)}</div>
+      <div class="binding-actions">
+        <button onclick="editBinding(${i})">✏️</button>
+        <button onclick="deleteBinding(${i})">🗑️</button>
+      </div>
     </div>
   `).join('');
-
-  // 绑定按钮事件
-  bindingsList.querySelectorAll('.binding-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const item = e.target.closest('.binding-item');
-      const index = parseInt(item.dataset.index);
-      const action = e.target.closest('.binding-btn').dataset.action;
-
-      if (action === 'edit') {
-        editBinding(index);
-      } else if (action === 'delete') {
-        deleteBinding(index);
-      }
-    });
-  });
 }
 
-function escapeHtml(str) {
-  if (typeof str !== 'string') return str;
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 
-function openModal(binding = null, index = null) {
-  editingIndex = index;
-  modalTitle.textContent = binding ? '编辑绑定' : '添加绑定';
-  bindingUrlInput.value = binding ? binding.url : '';
-  bindingSelectorInput.value = binding ? binding.selector : '';
-  bindingDescInput.value = binding ? binding.desc || '' : '';
-  bindingModal.style.display = 'flex';
-  saveBindingBtn.disabled = true;
+// ==================== 弹窗操作 ====================
+
+function openModal(startPickerAfterOpen = false) {
+  editingIndex = null;
+  document.getElementById('modalTitle').textContent = '添加绑定';
+  // 清空表单
+  urlInput.value = '';
+  selectorInput.value = '';
+  descInput.value = '';
+  modal.style.display = 'flex';
+  saveBtn.disabled = true;
+
+  // 如果需要，自动启动拾取器
+  if (startPickerAfterOpen) {
+    setTimeout(() => startPick(), 100);
+  }
 }
 
 function closeModal() {
-  bindingModal.style.display = 'none';
+  modal.style.display = 'none';
   editingIndex = null;
-  isPickingElement = false;
-  document.body.classList.remove('pick-mode');
-  pickElementBtn.textContent = '🎯 拾取元素';
-}
-
-function editBinding(index) {
-  openModal(currentBindings[index], index);
-}
-
-function deleteBinding(index) {
-  if (confirm('确定要删除这个绑定吗？')) {
-    currentBindings.splice(index, 1);
-    saveConfig();
-    renderBindings();
-    statusText.textContent = '绑定已删除';
-    setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
-  }
+  if (isPicking) stopPick();
 }
 
 function saveBinding() {
-  const url = bindingUrlInput.value.trim();
-  const selector = bindingSelectorInput.value.trim();
-  const desc = bindingDescInput.value.trim();
+  const url = urlInput.value.trim();
+  const selector = selectorInput.value.trim();
+  const desc = descInput.value.trim();
 
-  if (!url) {
-    alert('请输入目标 URL');
-    return;
-  }
-
-  if (!selector) {
-    alert('请选择元素');
-    return;
-  }
+  if (!url || !selector) return;
 
   const binding = { url, selector, desc };
 
   if (editingIndex !== null) {
     currentBindings[editingIndex] = binding;
-    statusText.textContent = '绑定已更新';
   } else {
     currentBindings.push(binding);
-    statusText.textContent = '绑定已添加';
   }
 
-  saveConfig();
+  saveData();
   renderBindings();
   closeModal();
-
+  statusText.textContent = editingIndex !== null ? '✓ 已更新' : '✓ 已添加';
   setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
 }
 
-// ==================== 元素拾取相关 ====================
+window.editBinding = function(i) {
+  editingIndex = i;
+  const binding = currentBindings[i];
+  document.getElementById('modalTitle').textContent = '编辑绑定';
+  urlInput.value = binding.url;
+  selectorInput.value = binding.selector;
+  descInput.value = binding.desc || '';
+  modal.style.display = 'flex';
+  saveBtn.disabled = true;
+};
 
-function startElementPicking() {
-  if (isPickingElement) {
-    // 取消拾取
-    isPickingElement = false;
-    document.body.classList.remove('pick-mode');
-    pickElementBtn.textContent = '🎯 拾取元素';
-    statusText.textContent = '就绪';
-    chrome.runtime.sendMessage({ action: 'binddom.cancelPick' });
-    return;
+window.deleteBinding = function(i) {
+  if (confirm('确定删除？')) {
+    currentBindings.splice(i, 1);
+    saveData();
+    renderBindings();
+    statusText.textContent = '✓ 已删除';
+    setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
   }
+};
 
-  isPickingElement = true;
-  document.body.classList.add('pick-mode');
-  pickElementBtn.textContent = '⏹ 取消拾取';
-  statusText.textContent = '请在页面上点击要绑定的元素...';
+// ==================== 元素拾取（注入 picker.js） ====================
 
-  // 获取当前标签页并发送拾取指令
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'binddom.startPick' })
-        .catch(err => {
-          console.error('[BindDom] 无法发送拾取指令:', err);
-          statusText.textContent = '无法在该页面拾取';
-          isPickingElement = false;
-          document.body.classList.remove('pick-mode');
-          pickElementBtn.textContent = '🎯 拾取元素';
-        });
-    }
-  });
-}
-
-function handleElementPicked(selector) {
-  isPickingElement = false;
-  document.body.classList.remove('pick-mode');
-  pickElementBtn.textContent = '🎯 拾取元素';
-
-  if (selector) {
-    bindingSelectorInput.value = selector;
-    saveBindingBtn.disabled = false;
-    statusText.textContent = '元素已选择';
+function togglePick() {
+  if (isPicking) {
+    stopPick();
   } else {
-    statusText.textContent = '未选择元素';
+    startPick();
   }
-
-  setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
 }
 
-// ==================== 通知相关 ====================
-
-function notifyAllTabs() {
-  chrome.tabs.query({}, (tabs) => {
-    tabs.forEach(tab => {
-      // 通知更新配置
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'binddom.configUpdated',
-        config: currentBindings
-      }).catch(() => {
-        // 标签页可能没有注入脚本，尝试注入
-        injectIntoTab(tab.id);
-      });
-    });
-  });
-}
-
-function injectIntoTab(tabId) {
-  chrome.scripting.executeScript({
-    target: { tabId: tabId },
-    files: ['funcs/元素dom/binddom/binddom_wrapper.js']
-  }).catch((err) => {
-    console.log('[BindDom] 无法注入到标签页:', tabId, err.message);
-  });
-}
-
-// 保存配置后，自动注入到所有标签页
-function saveConfig() {
-  chrome.storage.local.set({ [STORAGE_KEY]: currentBindings }, () => {
-    console.log('[BindDom] 配置已保存');
-    // 注入到所有标签页
-    chrome.tabs.query({}, (tabs) => {
-      tabs.forEach(tab => {
-        injectIntoTab(tab.id);
-      });
-    });
-  });
-}
-
-// 输入验证
-bindingUrlInput.addEventListener('input', validateForm);
-bindingSelectorInput.addEventListener('input', validateForm);
-
-function validateForm() {
-  const isValid = bindingUrlInput.value.trim() && bindingSelectorInput.value.trim();
-  saveBindingBtn.disabled = !isValid;
-}
-
-// ==================== 执行绑定 ====================
-
-function executeBinding() {
-  statusText.textContent = '正在执行绑定...';
+function startPick() {
+  isPicking = true;
+  document.getElementById('pickBtn').textContent = '⏹ 取消拾取';
+  document.getElementById('pickBtn').classList.add('active');
+  statusText.textContent = '请在页面上点击元素...';
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (!tabs[0]) {
@@ -421,48 +213,248 @@ function executeBinding() {
       return;
     }
 
-    const tabId = tabs[0].id;
+    console.log('[BindDom] 开始注入脚本到标签页:', tabs[0].id, 'URL:', tabs[0].url);
 
-    // 注入脚本
+    // 检查 chrome.scripting 是否可用
+    if (!chrome.scripting) {
+      console.error('[BindDom] chrome.scripting 不可用');
+      statusText.textContent = '错误: scripting API 不可用';
+      return;
+    }
+
+    // 注入拾取器脚本
     chrome.scripting.executeScript({
-      target: { tabId: tabId },
-      files: ['funcs/元素dom/binddom/binddom_wrapper.js']
+      target: { tabId: tabs[0].id },
+      files: ['funcs/元素dom/div_Img_wrapper_binddom.js']
     }, (results) => {
       if (chrome.runtime.lastError) {
+        console.error('[BindDom] 注入失败:', chrome.runtime.lastError.message);
         statusText.textContent = '注入失败: ' + chrome.runtime.lastError.message;
-        setTimeout(() => { statusText.textContent = '就绪'; }, 3000);
-        return;
+        isPicking = false;
+        document.getElementById('pickBtn').textContent = '🎯 拾取元素';
+        document.getElementById('pickBtn').classList.remove('active');
+      } else {
+        console.log('[BindDom] 脚本注入成功:', results);
+        statusText.textContent = '已启动，请在页面操作';
       }
-
-      // 脚本已注入，现在让它执行绑定点击
-      chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        func: () => {
-          if (window.__binddom && window.__binddom.getInstance()) {
-            const instance = window.__binddom.getInstance();
-            instance.clicker.loadConfig().then(() => {
-              instance.clicker.clickFirstMatch();
-            });
-          }
-        }
-      }, (results) => {
-        if (chrome.runtime.lastError) {
-          statusText.textContent = '执行失败';
-          setTimeout(() => { statusText.textContent = '就绪'; }, 3000);
-          return;
-        }
-        statusText.textContent = '绑定已执行';
-        setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
-      });
     });
   });
 }
 
-function handleTriggerResult(success) {
-  if (success) {
-    statusText.textContent = '✓ 绑定执行成功';
-  } else {
-    statusText.textContent = '✗ 未找到匹配绑定';
+function stopPick() {
+  isPicking = false;
+  document.getElementById('pickBtn').textContent = '🎯 拾取元素';
+  document.getElementById('pickBtn').classList.remove('active');
+  statusText.textContent = '就绪';
+}
+
+// 监听拾取结果 - 通过 storage 变化检测（暂时禁用，避免与轮询冲突）
+// chrome.storage.onChanged.addListener((changes, area) => {
+//   if (area !== 'local' || !changes['binddom.pending']) return;
+//   const pending = changes['binddom.pending'].newValue;
+//   console.log('[BindDom] Storage 变化检测到:', pending);
+//   if (pending && pending.selector) {
+//     handlePendingSelector(pending);
+//   }
+// });
+
+// 也通过直接消息监听（暂时禁用，避免与轮询冲突）
+// chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
+//   if (req.action === 'binddom.elementPicked' && req.selector) {
+//     handlePendingSelector({ selector: req.selector, url: req.url });
+//     sendResponse({ status: 'received' });
+//   }
+// });
+
+// 处理待处理的选择器
+let pendingProcessed = false;
+let lastPendingTimestamp = 0;
+
+function handlePendingSelector(pending) {
+  if (!pending || !pending.selector) {
+    console.log('[BindDom] pending 无效:', pending);
+    return;
   }
+
+  // 如果是同一个 pending（相同时间戳），跳过
+  if (pending.timestamp === lastPendingTimestamp && pendingProcessed) {
+    console.log('[BindDom] 已处理过相同数据，跳过');
+    return;
+  }
+
+  console.log('[BindDom] 处理选择器:', pending);
+
+  // 确保元素已初始化（这些在 DOMContentLoaded 后才有值）
+  if (!selectorInput || !saveBtn || !statusText) {
+    console.error('[BindDom] 元素未初始化，等待...', { selectorInput, saveBtn, statusText });
+    setTimeout(() => handlePendingSelector(pending), 100);
+    return;
+  }
+
+  // 现在可以安全处理了
+  pendingProcessed = true;
+  lastPendingTimestamp = pending.timestamp;
+
+  try {
+    selectorInput.value = pending.selector;
+    if (!urlInput.value.trim() && pending.url) {
+      urlInput.value = pending.url;
+    }
+    // 使用 validateForm 确保按钮状态正确
+    validateForm();
+    statusText.textContent = '✓ 元素已选择，请确认URL后保存';
+    console.log('[BindDom] UI 已更新');
+    // 清除 pending
+    chrome.storage.local.remove('binddom.pending');
+  } catch (e) {
+    console.error('[BindDom] 处理失败:', e);
+    pendingProcessed = false;
+    lastPendingTimestamp = 0;
+  }
+}
+
+// 持续轮询检查 pending 数据（主要机制）
+let pollingInterval = null;
+function startPolling() {
+  if (pollingInterval) return;
+  console.log('[BindDom] 开始轮询 pending');
+  pollingInterval = setInterval(() => {
+    chrome.storage.local.get('binddom.pending', (result) => {
+      const pending = result['binddom.pending'];
+      if (pending && pending.selector) {
+        // 通过 timestamp 判断是否是新的 pending
+        if (pending.timestamp !== lastPendingTimestamp) {
+          console.log('[BindDom] 检测到新数据，timestamp:', pending.timestamp, 'last:', lastPendingTimestamp);
+          pendingProcessed = false; // 重置以便处理新数据
+        }
+        handlePendingSelector(pending);
+      }
+    });
+  }, 500); // 每 500ms 检查一次
+}
+
+function stopPolling() {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+}
+
+// 页面隐藏时停止轮询，节省资源
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopPolling();
+  } else {
+    startPolling();
+  }
+});
+
+// ==================== 快捷键 ====================
+
+let isRecording = false;
+
+function startRecord() {
+  if (isRecording) return;
+  isRecording = true;
+
+  const input = document.getElementById('shortcutInput');
+  input.value = '请按下快捷键...';
+  input.classList.add('recording');
+
+  const onKey = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const mods = [];
+    if (e.ctrlKey) mods.push('Ctrl');
+    if (e.altKey) mods.push('Alt');
+    if (e.shiftKey) mods.push('Shift');
+    if (e.metaKey) mods.push('Meta');
+
+    if (mods.length === 0) return;
+
+    // 如果只按了修饰键（如 Ctrl、Alt），不保存
+    const isModifierOnly = ['Control', 'Alt', 'Shift', 'Meta'].includes(e.key);
+    if (isModifierOnly && mods.length === 1) return;
+
+    const key = isModifierOnly ? '' : e.key;
+    const shortcut = { ctrlKey: e.ctrlKey, altKey: e.altKey, shiftKey: e.shiftKey, metaKey: e.metaKey, key };
+
+    chrome.storage.local.set({ [SHORTCUT_KEY]: shortcut }, () => {
+      const display = key ? mods.join('+') + '+' + key : mods.join('+');
+      input.value = display;
+      statusText.textContent = '✓ 快捷键已设置';
+      setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
+    });
+
+    finishRecord();
+  };
+
+  const finishRecord = () => {
+    isRecording = false;
+    input.classList.remove('recording');
+    document.removeEventListener('keydown', onKey);
+    input.removeEventListener('blur', finishRecord);
+  };
+
+  document.addEventListener('keydown', onKey);
+  input.addEventListener('blur', finishRecord, { once: true });
+}
+
+function loadShortcut(shortcut) {
+  const parts = [];
+  if (shortcut.ctrlKey) parts.push('Ctrl');
+  if (shortcut.altKey) parts.push('Alt');
+  if (shortcut.shiftKey) parts.push('Shift');
+  if (shortcut.metaKey) parts.push('Meta');
+  // 排除修饰键作为最终按键
+  if (shortcut.key && !['Control', 'Alt', 'Shift', 'Meta'].includes(shortcut.key)) {
+    parts.push(shortcut.key);
+  }
+  document.getElementById('shortcutInput').value = parts.join('+');
+}
+
+function clearShortcut() {
+  chrome.storage.local.remove(SHORTCUT_KEY);
+  document.getElementById('shortcutInput').value = '';
+  statusText.textContent = '✓ 已清除快捷键';
   setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
+}
+
+// ==================== 执行绑定（注入 binddom.js） ====================
+
+function executeOnCurrentPage() {
+  statusText.textContent = '正在执行...';
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (!tabs[0]) {
+      statusText.textContent = '未找到活动标签页';
+      return;
+    }
+
+    // 注入运行时脚本
+    chrome.scripting.executeScript({
+      target: { tabId: tabs[0].id },
+      files: ['runjs/binddom/binddom.js']
+    }, (results) => {
+      if (chrome.runtime.lastError) {
+        statusText.textContent = '注入失败';
+        setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
+        return;
+      }
+
+      // 触发执行
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'binddom.execute' }, (response) => {
+        if (response && response.success) {
+          statusText.textContent = '✓ 执行成功';
+        } else {
+          statusText.textContent = '✗ 未找到匹配绑定';
+        }
+        setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
+      }).catch(() => {
+        statusText.textContent = '✗ 执行失败';
+        setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
+      });
+    });
+  });
 }

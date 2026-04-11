@@ -2,7 +2,13 @@
  * 实时资源选择器 (Resource Picker) 类。
  * 将所有 UI 元素、状态和事件处理逻辑封装在一起，提高可维护性。
  */
-class ResourcePicker {
+if (window._ResourcePickerLoaded) {
+    console.log('[ResourcePicker] 已存在，跳过加载');
+} else {
+window._ResourcePickerLoaded = true;
+
+// 定义 ResourcePicker 类
+window.ResourcePicker = class ResourcePicker {
     constructor() {
         this.isLocked = false;
         this.currentElement = null;
@@ -802,7 +808,8 @@ _bindHtmlCollapseEvent() {
         window.__pickerCleanup = undefined;
         console.log("资源嗅探工具已完全关闭");
     }
-}
+};
+} // end of if/else guard
 
 // -------------------------------------------------------------------
 // --- 启动脚本 (保持原入口函数逻辑)
@@ -813,10 +820,15 @@ function realTimeResourcePicker() {
     if (window.__pickerInstance) {
         window.__pickerInstance.cleanup();
     }
-    window.__pickerInstance = new ResourcePicker();
+    window.__pickerInstance = new window.ResourcePicker();
 }
 
 function main() {
+    // 防止重复运行
+    if (window.__pickerInstance) {
+        console.log('[ResourcePicker] 选择器已在运行中，跳过');
+        return;
+    }
     // 调用主函数启动
     realTimeResourcePicker();
 }

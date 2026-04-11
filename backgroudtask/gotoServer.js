@@ -41,7 +41,14 @@ const menuData = {
 /**
  * 初始化右键菜单
  */
+let contextMenuInitialized = false;
+
 export function initContextMenu() {
+  if (contextMenuInitialized) {
+    return;
+  }
+  contextMenuInitialized = true;
+
   // 创建右键菜单
   chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({

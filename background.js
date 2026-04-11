@@ -1,5 +1,6 @@
 // background.js
 // 使用 ES Modules 导入功能
+console.log('[Background] Service Worker 启动');
 import {
     setupTabUpdateListener,
     setupMessageListener as setupAIProcessorListener
@@ -13,11 +14,17 @@ import { setupTranslationModule } from './backgroudtask/translation/index.js';
 
 // 初始化标签页更新监听器
 setupTabUpdateListener();
+console.log('[Background] setupTabUpdateListener 完成');
+
 // 启动所有监听器
 setupAIProcessorListener();       // AI 平台消息监听
+console.log('[Background] setupAIProcessorListener 完成');
 
 setupFuncCommandListener();
+console.log('[Background] setupFuncCommandListener 完成');
+
 setupFuncExecutorListener();      // 函数执行消息监听
+console.log('[Background] setupFuncExecutorListener 完成');
 
 setTabTransListener();
 startServer();
