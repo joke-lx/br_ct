@@ -37,7 +37,7 @@ export function executeBindingOnCurrentTab(tabId, sendResponse) {
       // 注入执行脚本
       chrome.scripting.executeScript({
         target: { tabId: tabId },
-        files: ['runjs/binddom/binddom_execute.js']
+        files: ['funcs/inject_mod/binddom_execute.js']
       }, (results) => {
         if (chrome.runtime.lastError) {
           sendResponse({ success: false, message: chrome.runtime.lastError.message });
