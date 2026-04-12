@@ -15,6 +15,7 @@ if (window._binddomPickerLoaded) {
             this.isLocked = false;
             this.currentElement = null;
             this.htmlId = 'target-element-html-content';
+            this._dragHeader = null;
 
             this.overlay = this._createOverlay();
             this.tooltip = this._createTooltip();
@@ -79,6 +80,59 @@ if (window._binddomPickerLoaded) {
                 userSelect: "text",
                 lineHeight: "1.5"
             });
+
+            // 添加拖拽头部
+            const header = document.createElement("div");
+            header.textContent = "⋮⋮ 拖动面板";
+            Object.assign(header.style, {
+                position: "relative",
+                margin: "-16px -16px 12px -16px",
+                padding: "8px 12px",
+                background: "linear-gradient(135deg, #8b5cf6, #6d28d9)",
+                color: "white",
+                fontSize: "12px",
+                fontWeight: "600",
+                cursor: "move",
+                borderRadius: "8px 8px 0 0",
+                userSelect: "none"
+            });
+            container.appendChild(header);
+            this._dragHeader = header;
+
+            // 拖拽逻辑
+            let isDragging = false;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+
+            header.addEventListener("mousedown", (e) => {
+                if (e.target !== header) return;
+                isDragging = true;
+                const rect = container.getBoundingClientRect();
+                dragOffsetX = e.clientX - rect.left;
+                dragOffsetY = e.clientY - rect.top;
+                header.style.cursor = "grabbing";
+                e.preventDefault();
+            });
+
+            document.addEventListener("mousemove", (e) => {
+                if (!isDragging) return;
+                const x = e.clientX - dragOffsetX;
+                const y = e.clientY - dragOffsetY;
+                // 限制在视口内
+                const maxX = window.innerWidth - container.offsetWidth;
+                const maxY = window.innerHeight - container.offsetHeight;
+                container.style.left = Math.max(0, Math.min(x, maxX)) + "px";
+                container.style.top = Math.max(0, Math.min(y, maxY)) + "px";
+                container.style.right = "auto"; // 切换为 left 定位
+            });
+
+            document.addEventListener("mouseup", () => {
+                if (isDragging) {
+                    isDragging = false;
+                    header.style.cursor = "move";
+                }
+            });
+
             document.body.appendChild(container);
             return container;
         }
@@ -242,7 +296,7 @@ if (window._binddomPickerLoaded) {
                 html += generateList('链接', resources.links, 5);
             }
 
-            this.container.innerHTML = html;
+            this._setContent(html);
             this._bindButtonEvents();
         }
 
@@ -280,7 +334,7 @@ if (window._binddomPickerLoaded) {
             // 继续选择按钮
             html += `<button id="continue-picker-btn" style="width: 100%; padding: 8px; margin-top: 8px; border: 1px solid #8b5cf6; border-radius: 6px; cursor: pointer; background: white; color: #8b5cf6; font-size: 12px;">继续选择其他元素</button>`;
 
-            this.container.innerHTML = html;
+            this._setContent(html);
 
             // 保存绑定
             const confirmBtn = document.getElementById('confirm-selector-btn');
@@ -325,6 +379,17 @@ if (window._binddomPickerLoaded) {
             if (typeof str !== 'string') return str;
             const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
             return str.replace(/[&<>"']/g, match => escapeMap[match]);
+        }
+
+        // 设置面板内容（保留拖拽头部）
+        _setContent(html) {
+            this.container.innerHTML = '';
+            if (this._dragHeader) {
+                this.container.appendChild(this._dragHeader);
+            }
+            const content = document.createElement('div');
+            content.innerHTML = html;
+            this.container.appendChild(content);
         }
 
         _bindButtonEvents() {
@@ -406,7 +471,7 @@ if (window._binddomPickerLoaded) {
             this.overlay.style.background = "rgba(139, 92, 246, 0.2)";
 
             if (!this.currentElement) {
-                this.container.innerHTML = '<h2 style="font-size: 18px; font-weight: 600; margin: 0 0 16px 0; color: #8b5cf6;">🎯 元素选择器</h2><p style="color: #6c757d; margin-bottom: 16px; line-height: 1.5;">将鼠标移动到页面元素上，点击锁定后确认选择。</p><button id="close-all-picker" style="width: 100%; padding: 10px 12px; border: 1px solid #dc3545; border-radius: 6px; cursor: pointer; background: #dc3545; color: #f8f9fa; font-size: 14px; font-weight: 500;">关闭</button>';
+                this._setContent('<h2 style="font-size: 18px; font-weight: 600; margin: 0 0 16px 0; color: #8b5cf6;">🎯 元素选择器</h2><p style="color: #6c757d; margin-bottom: 16px; line-height: 1.5;">将鼠标移动到页面元素上，点击锁定后确认选择。</p><button id="close-all-picker" style="width: 100%; padding: 10px 12px; border: 1px solid #dc3545; border-radius: 6px; cursor: pointer; background: #dc3545; color: #f8f9fa; font-size: 14px; font-weight: 500;">关闭</button>');
                 this._bindButtonEvents();
             } else {
                 const resources = this._gatherResources(this.currentElement);
