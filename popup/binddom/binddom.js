@@ -14,12 +14,15 @@ let currentBindings = [];
 let editingIndex = null;
 let isPicking = false;
 
+// 待处理选择器状态（必须在使用前声明）
+let pendingProcessed = false;
+let lastPendingTimestamp = 0;
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   // 重置状态，允许处理 pending 数据
   pendingProcessed = false;
   lastPendingTimestamp = 0;
-
   initElements();
   loadData();
   bindEvents();
@@ -38,40 +41,59 @@ function initElements() {
 }
 
 function bindEvents() {
-  // 返回
-  document.getElementById('back').addEventListener('click', () => {
-    window.location.href = '../main/main.html';
-  });
+  // 返回按钮（可选）
+  const backBtn = document.getElementById('back');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      window.location.href = '../main/main.html';
+    });
+  }
 
   // 手动添加
-  document.getElementById('addBtnManual').addEventListener('click', () => openModal(false));
+  const addBtnManual = document.getElementById('addBtnManual');
+  if (addBtnManual) addBtnManual.addEventListener('click', () => openModal(false));
 
   // 拾取器添加 - 直接启动拾取器，popup 可以关闭
-  document.getElementById('addBtnPicker').addEventListener('click', () => {
-    // 直接启动拾取器
-    startPick();
-    // 关闭 popup（拾取器在页面中独立运行）
-    window.close();
-  });
+  const addBtnPicker = document.getElementById('addBtnPicker');
+  if (addBtnPicker) {
+    addBtnPicker.addEventListener('click', () => {
+      startPick();
+      window.close();
+    });
+  }
 
   // 弹窗按钮
-  document.getElementById('closeModal').addEventListener('click', closeModal);
-  document.getElementById('cancelBtn').addEventListener('click', closeModal);
-  saveBtn.addEventListener('click', saveBinding);
+  const closeModalBtn = document.getElementById('closeModal');
+  const cancelBtn = document.getElementById('cancelBtn');
+  if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+  if (saveBtn) saveBtn.addEventListener('click', saveBinding);
 
   // 拾取元素 - 注入 picker.js
-  document.getElementById('pickBtn').addEventListener('click', togglePick);
+  const pickBtn = document.getElementById('pickBtn');
+  if (pickBtn) pickBtn.addEventListener('click', togglePick);
 
   // 执行绑定 - 使用 background 处理
-  document.getElementById('executeBtn').addEventListener('click', executeOnCurrentPage);
+  const executeBtn = document.getElementById('executeBtn');
+  if (executeBtn) executeBtn.addEventListener('click', executeOnCurrentPage);
 
   // 输入验证
-  urlInput.addEventListener('input', validateForm);
-  selectorInput.addEventListener('input', validateForm);
+  if (urlInput) urlInput.addEventListener('input', validateForm);
+  if (selectorInput) selectorInput.addEventListener('input', validateForm);
+
+  // 设置按钮
+  const settingsLink = document.querySelector('.settings-link');
+  if (settingsLink) {
+    settingsLink.addEventListener('click', () => {
+      chrome.runtime.openOptionsPage();
+    });
+  }
 }
 
 function validateForm() {
-  saveBtn.disabled = !urlInput.value.trim() || !selectorInput.value.trim();
+  if (saveBtn && urlInput && selectorInput) {
+    saveBtn.disabled = !urlInput.value.trim() || !selectorInput.value.trim();
+  }
 }
 
 // ==================== 数据操作 ====================
@@ -91,13 +113,14 @@ function saveData() {
 
 function renderBindings() {
   if (currentBindings.length === 0) {
-    bindingsList.innerHTML = '';
-    emptyState.style.display = 'block';
+    if (bindingsList) bindingsList.innerHTML = '';
+    if (emptyState) emptyState.style.display = 'block';
     return;
   }
 
-  emptyState.style.display = 'none';
-  bindingsList.innerHTML = currentBindings.map((b, i) => `
+  if (emptyState) emptyState.style.display = 'none';
+  if (bindingsList) {
+    bindingsList.innerHTML = currentBindings.map((b, i) => `
     <div class="binding-item">
       <div class="binding-info">
         <div class="binding-url">${escapeHtml(b.url)}</div>
@@ -111,14 +134,15 @@ function renderBindings() {
     </div>
   `).join('');
 
-  // 事件委托
-  bindingsList.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-bindex]');
-    if (!btn) return;
-    const [action, index] = btn.dataset.bindex.split(':');
-    if (action === 'edit') editBinding(parseInt(index));
-    if (action === 'delete') deleteBinding(parseInt(index));
-  });
+    // 事件委托
+    bindingsList.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-bindex]');
+      if (!btn) return;
+      const [action, index] = btn.dataset.bindex.split(':');
+      if (action === 'edit') editBinding(parseInt(index));
+      if (action === 'delete') deleteBinding(parseInt(index));
+    });
+  }
 }
 
 function escapeHtml(s) {
@@ -131,13 +155,14 @@ function escapeHtml(s) {
 
 function openModal(startPickerAfterOpen = false) {
   editingIndex = null;
-  document.getElementById('modalTitle').textContent = '添加绑定';
+  const modalTitle = document.getElementById('modalTitle');
+  if (modalTitle) modalTitle.textContent = '添加绑定';
   // 清空表单
-  urlInput.value = '';
-  selectorInput.value = '';
-  descInput.value = '';
-  modal.style.display = 'flex';
-  saveBtn.disabled = true;
+  if (urlInput) urlInput.value = '';
+  if (selectorInput) selectorInput.value = '';
+  if (descInput) descInput.value = '';
+  if (modal) modal.style.display = 'flex';
+  if (saveBtn) saveBtn.disabled = true;
 
   // 如果需要，自动启动拾取器
   if (startPickerAfterOpen) {
@@ -146,7 +171,7 @@ function openModal(startPickerAfterOpen = false) {
 }
 
 function closeModal() {
-  modal.style.display = 'none';
+  if (modal) modal.style.display = 'none';
   editingIndex = null;
   if (isPicking) stopPick();
 }
@@ -169,19 +194,22 @@ function saveBinding() {
   saveData();
   renderBindings();
   closeModal();
-  statusText.textContent = editingIndex !== null ? '✓ 已更新' : '✓ 已添加';
-  setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
+  if (statusText) {
+    statusText.textContent = editingIndex !== null ? '✓ 已更新' : '✓ 已添加';
+    setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
+  }
 }
 
 function editBinding(i) {
   editingIndex = i;
   const binding = currentBindings[i];
-  document.getElementById('modalTitle').textContent = '编辑绑定';
-  urlInput.value = binding.url;
-  selectorInput.value = binding.selector;
-  descInput.value = binding.desc || '';
-  modal.style.display = 'flex';
-  saveBtn.disabled = true;
+  const modalTitle = document.getElementById('modalTitle');
+  if (modalTitle) modalTitle.textContent = '编辑绑定';
+  if (urlInput) urlInput.value = binding.url;
+  if (selectorInput) selectorInput.value = binding.selector;
+  if (descInput) descInput.value = binding.desc || '';
+  if (modal) modal.style.display = 'flex';
+  if (saveBtn) saveBtn.disabled = true;
 }
 
 function deleteBinding(i) {
@@ -189,8 +217,10 @@ function deleteBinding(i) {
     currentBindings.splice(i, 1);
     saveData();
     renderBindings();
-    statusText.textContent = '✓ 已删除';
-    setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
+    if (statusText) {
+      statusText.textContent = '✓ 已删除';
+      setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
+    }
   }
 }
 
@@ -206,13 +236,16 @@ function togglePick() {
 
 function startPick() {
   isPicking = true;
-  document.getElementById('pickBtn').textContent = '⏹ 取消拾取';
-  document.getElementById('pickBtn').classList.add('active');
-  statusText.textContent = '请在页面上点击元素...';
+  const pickBtn = document.getElementById('pickBtn');
+  if (pickBtn) {
+    pickBtn.textContent = '⏹ 取消拾取';
+    pickBtn.classList.add('active');
+  }
+  if (statusText) statusText.textContent = '请在页面上点击元素...';
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (!tabs[0]) {
-      statusText.textContent = '未找到活动标签页';
+      if (statusText) statusText.textContent = '未找到活动标签页';
       return;
     }
 
@@ -221,7 +254,7 @@ function startPick() {
     // 检查 chrome.scripting 是否可用
     if (!chrome.scripting) {
       console.error('[BindDom] chrome.scripting 不可用');
-      statusText.textContent = '错误: scripting API 不可用';
+      if (statusText) statusText.textContent = '错误: scripting API 不可用';
       return;
     }
 
@@ -232,13 +265,16 @@ function startPick() {
     }, (results) => {
       if (chrome.runtime.lastError) {
         console.error('[BindDom] 注入失败:', chrome.runtime.lastError.message);
-        statusText.textContent = '注入失败: ' + chrome.runtime.lastError.message;
+        if (statusText) statusText.textContent = '注入失败: ' + chrome.runtime.lastError.message;
         isPicking = false;
-        document.getElementById('pickBtn').textContent = '🎯 拾取元素';
-        document.getElementById('pickBtn').classList.remove('active');
+        const pickBtnLocal = document.getElementById('pickBtn');
+        if (pickBtnLocal) {
+          pickBtnLocal.textContent = '🎯 拾取元素';
+          pickBtnLocal.classList.remove('active');
+        }
       } else {
         console.log('[BindDom] 脚本注入成功:', results);
-        statusText.textContent = '已启动，请在页面操作';
+        if (statusText) statusText.textContent = '已启动，请在页面操作';
       }
     });
   });
@@ -246,9 +282,12 @@ function startPick() {
 
 function stopPick() {
   isPicking = false;
-  document.getElementById('pickBtn').textContent = '🎯 拾取元素';
-  document.getElementById('pickBtn').classList.remove('active');
-  statusText.textContent = '就绪';
+  const pickBtn = document.getElementById('pickBtn');
+  if (pickBtn) {
+    pickBtn.textContent = '🎯 拾取元素';
+    pickBtn.classList.remove('active');
+  }
+  if (statusText) statusText.textContent = '就绪';
 }
 
 // 监听拾取结果 - 通过 storage 变化检测（暂时禁用，避免与轮询冲突）
@@ -270,9 +309,6 @@ function stopPick() {
 // });
 
 // 处理待处理的选择器
-let pendingProcessed = false;
-let lastPendingTimestamp = 0;
-
 function handlePendingSelector(pending) {
   if (!pending || !pending.selector) {
     console.log('[BindDom] pending 无效:', pending);
@@ -355,14 +391,16 @@ document.addEventListener('visibilitychange', () => {
 // ==================== 执行绑定 ====================
 
 function executeOnCurrentPage() {
-  statusText.textContent = '正在执行...';
+  if (statusText) statusText.textContent = '正在执行...';
 
   chrome.runtime.sendMessage({ action: 'binddom.executeClick' }, (response) => {
-    if (response && response.success) {
-      statusText.textContent = '✓ 执行成功';
-    } else {
-      statusText.textContent = response?.message || '✗ 执行失败';
+    if (statusText) {
+      if (response && response.success) {
+        statusText.textContent = '✓ 执行成功';
+      } else {
+        statusText.textContent = response?.message || '✗ 执行失败';
+      }
+      setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
     }
-    setTimeout(() => { statusText.textContent = '就绪'; }, 2000);
   });
 }

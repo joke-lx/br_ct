@@ -59,44 +59,60 @@ document.addEventListener('DOMContentLoaded', () => {
 // 绑定事件
 function bindEvents() {
   // 返回按钮
-  document.getElementById('back-to-popup').addEventListener('click', () => {
-    window.location.href = '../main/main.html';
-  });
+  const backBtn = document.getElementById('back-to-popup');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      window.location.href = '../main/main.html';
+    });
+  }
 
   // 划词翻译设置
-  selectionPromptInput.addEventListener('input', saveSelectionSettings);
-  selectionStreamToggle.addEventListener('change', saveSelectionSettings);
-  selectionThinkingToggle.addEventListener('change', saveSelectionSettings);
+  if (selectionPromptInput) selectionPromptInput.addEventListener('input', saveSelectionSettings);
+  if (selectionStreamToggle) selectionStreamToggle.addEventListener('change', saveSelectionSettings);
+  if (selectionThinkingToggle) selectionThinkingToggle.addEventListener('change', saveSelectionSettings);
 
   // OCR 设置
-  ocrPromptInput.addEventListener('input', saveOCRSettings);
-  ocrStreamToggle.addEventListener('change', () => {
+  if (ocrPromptInput) ocrPromptInput.addEventListener('input', saveOCRSettings);
+  if (ocrStreamToggle) ocrStreamToggle.addEventListener('change', () => {
     saveOCRSettings();
     updateFlowRateControlVisibility();
   });
-  ocrThinkingToggle.addEventListener('change', saveOCRSettings);
-  ocrSilentModeToggle.addEventListener('change', saveOCRSettings);
+  if (ocrThinkingToggle) ocrThinkingToggle.addEventListener('change', saveOCRSettings);
+  if (ocrSilentModeToggle) ocrSilentModeToggle.addEventListener('change', saveOCRSettings);
 
   // 流速控制
-  flowRateSlider.addEventListener('input', updateFlowRateDisplay);
-  flowRateSlider.addEventListener('change', saveFlowRate);
+  if (flowRateSlider) {
+    flowRateSlider.addEventListener('input', updateFlowRateDisplay);
+    flowRateSlider.addEventListener('change', saveFlowRate);
+  }
 
   // 功能开关
-  autoTranslateToggle.addEventListener('change', saveSettings);
-  showContextMenuToggle.addEventListener('change', saveSettings);
+  if (autoTranslateToggle) autoTranslateToggle.addEventListener('change', saveSettings);
+  if (showContextMenuToggle) showContextMenuToggle.addEventListener('change', saveSettings);
 
   // 快捷键设置
-  ocrShortcutInput.addEventListener('click', startOcrShortcutRecording);
-  clearOcrShortcutBtn.addEventListener('click', clearOcrShortcut);
-  favoritesShortcutInput.addEventListener('click', startFavoritesShortcutRecording);
-  clearFavoritesShortcutBtn.addEventListener('click', clearFavoritesShortcut);
+  if (ocrShortcutInput) ocrShortcutInput.addEventListener('click', startOcrShortcutRecording);
+  if (clearOcrShortcutBtn) clearOcrShortcutBtn.addEventListener('click', clearOcrShortcut);
+  if (favoritesShortcutInput) favoritesShortcutInput.addEventListener('click', startFavoritesShortcutRecording);
+  if (clearFavoritesShortcutBtn) clearFavoritesShortcutBtn.addEventListener('click', clearFavoritesShortcut);
 
   // 打开收藏管理
-  document.getElementById('openFavoritesBtn').addEventListener('click', () => {
-    chrome.tabs.create({
-      url: chrome.runtime.getURL('modules/translation/favorites/favorites.html')
+  const openFavoritesBtn = document.getElementById('openFavoritesBtn');
+  if (openFavoritesBtn) {
+    openFavoritesBtn.addEventListener('click', () => {
+      chrome.tabs.create({
+        url: chrome.runtime.getURL('modules/translation/favorites/favorites.html')
+      });
     });
-  });
+  }
+
+  // 设置按钮
+  const settingsLink = document.querySelector('.settings-link');
+  if (settingsLink) {
+    settingsLink.addEventListener('click', () => {
+      chrome.runtime.openOptionsPage();
+    });
+  }
 }
 
 // 加载设置
