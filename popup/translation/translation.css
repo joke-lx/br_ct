@@ -1,49 +1,10 @@
-/* 划词翻译设置页面样式 */
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html, body {
-  width: 420px;
-  min-height: 400px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-size: 14px;
-  color: #333;
-  background: #f8f9fa;
-}
+/* 划词翻译设置页面样式 - 使用统一主题 */
 
 .translation-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #fff;
-}
-
-/* 标题栏 */
-.header {
-  background: linear-gradient(135deg, #2c5aa0 0%, #1a4a8a 100%);
-  color: white;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  flex-shrink: 0;
-}
-
-.header h1 {
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.header h1:hover {
-  opacity: 0.9;
+  background: var(--bg-card);
 }
 
 /* 主内容区 */
@@ -51,7 +12,7 @@ html, body {
   flex: 1;
   overflow-y: auto;
   padding: 12px;
-  background: #f8f9fa;
+  background: var(--bg-page);
   max-height: 500px;
 }
 
@@ -70,20 +31,20 @@ html, body {
 
 /* 设置区块 */
 .setting-section {
-  background: white;
-  border-radius: 8px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
   padding: 12px;
   margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .section-title {
   font-size: 13px;
   font-weight: 600;
-  color: #2c5aa0;
+  color: var(--primary-color);
   margin-bottom: 10px;
   padding-bottom: 6px;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .setting-item {
@@ -94,14 +55,14 @@ html, body {
 
 .setting-label {
   font-size: 13px;
-  color: #495057;
+  color: var(--text-color);
   font-weight: 500;
   margin-bottom: 4px;
   display: block;
 }
 
 .setting-hint {
-  color: #6c757d;
+  color: var(--text-muted);
   font-size: 11px;
   margin-top: 4px;
   display: block;
@@ -111,8 +72,8 @@ html, body {
   width: 100%;
   min-height: 60px;
   padding: 8px 10px;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   font-size: 13px;
   font-family: inherit;
   resize: vertical;
@@ -121,49 +82,13 @@ html, body {
 
 .setting-textarea:focus {
   outline: none;
-  border-color: #2c5aa0;
-  box-shadow: 0 0 0 2px rgba(44, 90, 160, 0.1);
-}
-
-/* Toggle 开关 */
-.toggle {
-  position: relative;
-  width: 40px;
-  height: 22px;
-  appearance: none;
-  background: #dee2e6;
-  border-radius: 11px;
-  cursor: pointer;
-  transition: background 0.3s;
-  flex-shrink: 0;
-  margin-right: 10px;
-  margin-top: 1px;
-}
-
-.toggle:checked {
-  background: #2c5aa0;
-}
-
-.toggle::before {
-  content: '';
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  background: white;
-  border-radius: 50%;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.3s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.toggle:checked::before {
-  transform: translateX(18px);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
 }
 
 .toggle-label {
   font-size: 13px;
-  color: #495057;
+  color: var(--text-color);
   cursor: pointer;
   user-select: none;
 }
@@ -179,52 +104,52 @@ html, body {
 .shortcut-input {
   flex: 1;
   padding: 7px 10px;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   font-size: 12px;
-  background: #f8f9fa;
+  background: var(--bg-page);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .shortcut-input:hover {
-  background: #e9ecef;
+  background: var(--primary-light);
 }
 
 .shortcut-input:focus {
   outline: none;
-  border-color: #2c5aa0;
-  background: #fff;
+  border-color: var(--primary-color);
+  background: var(--bg-card);
 }
 
 .shortcut-clear-btn {
   width: 24px;
   height: 24px;
   border: none;
-  background: #e9ecef;
-  border-radius: 4px;
+  background: var(--bg-page);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 12px;
-  color: #6c757d;
+  color: var(--text-muted);
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .shortcut-clear-btn:hover {
-  background: #dee2e6;
-  color: #495057;
+  background: var(--border-color);
+  color: var(--text-color);
 }
 
 /* 流速控制 */
 .flow-rate-control {
   padding: 10px;
-  background: #f8f9fa;
-  border-radius: 6px;
+  background: var(--bg-page);
+  border-radius: var(--radius-md);
 }
 
 .flow-rate-value {
   font-size: 12px;
-  color: #2c5aa0;
+  color: var(--primary-color);
   font-weight: 600;
 }
 
@@ -232,7 +157,7 @@ html, body {
   width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: #dee2e6;
+  background: var(--border-color);
   outline: none;
   -webkit-appearance: none;
 }
@@ -241,17 +166,17 @@ html, body {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
-  background: #2c5aa0;
+  background: var(--primary-color);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .flow-rate-warning {
   margin-top: 8px;
   padding: 6px 10px;
   background: #fff3cd;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: #856404;
   font-size: 11px;
 }
@@ -269,21 +194,21 @@ html, body {
 
 .stat-label {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--text-muted);
 }
 
 .stat-value {
   font-size: 18px;
   font-weight: 600;
-  color: #2c5aa0;
+  color: var(--primary-color);
   margin-left: 4px;
 }
 
 /* 底部按钮 */
 .footer {
   padding: 10px 12px;
-  background: white;
-  border-top: 1px solid #e9ecef;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
   display: flex;
   gap: 8px;
   flex-shrink: 0;
@@ -293,8 +218,8 @@ html, body {
   flex: 1;
   padding: 10px 16px;
   border: none;
-  border-radius: 6px;
-  background: #2c5aa0;
+  border-radius: var(--radius-md);
+  background: var(--primary-color);
   color: white;
   font-size: 13px;
   font-weight: 500;
@@ -303,7 +228,7 @@ html, body {
 }
 
 .footer-btn:hover {
-  background: #1a4a8a;
+  background: var(--primary-hover);
 }
 
 .footer-btn:active {
