@@ -157,6 +157,7 @@ select {
   cursor: pointer;
   background: rgba(255, 252, 247, 0.62);
   transition: background 120ms ease, transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+    margin-right: 20px;
 }
 
 .nav-item:hover {
@@ -284,7 +285,9 @@ select {
 .button-group {
   margin-top: 20px;
 }
-
+.debug-controls{
+    margin-bottom: 20px;
+}
 .btn,
 .note-action {
   min-height: 44px;
@@ -674,6 +677,7 @@ select:focus {
   padding: 24px 20px 34px;
 }
 
+
 .ocr-header,
 .countdown-header {
   position: relative;
@@ -721,6 +725,7 @@ select:focus {
     padding-left: 14px;
     padding-right: 14px;
   }
+
 
   .page-header,
   .section {
