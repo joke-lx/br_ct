@@ -3,71 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>随手记管理</title>
+    <title>Quick Notes</title>
     <link rel="stylesheet" href="notes.css">
 </head>
 <body>
-    <div class="notes-container">
-        <!-- 头部 -->
-        <header class="notes-header">
-            <div class="header-left">
-                <h1>📝 随手记</h1>
-                <span class="notes-count" id="notesCount">0 条笔记</span>
+    <main class="notes-page">
+        <section class="notes-hero">
+            <div class="notes-hero-copy">
+                <div class="notes-kicker">Quick Capture Notebook</div>
+                <h1>把一闪而过的想法，留在这本小册子里。</h1>
+                <p>三击空格可以随时打开注入式小笔记本。这里负责回看、复制、删除，以及继续整理刚才记下来的内容。</p>
             </div>
-            <div class="header-right">
-                <button class="btn btn-secondary" id="exportBtn">
-                    <span>📤</span> 导出
-                </button>
-                <button class="btn btn-primary" id="addBtn">
-                    <span>➕</span> 新建笔记
-                </button>
-            </div>
-        </header>
-
-        <!-- 笔记列表 -->
-        <div class="notes-list" id="notesList">
-            <!-- 笔记项将通过 JavaScript 动态生成 -->
-        </div>
-
-        <!-- 空状态 -->
-        <div class="empty-state" id="emptyState">
-            <div class="empty-icon">📝</div>
-            <h2>还没有笔记</h2>
-            <p>点击"新建笔记"或使用三击空格键快速添加</p>
-        </div>
-    </div>
-
-    <!-- 编辑弹窗 -->
-    <div class="modal-overlay" id="editModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 id="modalTitle">编辑笔记</h2>
-                <button class="modal-close" id="modalClose">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>笔记内容</label>
-                    <div class="editor-container">
-                        <div class="editor-toolbar">
-                            <button class="toolbar-btn" data-action="insert-placeholder" title="插入占位符">
-                                <span class="placeholder-icon"></span>
-                            </button>
-                            <span class="toolbar-hint">输入 "00" 自动转换为占位符，保存时变为 %s</span>
-                        </div>
-                        <div class="editor-content" id="editorContent" contenteditable="true"></div>
-                    </div>
+            <div class="notes-hero-side">
+                <div class="notes-stat">
+                    <span class="notes-stat-label">archive</span>
+                    <strong id="notesCount">0 notes</strong>
                 </div>
-                <div class="form-group">
-                    <label>预览（保存格式）</label>
-                    <div class="preview-box" id="previewBox"></div>
+                <button class="notes-pill" id="exportBtn" type="button">导出笔记</button>
+            </div>
+        </section>
+
+        <section class="notes-workbench">
+            <div class="composer-card">
+                <div class="section-kicker">capture</div>
+                <h2>新的一页</h2>
+                <textarea id="noteInput" class="note-input" placeholder="想到什么，就先写下来。Ctrl/Cmd + Enter 可直接保存。"></textarea>
+                <div class="composer-actions">
+                    <button id="clearBtn" class="btn btn-light" type="button">清空</button>
+                    <button id="saveBtn" class="btn btn-primary" type="button">保存笔记</button>
                 </div>
+                <div class="composer-hint">适合快速 capture idea，不需要格式化，不需要占位符。</div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="modalCancel">取消</button>
-                <button class="btn btn-primary" id="modalSave">保存</button>
+
+            <div class="preview-card">
+                <div class="section-kicker">preview</div>
+                <h2>历史预览</h2>
+                <div id="previewMeta" class="preview-meta">还没有选中笔记</div>
+                <article id="previewContent" class="preview-content is-empty">左侧历史列表会显示最近笔记。点击任意一条可以在这里预览全文。</article>
             </div>
-        </div>
-    </div>
+        </section>
+
+        <section class="history-section">
+            <div class="history-head">
+                <div>
+                    <div class="section-kicker">history</div>
+                    <h2>最近笔记</h2>
+                </div>
+                <button id="addBtn" class="btn btn-secondary" type="button">聚焦输入框</button>
+            </div>
+
+            <div id="emptyState" class="empty-state" hidden>
+                <div class="empty-title">还没有任何笔记</div>
+                <p>先在上面写下一句。三击空格的注入面板和这里共用同一份 `quickNotes` 存储。</p>
+            </div>
+
+            <div id="notesList" class="notes-list"></div>
+        </section>
+    </main>
 
     <script src="notes.js"></script>
 </body>
