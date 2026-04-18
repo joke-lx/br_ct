@@ -5,7 +5,7 @@ export const PROMPTS = {
     template:
       "告诉我关于 %s 的相关的概念基础 最佳操作手册以及实践路线 为什么要这这个场景使用这个技术,有什么优势和思想, 底层原理解读  以及常见的误区和其中巧妙的设计",
   },
-   MVP-需要技术: {
+  "MVP-需要技术": {
     group: "analyze_plan",
     label: "MVP-需要技术",
     template:
