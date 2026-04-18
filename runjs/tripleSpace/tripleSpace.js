@@ -130,7 +130,7 @@ function createNotebook() {
                 <button type="button" class="capture-btn capture-btn-secondary">Close</button>
                 <button type="button" class="capture-btn capture-btn-primary" disabled>Save note</button>
             </div>
-            <div class="capture-shortcuts">Enter with Ctrl/Cmd to save. Shift + Enter keeps a new line.</div>
+            <div class="capture-shortcuts">Press Enter to save. Shift + Enter keeps a new line.</div>
         </div>
         <div class="capture-right">
             <div class="capture-preview-card">
@@ -199,7 +199,7 @@ function createNotebook() {
 
     textarea.addEventListener("input", rerenderHistory);
     textarea.addEventListener("keydown", (event) => {
-        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
             saveNote();
             return;

@@ -624,3 +624,100 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+body {
+    font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
+    background:
+        radial-gradient(circle at top left, rgba(255, 250, 241, 0.9), transparent 28%),
+        linear-gradient(180deg, #f8f3ea, #efe5d3);
+    color: #2d241c;
+}
+
+.countdown-header {
+    padding: 26px 28px;
+    border: 1px solid rgba(93, 67, 43, 0.12);
+    border-radius: 30px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.08)),
+        linear-gradient(135deg, #f6efe2 0%, #ebdfc7 100%);
+    box-shadow: 0 24px 80px rgba(48, 32, 20, 0.14);
+}
+
+.header-left h1 {
+    font-size: 40px;
+    line-height: 0.98;
+    color: #2d241c;
+}
+
+.count-stat {
+    color: #7a6858;
+    background: rgba(88, 63, 41, 0.08);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #99673f, #6b4a31);
+    color: #fffaf4;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #8b5d38, #5e422c);
+    box-shadow: 0 10px 24px rgba(114, 72, 43, 0.22);
+}
+
+.btn-secondary {
+    background: rgba(88, 63, 41, 0.08);
+    color: #2d241c;
+}
+
+.btn-secondary:hover {
+    background: rgba(88, 63, 41, 0.14);
+    color: #2d241c;
+}
+
+.btn-danger {
+    background: rgba(154, 79, 64, 0.14);
+    color: #7a3025;
+}
+
+.btn-danger:hover {
+    background: rgba(154, 79, 64, 0.2);
+}
+
+.timer-card {
+    background: rgba(255, 252, 247, 0.8);
+    border: 1px solid rgba(93, 67, 43, 0.12);
+    border-radius: 24px;
+    box-shadow: 0 16px 42px rgba(48, 32, 20, 0.08);
+}
+
+.timer-card-ghost {
+    background: rgba(255, 252, 247, 0.52);
+}
+
+.timer-card:hover {
+    box-shadow: 0 18px 36px rgba(48, 32, 20, 0.12);
+}
+
+.timer-title {
+    color: #2d241c;
+}
+
+.timer-status,
+.timer-desc {
+    color: #7a6858;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    border-color: #99673f;
+    box-shadow: 0 0 0 3px rgba(153, 103, 63, 0.08);
+}
+
+.timer-action-btn.primary,
+.timer-action-btn.start,
+.timer-action-btn.resume,
+.timer-action-btn[data-action="start"],
+.timer-action-btn[data-action="resume"] {
+    background: linear-gradient(135deg, #99673f, #6b4a31);
+    color: #fffaf4;
+}

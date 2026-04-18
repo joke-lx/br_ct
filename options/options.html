@@ -1,60 +1,59 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <title>AI Assistant 选项设置</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Options Notebook</title>
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
     <div class="app-container">
-      <!-- 侧边栏导航 -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h1>AI Assistant</h1>
-          <p>设置面板</p>
+          <h1>Options<br>Notebook</h1>
+          <p>纸张感、安静、可持续维护的设置面板。</p>
         </div>
         <nav class="sidebar-nav">
           <div class="nav-item active" data-page="platform/index.html">
-            <span class="nav-icon">🤖</span>
+            <span class="nav-icon">PL</span>
             <span>平台显示</span>
           </div>
           <div class="nav-item" data-page="api/index.html">
-            <span class="nav-icon">🔑</span>
-            <span>API 设置</span>
+            <span class="nav-icon">API</span>
+            <span>API 配置</span>
           </div>
           <div class="nav-item" data-page="storage/index.html">
-            <span class="nav-icon">🔍</span>
+            <span class="nav-icon">DB</span>
             <span>存储调试</span>
           </div>
           <div class="nav-item" data-page="menu/index.html">
-            <span class="nav-icon">📋</span>
+            <span class="nav-icon">MN</span>
             <span>菜单配置</span>
           </div>
           <div class="nav-item" data-page="backup/index.html">
-            <span class="nav-icon">💾</span>
+            <span class="nav-icon">BK</span>
             <span>备份设置</span>
           </div>
           <div class="nav-item" data-page="notes/index.html">
-            <span class="nav-icon">📝</span>
-            <span>随手记</span>
+            <span class="nav-icon">NT</span>
+            <span>随手笔记</span>
           </div>
           <div class="nav-item" data-page="ocr/index.html">
-            <span class="nav-icon">🖼️</span>
-            <span>OCR批量识别</span>
+            <span class="nav-icon">OC</span>
+            <span>OCR 批量识别</span>
           </div>
           <div class="nav-item" data-page="countdown/index.html">
-            <span class="nav-icon">⏱️</span>
+            <span class="nav-icon">TM</span>
             <span>倒计时面板</span>
           </div>
         </nav>
         <div class="sidebar-footer">
-          <p>v2.0.1</p>
+          <p>br_controller · options</p>
         </div>
       </aside>
 
-      <!-- 主内容区 -->
       <main class="main-content">
-        <iframe id="content-frame" src="platform/index.html" frameborder="0"></iframe>
+        <iframe id="content-frame" src="platform/index.html" title="Options Content"></iframe>
       </main>
     </div>
 

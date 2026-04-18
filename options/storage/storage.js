@@ -95,12 +95,12 @@ function loadStorageDebug() {
  */
 function groupStorageKeys(items) {
   const groups = {
-    queue: { name: '📋 任务队列', items: [], keys: [] },
-    config: { name: '⚙️ 配置设置', items: [], keys: [] },
-    menu: { name: '📋 菜单配置', items: [], keys: [] },
-    video: { name: '🎬 视频配置', items: [], keys: [] },
-    history: { name: '🕒 历史记录', items: [], keys: [] },
-    other: { name: '📦 其他数据', items: [], keys: [] }
+    queue: { name: '任务队列', items: [], keys: [] },
+    config: { name: '配置设置', items: [], keys: [] },
+    menu: { name: '菜单配置', items: [], keys: [] },
+    video: { name: '视频配置', items: [], keys: [] },
+    history: { name: '历史记录', items: [], keys: [] },
+    other: { name: '其他数据', items: [], keys: [] }
   };
 
   Object.entries(items).forEach(([key, value]) => {
@@ -515,7 +515,7 @@ function performManualBackup() {
 
   chrome.runtime.sendMessage({ action: 'performBackup' }, (response) => {
     btn.disabled = false;
-    btn.textContent = '📥 立即备份';
+    btn.textContent = '立即备份';
 
     if (response && response.success) {
       showStatusMessage(`备份成功: ${response.filename}`, 'success');

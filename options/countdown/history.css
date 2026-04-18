@@ -565,3 +565,52 @@ body {
         gap: 8px;
     }
 }
+
+body {
+    font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
+    background:
+        radial-gradient(circle at top left, rgba(255, 250, 241, 0.9), transparent 28%),
+        linear-gradient(180deg, #f8f3ea, #efe5d3);
+    color: #2d241c;
+}
+
+.history-header,
+.stats-overview,
+.records-section {
+    border: 1px solid rgba(93, 67, 43, 0.12);
+    border-radius: 28px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.08)),
+        linear-gradient(135deg, #f6efe2 0%, #ebdfc7 100%);
+    box-shadow: 0 24px 80px rgba(48, 32, 20, 0.12);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #99673f, #6b4a31);
+    color: #fffaf4;
+}
+
+.btn-secondary {
+    background: rgba(88, 63, 41, 0.08);
+    color: #2d241c;
+}
+
+.btn-danger {
+    background: rgba(154, 79, 64, 0.14);
+    color: #7a3025;
+}
+
+.stat-card,
+.record-item,
+.filter-select,
+.filter-input,
+.form-input,
+.form-textarea {
+    border-color: rgba(93, 67, 43, 0.12);
+    background: rgba(255, 252, 247, 0.82);
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    border-color: #99673f;
+}

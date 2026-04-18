@@ -7,7 +7,7 @@ class CountdownManager {
         this.timerOrder = []; // 保存排序后的ID顺序
         this.currentEditId = null;
         this.currentDeleteId = null;
-        this.selectedColor = '#3b82f6';
+        this.selectedColor = '#99673f';
         this.timerIntervals = new Map(); // 存储每个计时器的 interval
         this.sortableInstance = null; // SortableJS 实例
         this.init();
@@ -287,9 +287,9 @@ class CountdownManager {
                         <button class="timer-more-btn" data-timer-id="${timer.id}">⋮</button>
                     </div>
                     <div class="more-menu" id="moreMenu-${timer.id}">
-                        <div class="more-menu-item" data-action="edit" data-id="${timer.id}">✏️ 编辑</div>
-                        <div class="more-menu-item" data-action="clone" data-id="${timer.id}">📋 克隆</div>
-                        <div class="more-menu-item danger" data-action="delete" data-id="${timer.id}">🗑️ 删除</div>
+                        <div class="more-menu-item" data-action="edit" data-id="${timer.id}">编辑</div>
+                        <div class="more-menu-item" data-action="clone" data-id="${timer.id}">克隆</div>
+                        <div class="more-menu-item danger" data-action="delete" data-id="${timer.id}">删除</div>
                     </div>
                 </div>
             `;
@@ -675,7 +675,7 @@ class CountdownManager {
             descInput.value = '';
             minutesInput.value = 25;
             secondsInput.value = 0;
-            this.selectColor('#3b82f6');
+            this.selectColor('#99673f');
         }
 
         modal.classList.add('show');

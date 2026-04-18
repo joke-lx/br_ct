@@ -240,8 +240,8 @@ class HistoryManager {
                             </div>
                         </div>
                         <div class="record-actions">
-                            <button class="record-action-btn clone" data-id="${record.id}">📋 克隆创建时钟</button>
-                            <button class="record-action-btn delete" data-id="${record.id}">🗑️ 删除</button>
+                            <button class="record-action-btn clone" data-id="${record.id}">克隆创建时钟</button>
+                            <button class="record-action-btn delete" data-id="${record.id}">删除</button>
                         </div>
                     </div>
                 `;
@@ -413,10 +413,10 @@ class HistoryManager {
         const diff = Math.abs(actual - planned);
         const percent = planned > 0 ? Math.round((1 - diff / planned) * 100) : 100;
 
-        if (percent >= 95) return '🎯 完美';
-        if (percent >= 80) return '👍 准确';
-        if (percent >= 60) return ' 一般';
-        return '⚠️ 偏差较大';
+        if (percent >= 95) return '完美';
+        if (percent >= 80) return '准确';
+        if (percent >= 60) return '一般';
+        return '偏差较大';
     }
 
     // 计算准确度（直接使用值）
@@ -424,10 +424,10 @@ class HistoryManager {
         const diff = Math.abs(actualSeconds - plannedSeconds);
         const percent = plannedSeconds > 0 ? Math.round((1 - diff / plannedSeconds) * 100) : 100;
 
-        if (percent >= 95) return '🎯 完美';
-        if (percent >= 80) return '👍 准确';
-        if (percent >= 60) return ' 一般';
-        return '⚠️ 偏差较大';
+        if (percent >= 95) return '完美';
+        if (percent >= 80) return '准确';
+        if (percent >= 60) return '一般';
+        return '偏差较大';
     }
 
     // 格式化日期时间

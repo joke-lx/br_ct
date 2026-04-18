@@ -268,7 +268,7 @@ function performManualBackup() {
   // 使用 performManualBackup 动作，会根据用户设置决定是否弹出对话框
   chrome.runtime.sendMessage({ action: 'performManualBackup' }, (response) => {
     btn.disabled = false;
-    btn.textContent = '📥 立即备份';
+    btn.textContent = '立即备份';
 
     if (response && response.success) {
       showStatusMessage(`备份成功: ${response.filename}`, 'success');

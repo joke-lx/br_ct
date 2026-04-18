@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="../options.css" />
     <style>
       .backup-status-card {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        background: rgba(255, 252, 247, 0.82);
         border-radius: 12px;
         padding: 24px;
         margin-bottom: 24px;
@@ -22,12 +22,12 @@
       .backup-status-title {
         font-size: 20px;
         font-weight: 600;
-        color: #1565c0;
+        color: #2d241c;
       }
 
       .backup-status-time {
         font-size: 14px;
-        color: #1976d2;
+        color: #7a6858;
       }
 
       .backup-status-time.never {
@@ -52,12 +52,12 @@
       .backup-stat-value {
         font-size: 24px;
         font-weight: 600;
-        color: #1565c0;
+        color: #2d241c;
       }
 
       .backup-stat-label {
         font-size: 12px;
-        color: #1976d2;
+        color: #7a6858;
         margin-top: 4px;
       }
 
@@ -132,7 +132,7 @@
       }
 
       .toggle-switch input:checked + .toggle-slider {
-        background-color: #3b82f6;
+        background-color: #99673f;
       }
 
       .toggle-switch input:checked + .toggle-slider:before {
@@ -152,7 +152,7 @@
 
       .setting-select:focus {
         outline: none;
-        border-color: #3b82f6;
+        border-color: #99673f;
       }
 
       .setting-select[type="text"] {
@@ -199,12 +199,87 @@
         padding: 40px 20px;
         color: #6c757d;
       }
+      .backup-status-card {
+        border-radius: 20px;
+      }
+
+      .backup-status-title,
+      .backup-stat-value,
+      .setting-title,
+      .backup-history-name {
+        color: #2d241c;
+      }
+
+      .backup-status-time,
+      .backup-stat-label,
+      .setting-description,
+      .backup-history-time,
+      .backup-history-size,
+      .empty-history {
+        color: #7a6858;
+      }
+
+      .backup-stat-item,
+      .backup-history-item {
+        background: rgba(255, 252, 247, 0.72);
+        border: 1px solid rgba(93, 67, 43, 0.1);
+        border-radius: 18px;
+      }
+
+      .toggle-slider {
+        background-color: rgba(88, 63, 41, 0.18);
+      }
+
+      .toggle-switch input:checked + .toggle-slider {
+        background-color: #99673f;
+      }
+      .backup-status-card {
+        background: rgba(255, 252, 247, 0.82);
+        border: 1px solid rgba(93, 67, 43, 0.1);
+        border-radius: 20px;
+      }
+
+      .backup-status-title,
+      .backup-stat-value,
+      .setting-title,
+      .backup-history-name {
+        color: #2d241c;
+      }
+
+      .backup-status-time,
+      .backup-stat-label,
+      .setting-description,
+      .backup-history-time,
+      .backup-history-size,
+      .empty-history {
+        color: #7a6858;
+      }
+
+      .backup-stat-item,
+      .backup-history-item {
+        background: rgba(255, 252, 247, 0.72);
+        border: 1px solid rgba(93, 67, 43, 0.1);
+        border-radius: 18px;
+      }
+
+      .toggle-slider {
+        background-color: rgba(88, 63, 41, 0.18);
+      }
+
+      .toggle-switch input:checked + .toggle-slider {
+        background-color: #99673f;
+      }
+
+      .setting-select:focus {
+        border-color: #99673f;
+        box-shadow: 0 0 0 3px rgba(153, 103, 63, 0.08);
+      }
     </style>
   </head>
   <body>
     <div class="page-container">
       <header class="page-header">
-        <h1 class="page-title">💾 备份设置</h1>
+        <h1 class="page-title">备份设置</h1>
         <p class="page-description">
           配置自动备份和手动备份功能，保护您的数据安全
         </p>
@@ -215,7 +290,7 @@
         <div class="backup-status-card">
           <div class="backup-status-header">
             <div class="backup-status-title">备份状态</div>
-            <button class="btn btn-primary" id="backup-now-btn">📥 立即备份</button>
+            <button class="btn btn-primary" id="backup-now-btn">立即备份</button>
           </div>
           <div class="backup-status-time" id="last-backup-time">加载中...</div>
           <div class="backup-stats">
@@ -237,7 +312,7 @@
 
       <!-- 自动备份设置 -->
       <section class="section">
-        <h2 class="section-title">⚙️ 自动备份设置</h2>
+        <h2 class="section-title">自动备份设置</h2>
 
         <div class="setting-row">
           <div class="setting-label">
@@ -312,13 +387,13 @@
         </div>
 
         <div class="button-group">
-          <button class="btn btn-success" id="save-settings-btn">💾 保存设置</button>
+          <button class="btn btn-success" id="save-settings-btn">保存设置</button>
         </div>
       </section>
 
       <!-- 备份历史 -->
       <section class="section">
-        <h2 class="section-title">📜 备份历史</h2>
+        <h2 class="section-title">备份历史</h2>
         <div id="backup-history-list" class="backup-history">
           <div class="empty-history">暂无备份记录</div>
         </div>
@@ -326,7 +401,7 @@
 
       <!-- 调试信息 (可选) -->
       <section class="section">
-        <h2 class="section-title">🔧 调试信息</h2>
+        <h2 class="section-title">调试信息</h2>
         <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px;">
           <div style="margin-bottom: 8px;"><strong>Alarm 状态:</strong> <span id="debug-alarm-status">检查中...</span></div>
           <div style="margin-bottom: 8px;"><strong>下次备份时间:</strong> <span id="debug-alarm-time">-</span></div>

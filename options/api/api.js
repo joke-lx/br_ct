@@ -181,16 +181,16 @@ async function testAPIConnection() {
     if (response.ok) {
       const data = await response.json();
       if (data.choices && data.choices.length > 0) {
-        showTestResult('✅ 连接成功！API 配置有效', 'success');
+        showTestResult('连接成功，API 配置有效', 'success');
       } else {
-        showTestResult('⚠️ 连接成功但返回格式异常', 'error');
+        showTestResult('连接成功，但返回格式异常', 'error');
       }
     } else {
       const errorData = await response.json().catch(() => ({}));
-      showTestResult(`❌ 连接失败：${errorData.error?.message || response.statusText}`, 'error');
+      showTestResult(`连接失败：${errorData.error?.message || response.statusText}`, 'error');
     }
   } catch (error) {
-    showTestResult(`❌ 连接失败：${error.message}`, 'error');
+    showTestResult(`连接失败：${error.message}`, 'error');
   }
 }
 

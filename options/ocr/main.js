@@ -44,19 +44,9 @@ class OCRPlugin {
         this.historyList = document.getElementById('historyList');
         this.queueStatus = document.getElementById('queueStatus');
         this.queueCount = document.getElementById('queueCount');
-        this.apiKeyInput = document.getElementById('apiKey');
-        this.baseURLInput = document.getElementById('baseURL');
-        this.configContent = document.getElementById('configContent');
     }
 
     attachEventListeners() {
-        // 配置区域
-        document.getElementById('toggleConfig').addEventListener('click', () => {
-            this.configContent.classList.toggle('show');
-            const btn = document.getElementById('toggleConfig');
-            btn.textContent = this.configContent.classList.contains('show') ? '收起' : '展开';
-        });
-
         // 图片粘贴和拖拽
         document.addEventListener('paste', (e) => this.handlePaste(e));
         this.pasteZone.addEventListener('dragover', (e) => this.handleDragOver(e));
@@ -69,10 +59,6 @@ class OCRPlugin {
 
         // 提示词管理
         document.getElementById('addPromptBtn').addEventListener('click', () => this.addPrompt());
-
-        // API配置
-        document.getElementById('saveConfigBtn').addEventListener('click', () => this.saveConfig());
-        document.getElementById('testApiBtn').addEventListener('click', () => this.testApi());
 
         // 结果和历史
         document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
@@ -150,59 +136,6 @@ class OCRPlugin {
             // 兼容旧配置
             if (legacyApiKey) this.apiConfig.apiKey = legacyApiKey;
             if (legacyBaseURL) this.apiConfig.baseURL = legacyBaseURL;
-        }
-
-        this.apiKeyInput.value = this.apiConfig.apiKey || '';
-        this.baseURLInput.value = this.apiConfig.baseURL;
-    }
-
-    async saveConfig() {
-        this.apiConfig.apiKey = this.apiKeyInput.value.trim();
-        this.apiConfig.baseURL = this.baseURLInput.value.trim();
-
-        // 同时保存到新配置格式（与translation模块共享）
-        await this.setData('translation.api.config', {
-            baseURL: this.apiConfig.baseURL,
-            apiKey: this.apiConfig.apiKey,
-            model: this.apiConfig.model
-        });
-
-        // 兼容旧配置
-        await this.setData('apiKey', this.apiConfig.apiKey);
-        await this.setData('baseURL', this.apiConfig.baseURL);
-
-        this.showToast('配置已保存', 'success');
-    }
-
-    async testApi() {
-        const apiKey = this.apiKeyInput.value.trim();
-        if (!apiKey) {
-            this.showToast('请先输入API Key', 'error');
-            return;
-        }
-
-        try {
-            const response = await fetch(`${this.baseURLInput.value}/chat/completions`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'glm-4.5v',
-                    messages: [{ role: 'user', content: 'test' }],
-                    max_tokens: 10
-                })
-            });
-
-            if (response.ok) {
-                this.showToast('API连接成功', 'success');
-            } else {
-                const error = await response.text();
-                this.showToast(`API错误: ${response.status}`, 'error');
-            }
-        } catch (error) {
-            this.showToast('连接失败: ' + error.message, 'error');
         }
     }
 
@@ -373,7 +306,7 @@ class OCRPlugin {
         }
 
         if (!this.apiConfig.apiKey) {
-            this.showToast('请先配置API Key', 'error');
+            this.showToast('请先在 API 设置页完成共享配置', 'error');
             return;
         }
 
@@ -438,9 +371,6 @@ class OCRPlugin {
     }
 
     async callOCR(prompt, resultItem) {
-        // 移除 data:image 前缀
-        const base64Data = this.currentImageData.split(',')[1];
-
         const response = await fetch(`${this.apiConfig.baseURL}/chat/completions`, {
             method: 'POST',
             headers: {
@@ -452,7 +382,7 @@ class OCRPlugin {
                 messages: [{
                     role: 'user',
                     content: [
-                        { type: 'image_url', image_url: { url: base64Data } },
+                        { type: 'image_url', image_url: { url: this.currentImageData } },
                         { type: 'text', text: prompt }
                     ]
                 }],

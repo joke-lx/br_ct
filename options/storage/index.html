@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="../options.css" />
     <style>
       .backup-status-card {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        background: rgba(255, 252, 247, 0.82);
         border-radius: 12px;
         padding: 16px 20px;
         margin-bottom: 20px;
@@ -23,13 +23,13 @@
       .backup-status-title {
         font-size: 16px;
         font-weight: 600;
-        color: #1565c0;
+        color: #2d241c;
         margin-bottom: 4px;
       }
 
       .backup-status-time {
         font-size: 13px;
-        color: #1976d2;
+        color: #7a6858;
       }
 
       .backup-status-time.never {
@@ -60,16 +60,16 @@
       }
 
       .json-key {
-        color: #0969da;
+        color: #7a4d2b;
         font-weight: 500;
       }
 
       .json-string {
-        color: #0a3069;
+        color: #465f72;
       }
 
       .json-number {
-        color: #0550ae;
+        color: #6c4b31;
       }
 
       .json-boolean {
@@ -132,12 +132,41 @@
       .storage-item-header:hover .delete-key-btn {
         opacity: 1;
       }
+      .backup-status-card {
+        border-radius: 20px;
+      }
+
+      .backup-status-title {
+        color: #2d241c;
+      }
+
+      .backup-status-time {
+        color: #7a6858;
+      }
+
+      .backup-status-time.never {
+        color: #9a4f40;
+      }
+
+      .json-item > .json-key::before {
+        background: rgba(93, 67, 43, 0.12);
+      }
+
+      .json-collapsible:hover {
+        background: rgba(107, 74, 49, 0.05);
+      }
+
+      .delete-key-btn {
+        background: rgba(154, 79, 64, 0.14);
+        color: #7a3025;
+        border-radius: 999px;
+      }
     </style>
   </head>
   <body>
     <div class="page-container">
       <header class="page-header">
-        <h1 class="page-title">🔍 存储调试</h1>
+        <h1 class="page-title">存储调试</h1>
         <p class="page-description">
           查看插件在 chrome.storage.local 中存储的所有数据
         </p>
@@ -146,15 +175,15 @@
       <section class="section">
         <div class="backup-status-card">
           <div class="backup-status-info">
-            <div class="backup-status-title">💾 数据备份</div>
+            <div class="backup-status-title">数据备份</div>
             <div class="backup-status-time" id="last-backup-time">加载中...</div>
           </div>
-          <button class="btn btn-primary" id="backup-now-btn">📥 立即备份</button>
+          <button class="btn btn-primary" id="backup-now-btn">立即备份</button>
         </div>
 
         <div class="debug-controls">
-          <button class="btn btn-success" id="refresh-storage">🔄 刷新</button>
-          <button class="btn btn-danger" id="clear-storage">🗑️ 清空所有</button>
+          <button class="btn btn-success" id="refresh-storage">刷新</button>
+          <button class="btn btn-danger" id="clear-storage">清空所有</button>
         </div>
 
         <div class="debug-content" id="storage-debug-content">
