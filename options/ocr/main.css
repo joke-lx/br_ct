@@ -16,7 +16,7 @@ body {
 
 .ocr-kicker,
 .section-kicker {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -25,7 +25,7 @@ body {
 
 .ocr-header h1 {
     margin: 10px 0 8px;
-    font-size: 34px;
+    font-size: 38px;
     font-weight: 700;
     letter-spacing: -0.03em;
     color: #2d241c;
@@ -33,7 +33,7 @@ body {
 
 .subtitle {
     margin: 0;
-    font-size: 15px;
+    font-size: 17px;
     line-height: 1.7;
     color: #756452;
 }
@@ -47,7 +47,7 @@ body {
     border-radius: 999px;
     background: rgba(255, 251, 245, 0.9);
     color: #8b6a50;
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 0.04em;
 }
 
@@ -113,7 +113,7 @@ body {
 
 .section-header h2 {
     margin: 6px 0 0;
-    font-size: 22px;
+    font-size: 26px;
     line-height: 1.2;
     letter-spacing: -0.02em;
     color: #2d241c;
@@ -149,7 +149,7 @@ body {
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.74);
     font: inherit;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.7;
     color: #2d241c;
     resize: vertical;
@@ -204,7 +204,7 @@ body {
 
 .paste-hint {
     margin: 0 0 6px;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 600;
     letter-spacing: -0.02em;
     color: #5d4938;
@@ -212,7 +212,7 @@ body {
 
 .paste-shortcut {
     margin: 0;
-    font-size: 13px;
+    font-size: 14px;
     color: #8e7a67;
 }
 
@@ -601,7 +601,7 @@ body {
     }
 
     .ocr-header h1 {
-        font-size: 28px;
+        font-size: 32px;
     }
 
     .prompt-section,
