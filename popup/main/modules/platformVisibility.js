@@ -2,6 +2,22 @@
 
 import { loadData, savePlatformVisibilitySettings } from './storage.js';
 
+function updateVisiblePlatformColumns() {
+  const container = document.getElementById('platform-options-row');
+  if (!container) {
+    return;
+  }
+
+  const visibleCount = Array.from(
+    container.querySelectorAll('.platform-icon-option')
+  ).filter((option) => option.style.display !== 'none').length;
+
+  container.style.setProperty(
+    '--platform-columns',
+    Math.min(Math.max(visibleCount, 1), 7)
+  );
+}
+
 /**
  * 加载并应用平台可见性设置
  */
@@ -25,6 +41,7 @@ export async function loadPlatformVisibilitySettings() {
       }
     });
 
+    updateVisiblePlatformColumns();
     return visibilitySettings;
   } catch (error) {
     console.error('加载平台可见性设置失败:', error);
@@ -58,6 +75,8 @@ export function applyPlatformVisibilitySettings(settings) {
       }
     }
   });
+
+  updateVisiblePlatformColumns();
 }
 
 /**

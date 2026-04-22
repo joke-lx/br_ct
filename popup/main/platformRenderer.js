@@ -32,6 +32,8 @@ export function generatePlatformOptionsHTML() {
 export function initializePlatformOptions() {
   const container = document.getElementById('platform-options-row');
   if (container) {
+    const platformCount = Object.keys(PLATFORM_CONFIG).length;
     container.innerHTML = generatePlatformOptionsHTML();
+    container.style.setProperty('--platform-columns', Math.min(platformCount, 7));
   }
 }

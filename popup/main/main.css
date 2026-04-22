@@ -179,10 +179,12 @@ body {
 
 /* 平台图标选项 */
 .platform-options-row {
-  display: flex;
-  justify-content: space-around;
+  display: grid;
+  grid-template-columns: repeat(var(--platform-columns, 7), minmax(0, 1fr));
   align-items: flex-start;
   gap: 5px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .platform-icon-option {
@@ -193,10 +195,10 @@ body {
   padding: 5px;
   border-radius: var(--radius-md);
   transition: var(--transition);
-  flex-basis: 0;
-  flex-grow: 1;
   text-align: center;
   position: relative;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .platform-icon-option:hover .icon-wrapper {
