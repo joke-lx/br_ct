@@ -1,0 +1,46 @@
+/**
+ * 划词快捷提问面板样式
+ */
+
+.selection-ask-panel {
+  position: fixed;
+  width: 160px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  display: none;
+}
+
+.selection-ask-header {
+  padding: 10px 12px;
+  background: #3b82f6;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px 8px 0 0;
+}
+
+.selection-ask-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.selection-ask-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.selection-ask-item:last-child {
+  border-bottom: none;
+}
+
+.selection-ask-item:hover {
+  background: #f0f7ff;
+  color: #3b82f6;
+}
