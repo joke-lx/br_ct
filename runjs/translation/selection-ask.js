@@ -5,6 +5,7 @@
 
 // ========== 提示词模板（硬编码） ==========
 const SELECTION_ASK_PROMPTS = [
+  { label: "复制", template: "" },  // 第一个是复制功能
   { label: "解释", template: "请深入解释：%s" },
   { label: "证据", template: "证据是什么,这是对的? 开源项目和社区?官方文档?\n%s" },
   { label: "枚举关联", template: "和他们处理的需求,按照场景的推导出他们,而不是直接告诉我他们存在,从真实的问题出发,演进历史出发,没有他们会出现什么问题,以及在这个领域 有没有其他更多的技术\n%s" },
@@ -78,13 +79,18 @@ function createPanel() {
     `<div class="selection-ask-item" data-template="${encodeURIComponent(p.template)}">${p.label}</div>`
   ).join('');
 
-  panel.innerHTML = `
-    <div class="selection-ask-header">💬 快捷提问</div>
-    <div class="selection-ask-list">${itemsHtml}</div>
-  `;
+  panel.innerHTML = itemsHtml;
 
-  // 绑定点击事件
-  panel.querySelectorAll('.selection-ask-item').forEach(item => {
+  // 第一个是复制功能，后面是发送功能
+  const firstItem = panel.querySelector('.selection-ask-item');
+  if (firstItem) {
+    firstItem.addEventListener('click', () => {
+      handleCopyClick();
+    });
+  }
+
+  // 其他发送功能
+  panel.querySelectorAll('.selection-ask-item:not(:first-child)').forEach(item => {
     item.addEventListener('click', () => {
       const template = decodeURIComponent(item.dataset.template);
       handleTemplateClick(template);
@@ -156,6 +162,23 @@ function hidePanel() {
 }
 
 // ========== 发送消息逻辑 ==========
+/**
+ * 处理复制点击 - 复制选中文本到剪贴板
+ */
+async function handleCopyClick() {
+  const selectedText = selectionAskLastSelection;
+  if (!selectedText) return;
+
+  try {
+    await navigator.clipboard.writeText(selectedText);
+    console.log('[SelectionAsk] 已复制到剪贴板:', selectedText.substring(0, 50) + '...');
+  } catch (e) {
+    console.warn('[SelectionAsk] 复制失败:', e);
+  }
+
+  hidePanel();
+}
+
 /**
  * 处理模板点击 - 组合消息并发送
  */
