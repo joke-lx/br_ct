@@ -177,10 +177,20 @@ function handleTemplateClick(template) {
   console.log(`[SelectionAsk] 发送消息到 ${platform}: "${message}"`);
 
   // 通过 background.js 发送
-  chrome.runtime.sendMessage({
-    action: 'processTaskQueue',
-    queue: [{ platform, message }]
-  });
+  try {
+    chrome.runtime.sendMessage({
+      action: 'processTaskQueue',
+      queue: [{ platform, message }]
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn('[SelectionAsk] 消息发送失败:', chrome.runtime.lastError.message);
+      } else {
+        console.log('[SelectionAsk] 消息发送成功');
+      }
+    });
+  } catch (e) {
+    console.warn('[SelectionAsk] 扩展 context 已失效，请刷新页面:', e.message);
+  }
 
   hidePanel();
 }
