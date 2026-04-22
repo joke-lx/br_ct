@@ -223,35 +223,40 @@ const buttonSelectors = [
   // ==========================================================
   // 👇 【新版】发送按钮选择器 (2025-04 修复)
   // ==========================================================
-  // 1. 通过类名定位（最新 DOM 结构）
+  // 1. 通过 aria-label 定位（最可靠）
   {
     type: "css",
-    value: 'button.inline-flex.size-8.shrink-0.items-center.justify-center.rounded-full.border-0.p-0.text-16.leading-none.outline-none.transition-[background-color\\,color\\,opacity].duration-200.cursor-pointer.bg-black-button',
+    value: 'button[aria-label="发送消息"]',
   },
-  // 2. 通过图标类型定位
+  // 2. 通过 bg-black-button 类名定位
   {
     type: "css",
-    value: 'div[data-icon-type="qwpcicon-sendChat"]',
+    value: 'button.bg-black-button',
   },
-  // 3. 通过类名定位（注意可能包含 disabled 类）
+  // 3. 通过 data-icon-type 定位
   {
     type: "css",
-    value: 'div[class*="operateBtn"]',
+    value: 'button[data-icon-type="qwpcicon-sendChat"]',
   },
-  // 4. 查找包含发送图标的父级 div
+  // 4. 通过图标父级按钮定位
   {
     type: "xpath",
-    value: '//div[@data-icon-type="qwpcicon-sendChat"]/ancestor::div[contains(@class, "operateBtn")]',
+    value: '//span[@data-icon-type="qwpcicon-sendChat"]/ancestor::button',
   },
-  // 5. 通过 #qw-chat-content 定位
+  // 5. 通过 #qw-chat-content 层级定位
   {
     type: "xpath",
-    value: '//*[@id="qw-chat-content"]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[3]/button[1]',
+    value: '//*[@id="qw-chat-content"]//button[@aria-label="发送消息"]',
   },
-  // 6. 绝对路径
+  // 6. 用户提供的最新 XPath
   {
     type: "xpath",
-    value: '/html[1]/body[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[3]/button[1]',
+    value: '//*[@id="qw-chat-content"]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[3]/button[1]',
+  },
+  // 7. 绝对路径
+  {
+    type: "xpath",
+    value: '/html[1]/body[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[3]/button[1]',
   },
 
   // ==========================================================
