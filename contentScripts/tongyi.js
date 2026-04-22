@@ -159,21 +159,26 @@ async function simulateKeyboardInput(element, text) {
 }
 
 // ==========================================================
-//          通义千问 输入框 & 按钮选择器 (2025-02 修复)
+//          通义千问 输入框 & 按钮选择器 (2025-04 修复)
 // ==========================================================
 const inputSelectors = [
   // ==========================================================
   // 👇 【核心修复】新版千问使用 Slate 编辑器 (contenteditable div)
   // ==========================================================
-  // 1. 最佳选择：通过 role="textbox" 和 contenteditable 属性定位
+  // 1. 最佳选择：通过 data-slate-editor 属性定位（2025-04 最新）
+  {
+    type: "css",
+    value: 'div[data-slate-editor="true"]',
+  },
+  // 2. 通过 role="textbox" 和 contenteditable 属性定位
   {
     type: "css",
     value: 'div[role="textbox"][contenteditable="true"]',
   },
-  // 2. 通过 data-slate-editor 属性定位
+  // 3. 通过 placeholder 文本定位
   {
-    type: "css",
-    value: 'div[data-slate-editor="true"]',
+    type: "xpath",
+    value: '//div[@data-placeholder="向千问提问"]',
   },
   // 3. 通过 placeholder 文本定位
   {
@@ -256,7 +261,7 @@ const buttonSelectors = [
 ];
 
 // ==========================================================
-//                     主逻辑：发送消息（2025-02 修复版）
+//                     主逻辑：发送消息（2025-04 修复版）
 // ==========================================================
 let isSending = false; // 状态锁
 
@@ -298,16 +303,38 @@ async function sendChatMessage(message) {
 
     if (isContentEditable) {
       // ========== Contenteditable 元素处理（Slate 编辑器） ==========
-      console.log("检测到 contenteditable 元素，使用逐字符键盘模拟输入");
+      console.log("检测到 contenteditable 元素，使用 beforeinput 事件输入");
 
-      // 使用键盘模拟输入（会触发 Slate 编辑器的完整状态更新）
-      await simulateKeyboardInput(inputElement, finalMessage);
+      // 清空现有内容
+      inputElement.textContent = '';
+      inputElement.focus();
 
-      // 额外触发一些事件确保状态同步
+      // 触发 beforeinput 事件（现代编辑器标准）
+      const beforeInputEvent = new InputEvent('beforeinput', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText',
+        data: finalMessage,
+      });
+      inputElement.dispatchEvent(beforeInputEvent);
+
+      // 直接设置 textContent
+      inputElement.textContent = finalMessage;
+
+      // 触发 input 事件
+      const inputEvent = new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText',
+        data: finalMessage,
+      });
+      inputElement.dispatchEvent(inputEvent);
+
+      // 触发 change 事件
       inputElement.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
       document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
 
-      console.log("✅ 键盘模拟输入完成");
+      console.log("✅ beforeinput 事件输入完成");
 
     } else {
       // ========== Textarea/Input 元素处理（旧版兼容） ==========
