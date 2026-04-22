@@ -216,32 +216,37 @@ const inputSelectors = [
 
 const buttonSelectors = [
   // ==========================================================
-  // 👇 【新版】发送按钮选择器
+  // 👇 【新版】发送按钮选择器 (2025-04 修复)
   // ==========================================================
-  // 1. 通过图标类型定位（最稳定）
+  // 1. 通过类名定位（最新 DOM 结构）
+  {
+    type: "css",
+    value: 'button.inline-flex.size-8.shrink-0.items-center.justify-center.rounded-full.border-0.p-0.text-16.leading-none.outline-none.transition-[background-color\\,color\\,opacity].duration-200.cursor-pointer.bg-black-button',
+  },
+  // 2. 通过图标类型定位
   {
     type: "css",
     value: 'div[data-icon-type="qwpcicon-sendChat"]',
   },
-  // 2. 通过类名定位（注意可能包含 disabled 类）
+  // 3. 通过类名定位（注意可能包含 disabled 类）
   {
     type: "css",
     value: 'div[class*="operateBtn"]',
   },
-  // 3. 查找包含发送图标的父级 div
+  // 4. 查找包含发送图标的父级 div
   {
     type: "xpath",
     value: '//div[@data-icon-type="qwpcicon-sendChat"]/ancestor::div[contains(@class, "operateBtn")]',
   },
-  // 4. 完整 XPath 路径
+  // 5. 通过 #qw-chat-content 定位
   {
     type: "xpath",
-    value: '//*[@id="message-list-scroller"]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[2]/div[3]',
+    value: '//*[@id="qw-chat-content"]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[3]/button[1]',
   },
-  // 5. 绝对路径
+  // 6. 绝对路径
   {
     type: "xpath",
-    value: '/html[1]/body[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[2]/div[3]',
+    value: '/html[1]/body[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[3]/button[1]',
   },
 
   // ==========================================================
@@ -431,7 +436,7 @@ if (!window.location.hostname.includes("qianwen")) {
 
 /**
  * @fileoverview
- * 通义千问聊天机器人内容脚本 - 2025-02 修复版
+ * 通义千问聊天机器人内容脚本 - 2025-04 修复版
  * ✅ 已解决：新版千问从 textarea 改为 Slate contenteditable 编辑器
  * ✅ 方法：使用 beforeinput 事件 + execCommand('insertText') 一次性注入
  * ✅ 已解决：按钮状态不随 DOM 操作变化的问题
