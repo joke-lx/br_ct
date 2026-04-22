@@ -6,27 +6,41 @@
 // ========== 提示词模板（硬编码） ==========
 const SELECTION_ASK_PROMPTS = [
   { label: "解释", template: "请解释：%s" },
-
+  { label: "翻译代码", template: "请翻译这段代码：\n%s" },
+  { label: "修复Bug", template: "帮我修复这个bug：\n%s" },
+  { label: "优化代码", template: "请优化这段代码：\n%s" },
+  { label: "生成测试", template: "请为以下代码生成测试：\n%s" },
+  { label: "写文档", template: "请为以下内容生成文档：\n%s" },
+  { label: "代码补全", template: "请补全以下代码：\n%s" },
+  { label: "分析代码", template: "请分析以下代码：\n%s" },
 ];
 
 // ========== 全局状态 ==========
 let selectionAskPanel = null;
 let selectionAskLastSelection = '';
+let selectionAskEnabled = true; // 默认启用
+let platformDomains = {}; // 从 background 获取
 
-// ========== 平台判断逻辑 ==========
-// AI 平台 URL 映射（与 platformConfig.js 保持一致）
-const PLATFORM_URLS = {
-  'yuanbao.tencent.com': 'yuanbao',
-  'gemini.google.com': 'gemini',
-  'chatgpt.com': 'chatgpt',
-  'claude.ai': 'claude',
-  'doubao.com': 'doubao',
-  'chatglm.cn': 'glm',
-  'qianwen.com': 'tongyi',
-  'aistudio.google.com': 'googlestudio',
-  'grok.com': 'grok',
-  'notion.so': 'notionai',
-};
+// ========== 初始化：获取配置 ==========
+async function initializeSelectionAsk() {
+  try {
+    // 获取平台域名映射
+    const domainResponse = await chrome.runtime.sendMessage({ action: 'getPlatformDomains' });
+    if (domainResponse && domainResponse.domains) {
+      platformDomains = domainResponse.domains;
+    }
+
+    // 获取启用设置
+    const settingsResponse = await chrome.runtime.sendMessage({ action: 'getSelectionAskSettings' });
+    if (settingsResponse && settingsResponse.settings) {
+      selectionAskEnabled = settingsResponse.settings.enabled !== false;
+    }
+
+    console.log('[SelectionAsk] 配置加载完成，启用状态:', selectionAskEnabled);
+  } catch (e) {
+    console.warn('[SelectionAsk] 配置加载失败，使用默认配置:', e);
+  }
+}
 
 /**
  * 获取当前页面所属平台
@@ -34,8 +48,11 @@ const PLATFORM_URLS = {
  */
 function getCurrentPlatform() {
   const hostname = window.location.hostname;
-  for (const [domain, platform] of Object.entries(PLATFORM_URLS)) {
-    if (hostname.includes(domain)) {
+  // 移除 www. 前缀进行匹配
+  const cleanHost = hostname.replace(/^www\./, '');
+
+  for (const [domain, platform] of Object.entries(platformDomains)) {
+    if (cleanHost.includes(domain) || hostname.includes(domain)) {
       return platform;
     }
   }
@@ -46,7 +63,7 @@ function getCurrentPlatform() {
  * 检查当前页面是否为 AI 平台
  */
 function isAIPatform() {
-  return getCurrentPlatform() !== null;
+  return selectionAskEnabled && getCurrentPlatform() !== null;
 }
 
 // ========== 面板创建和定位逻辑 ==========
@@ -205,5 +222,19 @@ document.addEventListener('keydown', (e) => {
     hidePanel();
   }
 });
+
+// 监听设置变化
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.selectionAskSettings) {
+    selectionAskEnabled = changes.selectionAskSettings.newValue.enabled !== false;
+    console.log('[SelectionAsk] 启用状态已更新:', selectionAskEnabled);
+    if (!selectionAskEnabled) {
+      hidePanel();
+    }
+  }
+});
+
+// 初始化并加载配置
+initializeSelectionAsk();
 
 console.log('[SelectionAsk] 划词快捷提问模块已加载');

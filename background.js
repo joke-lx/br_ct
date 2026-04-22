@@ -49,3 +49,7 @@ setupTranslationModule();
 setupBinddomCommandListener();
 setupBinddomMessageListener();
 console.log('[Background] BindDom 模块初始化完成');
+
+// 初始化划词快捷提问配置
+import { initSelectionAskConfig } from './backgroudtask/selectionAskConfig.js';
+initSelectionAskConfig();
