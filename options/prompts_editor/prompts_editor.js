@@ -193,7 +193,6 @@ function updateConnectionStatus(connected) {
 // 加载文件列表
 async function loadFiles() {
   try {
-    const response = await sendToNative('listDir', { path: '' });
     // 获取 prompts 目录路径
     const dirResponse = await sendToNative('getPromptsDir');
     const promptsDir = dirResponse.data;

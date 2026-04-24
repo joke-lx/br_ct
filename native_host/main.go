@@ -35,7 +35,7 @@ const (
 	chromeRegPath    = `Software\Google\Chrome\NativeMessagingHosts\` + hostName
 )
 
-// 扩展 ID（固定值，需要与扩展 manifest.json 中的 key 对应）
+// 扩展 ID
 const extensionId = "egnmidblehkcglalbbbckcajkahdnjgm"
 
 // 请求结构
@@ -304,19 +304,20 @@ func parsePromptsContent(content string) ([]PromptEntry, error) {
 	var currentLabel string
 	currentTemplate := strings.Builder{}
 	inTemplate := false
+	var templateQuoteChar string
 
 	// 匹配 export const PROMPTS = { 行
 	exportPattern := regexp.MustCompile(`^\s*export\s+const\s+PROMPTS\s*=\s*\{`)
 	// 匹配条目开始：xxx: { 或 "xxx": {
 	entryStart := regexp.MustCompile(`^\s*(?:\"([^\"]+)\"|([^\s:]+))\s*:\s*\{`)
 	// 匹配 group 属性：单引号或双引号
-	groupPattern := regexp.MustCompile(`group:\s*['\"]([^'\"]+)['\"]`)
+	groupPattern := regexp.MustCompile(`group:\s*['"]([^'"]+)['"]`)
 	// 匹配 label 属性：单引号或双引号
-	labelPattern := regexp.MustCompile(`label:\s*['\"]([^'\"]+)['\"]`)
-	// 匹配 template 开始（后面跟字符串）
-	templateStart := regexp.MustCompile("template:\\s*([`'\"]{1})")
+	labelPattern := regexp.MustCompile(`label:\s*['"]([^'"]+)['"]`)
 
 	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
 		// 检测 export const PROMPTS = {
 		if exportPattern.MatchString(line) {
 			continue
@@ -354,40 +355,100 @@ func parsePromptsContent(content string) ([]PromptEntry, error) {
 			currentLabel = match[1]
 		}
 
-		// 检测 template 开始并提取内容
-		if tmplMatch := templateStart.FindStringSubmatch(line); tmplMatch != nil {
-			inTemplate = true
-			quoteChar := tmplMatch[1]
-			// 提取模板内容
-			templatePart := extractTemplateString(line, quoteChar)
-			if templatePart != "" {
-				currentTemplate.WriteString(templatePart)
+		// 检测 template: 行（使用更宽松的匹配）
+		if strings.Contains(trimmed, "template:") {
+			// 提取 template: 后面的内容
+			idx := strings.Index(trimmed, "template:")
+			rest := strings.TrimSpace(trimmed[idx+9:])
+
+			if rest == "" {
+				// template: 后面是空的，内容在下一行
+				inTemplate = true
+				templateQuoteChar = ""
+				continue
+			}
+
+			// 确定引号字符
+			if strings.HasPrefix(rest, "'") {
+				templateQuoteChar = "'"
+			} else if strings.HasPrefix(rest, "\"") {
+				templateQuoteChar = "\""
+			} else if strings.HasPrefix(rest, "`") {
+				templateQuoteChar = "`"
+			}
+
+			if templateQuoteChar != "" {
+				// 单行模板
+				inTemplate = true
+				// 找最后一个引号
+				lastIdx := strings.LastIndex(rest, templateQuoteChar)
+				if lastIdx > 0 {
+					// 去掉开头和结尾的引号
+					content := rest[1:lastIdx]
+					content = strings.TrimSuffix(content, ",")
+					currentTemplate.WriteString(content)
+				}
+				// 单行结束
+				inTemplate = false
 			}
 			continue
 		}
 
 		// 如果在模板内，收集内容
 		if inTemplate {
-			trimmed := strings.TrimSpace(line)
-			// 检测结束（逗号结尾或闭合括号）
-			if strings.HasSuffix(trimmed, ",") {
-				// 单行结束
-				inTemplate = false
-			} else if strings.HasSuffix(trimmed, "},") {
-				inTemplate = false
-				trimmed = strings.TrimSuffix(trimmed, "},")
-				if trimmed != "" {
-					currentTemplate.WriteString("\n")
+			if templateQuoteChar == "" {
+				// 还没有找到引号，查找引号开始
+				for _, q := range []string{"'", "\"", "`"} {
+					idx := strings.Index(trimmed, q)
+					if idx >= 0 {
+						templateQuoteChar = q
+						// 提取从第一个引号之后到最后一个引号之前的内容
+						lastIdx := strings.LastIndex(trimmed, q)
+						if lastIdx > idx {
+							content := trimmed[idx+1 : lastIdx]
+							currentTemplate.WriteString(content)
+						} else {
+							// 单引号在同一位置
+							content := trimmed[idx+1:]
+							currentTemplate.WriteString(content)
+						}
+						break
+					}
+				}
+			} else {
+				// 继续收集模板内容
+				// 检查是否结束（引号在行内）
+				lastIdx := strings.LastIndex(trimmed, templateQuoteChar)
+				if lastIdx > 0 {
+					// 结束，提取内容
+					content := trimmed[:lastIdx]
+					if trimmed[lastIdx-1] == '\\' {
+						// 转义引号，继续收集
+						content = trimmed
+					} else {
+						// 正常结束
+						if currentTemplate.Len() > 0 {
+							currentTemplate.WriteString("\n")
+						}
+						currentTemplate.WriteString(content)
+						inTemplate = false
+						continue
+					}
+				}
+
+				// 检查是否是结束行（如 }, 或 '}, 或 "},）
+				if trimmed == "}," || strings.HasSuffix(trimmed, "'},") || strings.HasSuffix(trimmed, "\"},") || strings.HasSuffix(trimmed, "`},") {
+					inTemplate = false
+					continue
+				}
+
+				if trimmed != "" && trimmed != "," {
+					// 继续收集
+					if currentTemplate.Len() > 0 {
+						currentTemplate.WriteString("\n")
+					}
 					currentTemplate.WriteString(trimmed)
 				}
-				continue
-			}
-
-			if trimmed != "" && trimmed != "," {
-				if currentTemplate.Len() > 0 {
-					currentTemplate.WriteString("\n")
-				}
-				currentTemplate.WriteString(trimmed)
 			}
 		}
 	}
@@ -403,35 +464,6 @@ func parsePromptsContent(content string) ([]PromptEntry, error) {
 	}
 
 	return prompts, nil
-}
-
-// 提取模板字符串
-func extractTemplateString(line string, quoteChar string) string {
-	// 找到 template: 后面的引号开始位置
-	idx := strings.Index(line, quoteChar)
-	if idx == -1 {
-		return ""
-	}
-	idx++ // 跳过开始引号
-
-	// 查找结束引号（处理转义）
-	result := strings.Builder{}
-	for idx < len(line) {
-		ch := line[idx]
-		if string(ch) == quoteChar {
-			// 检查是否是转义字符
-			if idx > 0 && line[idx-1] == '\\' {
-				result.WriteByte(ch)
-				idx++
-				continue
-			}
-			// 结束引号
-			break
-		}
-		result.WriteByte(ch)
-		idx++
-	}
-	return result.String()
 }
 
 // 生成唯一 ID
