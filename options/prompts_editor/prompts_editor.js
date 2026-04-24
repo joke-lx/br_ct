@@ -34,8 +34,6 @@ function connectToNative() {
       console.log('Native host disconnected');
       port = null;
       updateConnectionStatus(false);
-      // 重连
-      setTimeout(connectToNative, 2000);
     });
 
     updateConnectionStatus(true);
@@ -44,6 +42,15 @@ function connectToNative() {
     console.error('Connect error:', err);
     updateConnectionStatus(false);
   }
+}
+
+// 断开连接
+function disconnectNative() {
+  if (port) {
+    port.disconnect();
+    port = null;
+  }
+  updateConnectionStatus(false);
 }
 
 // 处理原生消息
@@ -117,6 +124,16 @@ function initEventListeners() {
     loadFiles();
   });
 
+  // 启动连接
+  document.getElementById('connectBtn').addEventListener('click', () => {
+    connectToNative();
+  });
+
+  // 断开连接
+  document.getElementById('disconnectBtn').addEventListener('click', () => {
+    disconnectNative();
+  });
+
   // 保存文件
   document.getElementById('saveFile').addEventListener('click', () => {
     saveCurrentFile();
@@ -158,12 +175,18 @@ function initEventListeners() {
 // 更新连接状态
 function updateConnectionStatus(connected) {
   const statusEl = document.getElementById('connectionStatus');
+  const connectBtn = document.getElementById('connectBtn');
+  const disconnectBtn = document.getElementById('disconnectBtn');
   if (connected) {
     statusEl.textContent = '已连接';
     statusEl.className = 'status-badge connected';
+    connectBtn.style.display = 'none';
+    disconnectBtn.style.display = 'block';
   } else {
     statusEl.textContent = '未连接';
     statusEl.className = 'status-badge disconnected';
+    connectBtn.style.display = 'block';
+    disconnectBtn.style.display = 'none';
   }
 }
 

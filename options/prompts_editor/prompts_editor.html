@@ -366,7 +366,11 @@
   <div class="prompts-container">
     <div class="prompts-header">
       <h2>📝 提示词编辑器</h2>
-      <span id="connectionStatus" class="status-badge disconnected">未连接</span>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span id="connectionStatus" class="status-badge disconnected">未连接</span>
+        <button class="btn btn-secondary" id="connectBtn">启动</button>
+        <button class="btn btn-secondary" id="disconnectBtn" style="display: none;">关闭</button>
+      </div>
     </div>
 
     <div class="prompts-layout">
