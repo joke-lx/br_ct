@@ -463,35 +463,28 @@ async function saveCurrentFile() {
   }
 }
 
-// 生成提示词文件内容
+// 生成提示词文件内容（新数组格式）
 function generatePromptsFileContent() {
-  // 按分组整理
-  const groups = {};
-  prompts.forEach(p => {
-    if (!groups[p.group]) {
-      groups[p.group] = [];
-    }
-    groups[p.group].push(p);
-  });
+  // 从文件名提取 group 名
+  const groupName = currentFile ? currentFile.replace(/\.js$/, '') : 'unknown';
 
-  // 生成内容
-  let content = 'export const PROMPTS = {\n';
+  let content = `export const ${groupName} = [\n`;
 
   prompts.forEach((p, index) => {
+    // 处理模板中的特殊字符
     const template = p.template
       .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`')
-      .replace(/\$/g, '\\$');
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n');
 
-    content += `  ${p.label}: {\n`;
-    content += `    group: "${p.group}",\n`;
+    content += `  {\n`;
     content += `    label: "${p.label}",\n`;
-    content += `    template: \`${template}\`\n`;
+    content += `    template: "${template}"\n`;
     content += `  }`;
     content += index < prompts.length - 1 ? ',\n' : '\n';
   });
 
-  content += '};\n';
+  content += '];\n';
   return content;
 }
 

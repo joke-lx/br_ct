@@ -287,7 +287,11 @@ func parsePromptsFile(path string) Response {
 		return Response{Status: "error", Message: err.Error()}
 	}
 
-	prompts, err := parsePromptsContent(string(content))
+	// 从文件名提取 group
+	fileName := filepath.Base(path)
+	group := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+
+	prompts, err := parsePromptsContent(string(content), group)
 	if err != nil {
 		return Response{Status: "error", Message: err.Error()}
 	}
@@ -296,154 +300,88 @@ func parsePromptsFile(path string) Response {
 }
 
 // 解析提示词内容
-func parsePromptsContent(content string) ([]PromptEntry, error) {
+func parsePromptsContent(content string, group string) ([]PromptEntry, error) {
 	var prompts []PromptEntry
 	lines := strings.Split(content, "\n")
 
-	var currentGroup string
+	// 匹配 label 属性：支持单引号和双引号
+	labelPattern := regexp.MustCompile(`label:\s*"([^"]+)"`)
+	// 匹配 template: 后面的内容
+	templateStart := regexp.MustCompile(`template:\s*`)
+
 	var currentLabel string
-	currentTemplate := strings.Builder{}
+	var currentTemplate strings.Builder
 	inTemplate := false
 	var templateQuoteChar string
-
-	// 匹配 export const PROMPTS = { 行
-	exportPattern := regexp.MustCompile(`^\s*export\s+const\s+PROMPTS\s*=\s*\{`)
-	// 匹配条目开始：xxx: { 或 "xxx": {
-	entryStart := regexp.MustCompile(`^\s*(?:\"([^\"]+)\"|([^\s:]+))\s*:\s*\{`)
-	// 匹配 group 属性：单引号或双引号
-	groupPattern := regexp.MustCompile(`group:\s*['"]([^'"]+)['"]`)
-	// 匹配 label 属性：单引号或双引号
-	labelPattern := regexp.MustCompile(`label:\s*['"]([^'"]+)['"]`)
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 
-		// 检测 export const PROMPTS = {
-		if exportPattern.MatchString(line) {
-			continue
-		}
-
-		// 检测条目开始
-		if match := entryStart.FindStringSubmatch(line); match != nil {
+		// 提取 label
+		if match := labelPattern.FindStringSubmatch(line); match != nil {
 			// 保存之前的条目
 			if currentLabel != "" && currentTemplate.Len() > 0 {
 				prompts = append(prompts, PromptEntry{
 					ID:       generateID(),
-					Group:    currentGroup,
+					Group:    group,
 					Label:    currentLabel,
 					Template: currentTemplate.String(),
 				})
 			}
-			// 获取键名（可能是双引号或无引号）
-			if match[1] != "" {
-				currentLabel = match[1]
-			} else {
-				currentLabel = match[2]
-			}
+			currentLabel = match[1]
 			currentTemplate.Reset()
 			inTemplate = false
 			continue
 		}
 
-		// 提取 group
-		if match := groupPattern.FindStringSubmatch(line); match != nil {
-			currentGroup = match[1]
-		}
-
-		// 提取 label
-		if match := labelPattern.FindStringSubmatch(line); match != nil {
-			currentLabel = match[1]
-		}
-
-		// 检测 template: 行（使用更宽松的匹配）
-		if strings.Contains(trimmed, "template:") {
+		// 检测 template: 行
+		if templateStart.MatchString(line) {
 			// 提取 template: 后面的内容
-			idx := strings.Index(trimmed, "template:")
-			rest := strings.TrimSpace(trimmed[idx+9:])
+			rest := strings.TrimSpace(trimmed[len("template:"):])
 
 			if rest == "" {
-				// template: 后面是空的，内容在下一行
+				// 内容在下一行
 				inTemplate = true
 				templateQuoteChar = ""
 				continue
 			}
 
 			// 确定引号字符
-			if strings.HasPrefix(rest, "'") {
-				templateQuoteChar = "'"
-			} else if strings.HasPrefix(rest, "\"") {
-				templateQuoteChar = "\""
-			} else if strings.HasPrefix(rest, "`") {
-				templateQuoteChar = "`"
-			}
-
-			if templateQuoteChar != "" {
-				// 单行模板
-				inTemplate = true
-				// 找最后一个引号
-				lastIdx := strings.LastIndex(rest, templateQuoteChar)
-				if lastIdx > 0 {
-					// 去掉开头和结尾的引号
-					content := rest[1:lastIdx]
-					content = strings.TrimSuffix(content, ",")
+			if strings.HasPrefix(rest, "'") || strings.HasPrefix(rest, "\"") || strings.HasPrefix(rest, "`") {
+				templateQuoteChar = string(rest[0])
+				// 找结束引号
+				startIdx := 1
+				endIdx := strings.LastIndex(rest, templateQuoteChar)
+				if endIdx > startIdx {
+					content := rest[startIdx:endIdx]
 					currentTemplate.WriteString(content)
 				}
-				// 单行结束
-				inTemplate = false
 			}
 			continue
 		}
 
-		// 如果在模板内，收集内容
+		// 在模板内收集内容
 		if inTemplate {
 			if templateQuoteChar == "" {
-				// 还没有找到引号，查找引号开始
+				// 找引号开始
 				for _, q := range []string{"'", "\"", "`"} {
 					idx := strings.Index(trimmed, q)
 					if idx >= 0 {
 						templateQuoteChar = q
-						// 提取从第一个引号之后到最后一个引号之前的内容
 						lastIdx := strings.LastIndex(trimmed, q)
 						if lastIdx > idx {
-							content := trimmed[idx+1 : lastIdx]
-							currentTemplate.WriteString(content)
-						} else {
-							// 单引号在同一位置
-							content := trimmed[idx+1:]
-							currentTemplate.WriteString(content)
+							currentTemplate.WriteString(trimmed[idx+1 : lastIdx])
 						}
 						break
 					}
 				}
 			} else {
-				// 继续收集模板内容
-				// 检查是否结束（引号在行内）
+				// 检查结束
 				lastIdx := strings.LastIndex(trimmed, templateQuoteChar)
-				if lastIdx > 0 {
-					// 结束，提取内容
-					content := trimmed[:lastIdx]
-					if trimmed[lastIdx-1] == '\\' {
-						// 转义引号，继续收集
-						content = trimmed
-					} else {
-						// 正常结束
-						if currentTemplate.Len() > 0 {
-							currentTemplate.WriteString("\n")
-						}
-						currentTemplate.WriteString(content)
-						inTemplate = false
-						continue
-					}
-				}
-
-				// 检查是否是结束行（如 }, 或 '}, 或 "},）
-				if trimmed == "}," || strings.HasSuffix(trimmed, "'},") || strings.HasSuffix(trimmed, "\"},") || strings.HasSuffix(trimmed, "`},") {
+				if lastIdx > 0 && trimmed[lastIdx-1] != '\\' {
+					currentTemplate.WriteString(trimmed[:lastIdx])
 					inTemplate = false
-					continue
-				}
-
-				if trimmed != "" && trimmed != "," {
-					// 继续收集
+				} else if trimmed != "" && trimmed != "," {
 					if currentTemplate.Len() > 0 {
 						currentTemplate.WriteString("\n")
 					}
@@ -457,7 +395,7 @@ func parsePromptsContent(content string) ([]PromptEntry, error) {
 	if currentLabel != "" && currentTemplate.Len() > 0 {
 		prompts = append(prompts, PromptEntry{
 			ID:       generateID(),
-			Group:    currentGroup,
+			Group:    group,
 			Label:    currentLabel,
 			Template: currentTemplate.String(),
 		})
@@ -465,6 +403,7 @@ func parsePromptsContent(content string) ([]PromptEntry, error) {
 
 	return prompts, nil
 }
+
 
 // 生成唯一 ID
 func generateID() string {
