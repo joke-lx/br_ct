@@ -166,22 +166,43 @@ if (window.deepseekInjected) {
 
   /**
    * 在输入框附近查找发送按钮
-   * 避免匹配到页面其他位置的按钮（如侧边栏）
+   * DeepSeek 页面结构：
+   *   公共父级
+   *   ├── textarea（输入框）
+   *   └── div（工具栏）
+   *       ├── div[role="button"]（深度思考）
+   *       ├── div[role="button"]（智能搜索）
+   *       └── div.bf38813a（附件+发送区）
+   *           ├── div.ds-icon-button（附件按钮）
+   *           └── div[style="width: fit-content;"]
+   *               └── div.ds-icon-button（发送按钮 ← 箭头上传图标）
    */
   function findSendButtonNearInput(inputElement) {
     if (!inputElement) return null;
 
-    // 从输入框向上查找公共容器，然后在容器内查找按钮
-    // 向上查找 3-5 层父级，找到包含输入框和按钮的容器
+    // 从输入框向上查找包含工具栏的公共容器
     let container = inputElement;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 8; i++) {
       container = container.parentElement;
       if (!container) break;
 
-      const btn = container.querySelector('div.ds-icon-button[role="button"][aria-disabled="false"]');
-      if (btn) {
-        logInfo(`在输入框第 ${i + 1} 层父级容器中找到发送按钮`);
-        return btn;
+      // 查找附件+发送区域容器
+      const actionArea = container.querySelector('div.bf38813a');
+      if (actionArea) {
+        // 在此区域内找所有 ds-icon-button，最后一个就是发送按钮
+        const buttons = actionArea.querySelectorAll('div.ds-icon-button[role="button"][aria-disabled="false"]');
+        if (buttons.length > 0) {
+          const sendBtn = buttons[buttons.length - 1];
+          logInfo(`在输入框第 ${i + 1} 层父级的 bf38813a 容器中找到发送按钮（共 ${buttons.length} 个 icon-button，取最后一个）`);
+          return sendBtn;
+        }
+      }
+
+      // 兜底：直接查找 fit-content 容器内的按钮
+      const fitContentBtn = container.querySelector('div[style*="fit-content"] div.ds-icon-button[role="button"][aria-disabled="false"]');
+      if (fitContentBtn) {
+        logInfo(`在输入框第 ${i + 1} 层父级中通过 fit-content 定位找到发送按钮`);
+        return fitContentBtn;
       }
     }
 

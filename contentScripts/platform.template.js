@@ -95,11 +95,18 @@ const PLATFORM_CONFIG = {
   // 是否启用智能元素发现（当预定义选择器失败时自动查找）
   enableSmartDiscovery: true,
 
+  // 是否在输入框附近查找发送按钮（当页面上有多个相似按钮时使用）
+  // 使用场景：
+  // - DeepSeek：页面上有侧边栏按钮、工具栏按钮等多个相似元素
+  // - 原因：通用选择器可能匹配到错误位置的按钮
+  // - 解决方案：从输入框向上查找公共容器，在容器内定位发送按钮
+  findButtonNearInput: false,
+
   // 按钮状态等待重试（针对 Slate 编辑器等异步状态更新的平台）
   // 使用场景：
   // - 通义千问：输入后按钮状态需要时间更新
   // - 原因：编辑器内部状态是异步更新的
-  // 解决方案：等待按钮启用，最多重试 N 次
+  // - 解决方案：等待按钮启用，最多重试 N 次
   buttonEnableRetry: {
     enabled: false,          // 是否启用按钮启用重试
     maxRetries: 5,           // 最大重试次数
@@ -312,6 +319,63 @@ function findButtonElementIntelligently() {
   }
 
   logWarning("兜底机制未找到任何可点击按钮");
+  return null;
+}
+
+/**
+ * 在输入框附近查找发送按钮
+ *
+ * 使用场景：
+ * - DeepSeek：页面上有侧边栏按钮、工具栏按钮、输入区按钮等多个相似元素
+ * - 原因：通用选择器可能匹配到错误位置的按钮
+ * - 解决方案：从输入框向上查找公共容器，在容器内定位发送按钮
+ *
+ * 使用方式：
+ * 1. 在 sendChatMessage 中调用此函数替代 waitForElement
+ * 2. 或者设置 findButtonNearInput: true 启用自动查找
+ *
+ * @param {Element} inputElement - 输入框元素
+ * @param {number} maxParentLevels - 最大向上查找层数（默认 8）
+ * @param {string} buttonSelector - 按钮选择器（默认 'button:not([disabled]), [role="button"][aria-disabled="false"]'）
+ * @returns {Element|null} 找到的按钮元素或 null
+ */
+function findSendButtonNearInput(inputElement, maxParentLevels = 8, buttonSelector = null) {
+  if (!inputElement) {
+    logWarning("输入框元素为空");
+    return null;
+  }
+
+  const selectors = buttonSelector
+    ? [buttonSelector]
+    : [
+      'button:not([disabled])',
+      '[role="button"][aria-disabled="false"]',
+      'div.ds-icon-button[role="button"][aria-disabled="false"]',
+    ];
+
+  // 从输入框向上遍历父级
+  let container = inputElement;
+  for (let i = 0; i < maxParentLevels; i++) {
+    container = container.parentElement;
+    if (!container) break;
+
+    for (const selector of selectors) {
+      try {
+        // 查找所有匹配的按钮
+        const buttons = container.querySelectorAll(selector);
+        for (const btn of buttons) {
+          if (isElementVisible(btn)) {
+            logInfo(`在输入框第 ${i + 1} 层父级找到发送按钮: ${selector}`);
+            return btn;
+          }
+        }
+      } catch (e) {
+        // 选择器无效，跳过
+      }
+    }
+  }
+
+  logWarning("未在输入框附近找到发送按钮");
   return null;
 }
 
@@ -1029,6 +1093,7 @@ if (typeof window !== 'undefined') {
     waitForElement,
     findInputElementIntelligently,   // 输入框兜底
     findButtonElementIntelligently,  // 按钮兜底
+    findSendButtonNearInput,        // 输入框附近查找按钮
     isElementVisible,
 
     // 点击工具
