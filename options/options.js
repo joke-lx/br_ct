@@ -9,6 +9,14 @@
 function initializeOptions() {
   const frame = document.getElementById('content-frame');
   const navItems = document.querySelectorAll('.nav-item');
+  const collapseBtn = document.getElementById('sidebar-collapse-btn');
+
+  // 恢复侧边栏状态
+  chrome.storage.local.get(['optionsSidebarCollapsed'], (result) => {
+    if (result.optionsSidebarCollapsed) {
+      document.querySelector('.app-container').classList.add('sidebar-collapsed');
+    }
+  });
 
   // 监听导航点击事件
   navItems.forEach(item => {
@@ -50,6 +58,13 @@ function initializeOptions() {
         frame.contentWindow.postMessage({ action: 'refresh' }, '*');
       }
     }
+  });
+
+  // 侧边栏折叠按钮
+  collapseBtn.addEventListener('click', () => {
+    const appContainer = document.querySelector('.app-container');
+    const isCollapsed = appContainer.classList.toggle('sidebar-collapsed');
+    chrome.storage.local.set({ optionsSidebarCollapsed: isCollapsed });
   });
 }
 
