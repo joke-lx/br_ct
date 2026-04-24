@@ -1,14 +1,16 @@
 /**
- * 存储调试页面
+ * 存储管理页面
+ * 存储调试、备份设置和导入导出功能
  */
 
-// DOM 元素
+// ==================== 存储调试相关 ====================
+
 let debugContent;
 let statusMessage;
 let lastBackupTimeElement;
 
 /**
- * 初始化存储调试页面
+ * 初始化存储管理页面
  */
 function initializeStorageDebug() {
   debugContent = document.getElementById('storage-debug-content');
@@ -18,8 +20,14 @@ function initializeStorageDebug() {
   // 加载存储数据
   loadStorageDebug();
 
+  // 加载备份设置
+  loadSettings();
+
   // 加载最后备份时间
   loadLastBackupTime();
+
+  // 加载存储大小
+  loadStorageSize();
 
   // 刷新按钮
   document.getElementById('refresh-storage').addEventListener('click', loadStorageDebug);
@@ -37,6 +45,9 @@ function initializeStorageDebug() {
 
   // 导入文件选择
   document.getElementById('import-file').addEventListener('change', handleImportFile);
+
+  // 保存设置按钮
+  document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
 
   // 使用事件委托处理折叠/展开和删除
   debugContent.addEventListener('click', (e) => {
@@ -80,6 +91,8 @@ function initializeStorageDebug() {
   });
 }
 
+// ==================== 存储调试功能 ====================
+
 /**
  * 加载并显示存储数据（分组显示）
  */
@@ -114,39 +127,27 @@ function groupStorageKeys(items) {
   Object.entries(items).forEach(([key, value]) => {
     const item = { key, value };
 
-    // 队列相关
     if (key.includes('Queue') || key.includes('queue') || key === 'actionsQueue') {
       groups.queue.items.push(item);
       groups.queue.keys.push(key);
-    }
-    // 配置相关
-    else if (key.includes('Config') || key.includes('config') || key.includes('Settings') || key.includes('settings')) {
+    } else if (key.includes('Config') || key.includes('config') || key.includes('Settings') || key.includes('settings')) {
       groups.config.items.push(item);
       groups.config.keys.push(key);
-    }
-    // 菜单相关
-    else if (key.includes('Menu') || key.includes('menu')) {
+    } else if (key.includes('Menu') || key.includes('menu')) {
       groups.menu.items.push(item);
       groups.menu.keys.push(key);
-    }
-    // 视频相关
-    else if (key.includes('video') || key.includes('Video')) {
+    } else if (key.includes('video') || key.includes('Video')) {
       groups.video.items.push(item);
       groups.video.keys.push(key);
-    }
-    // 历史记录
-    else if (key.includes('history') || key.includes('History')) {
+    } else if (key.includes('history') || key.includes('History')) {
       groups.history.items.push(item);
       groups.history.keys.push(key);
-    }
-    // 其他
-    else {
+    } else {
       groups.other.items.push(item);
       groups.other.keys.push(key);
     }
   });
 
-  // 只返回有数据的分组
   return Object.values(groups).filter(g => g.items.length > 0);
 }
 
@@ -203,158 +204,69 @@ function getValueType(value) {
 }
 
 /**
- * 渲染值（结构化显示，支持递归）
+ * 渲染值
  */
 function renderValue(value, key) {
-  // 特殊处理 actionsQueue
   if (key === 'actionsQueue' && Array.isArray(value)) {
     return renderActionsQueue(value);
   }
 
-  // 数组类型
   if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return '<div class="json-null">空数组 []</div>';
-    }
+    if (value.length === 0) return '<div class="json-null">空数组 []</div>';
     return renderArray(value);
   }
 
-  // 对象类型 - 递归显示
   if (value !== null && typeof value === 'object') {
     return renderObject(value);
   }
 
-  // 基础类型
-  return `<div class="json-viewer"><span class="json-${getJsonClass(value)}">${escapeHtml(String(value))}</span></div>`;
+  return `<span class="json-${getJsonClass(value)}">${escapeHtml(String(value))}</span>`;
 }
 
 /**
  * 递归渲染数组
  */
 function renderArray(arr, depth = 0) {
-  const items = arr.map((item, index) => {
-    return `
-      <div class="json-item">
-        <span class="json-key">[${index}]</span>
-        ${renderJsonValue(item, depth + 1)}
-      </div>
-    `;
-  }).join('');
+  if (depth > 3) return `<span class="json-null">[...]</span>`;
 
-  return `
-    <div class="json-tree">
-      <div class="json-collapsible">Array(${arr.length})</div>
-      <div class="json-children">
-        ${items}
-      </div>
-    </div>
-  `;
+  const items = arr.slice(0, 10).map((item, index) => {
+    return `[${index}]: ${renderJsonValue(item, depth + 1)}`;
+  }).join('<br>');
+
+  const more = arr.length > 10 ? `<br>... 共 ${arr.length} 项` : '';
+
+  return `<div class="json-tree"><span class="json-collapsible">Array(${arr.length})</span><div class="json-collapsed">${items}${more}</div></div>`;
 }
 
 /**
  * 递归渲染对象
  */
 function renderObject(obj, depth = 0) {
+  if (depth > 3) return `<span class="json-null">{...}</span>`;
+
   const keys = Object.keys(obj);
-  if (keys.length === 0) {
-    return '<div class="json-null">空对象 {}</div>';
-  }
+  const items = keys.slice(0, 10).map(key => {
+    return `<span class="json-key">${escapeHtml(key)}</span>: ${renderJsonValue(obj[key], depth + 1)}`;
+  }).join('<br>');
 
-  const items = keys.map(key => {
-    return `
-      <div class="json-item">
-        <span class="json-key">${escapeHtml(key)}</span>: ${renderJsonValue(obj[key], depth + 1)}
-      </div>
-    `;
-  }).join('');
+  const more = keys.length > 10 ? `<br>... 共 ${keys.length} 项` : '';
 
-  return `
-    <div class="json-tree">
-      <div class="json-collapsible">Object {${keys.length}}</div>
-      <div class="json-children">
-        ${items}
-      </div>
-    </div>
-  `;
+  return `<div class="json-tree"><span class="json-collapsible">Object {${keys.length}}</span><div class="json-collapsed">${items}${more}</div></div>`;
 }
 
 /**
  * 递归渲染任意 JSON 值
  */
 function renderJsonValue(value, depth) {
-  // 限制递归深度
-  if (depth > 20) {
-    return '<span class="json-null">... (深度限制)</span>';
-  }
-
-  if (value === null) {
-    return '<span class="json-null">null</span>';
-  }
-
+  if (value === null) return '<span class="json-null">null</span>';
   if (typeof value === 'string') {
-    const isLong = value.length > 100;
-    const display = isLong ? escapeHtml(value.substring(0, 100)) + '...' : escapeHtml(value);
-    return `<span class="json-string" title="${escapeHtml(value)}">"${display}"</span>`;
+    const display = value.length > 50 ? value.substring(0, 50) + '...' : value;
+    return `<span class="json-string" title="${escapeHtml(value)}">"${escapeHtml(display)}"</span>`;
   }
-
-  if (typeof value === 'number') {
-    return `<span class="json-number">${value}</span>`;
-  }
-
-  if (typeof value === 'boolean') {
-    return `<span class="json-boolean">${value}</span>`;
-  }
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return '<span class="json-null">[]</span>';
-    }
-    const preview = value.slice(0, 3).map(v => getJsonPreview(v)).join(', ');
-    const more = value.length > 3 ? ', ...' : '';
-    return `
-      <div class="json-collapsible">[${value.length}] ${preview}${more}</div>
-      <div class="json-children">
-        ${value.map((item, i) => `
-          <div class="json-item">
-            <span class="json-key">[${i}]</span>: ${renderJsonValue(item, depth + 1)}
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  if (typeof value === 'object') {
-    const keys = Object.keys(value);
-    if (keys.length === 0) {
-      return '<span class="json-null">{}</span>';
-    }
-    const preview = keys.slice(0, 3).join(', ');
-    const more = keys.length > 3 ? ', ...' : '';
-    return `
-      <div class="json-collapsible">{${keys.length}} {${preview}${more}}</div>
-      <div class="json-children">
-        ${keys.map(key => `
-          <div class="json-item">
-            <span class="json-key">${escapeHtml(key)}</span>: ${renderJsonValue(value[key], depth + 1)}
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  return `<span class="json-null">${String(value)}</span>`;
-}
-
-/**
- * 获取 JSON 值的预览
- */
-function getJsonPreview(value) {
-  if (value === null) return 'null';
-  if (typeof value === 'string') return `"${value.length > 20 ? value.substring(0, 20) + '...' : value}"`;
-  if (typeof value === 'boolean') return String(value);
-  if (typeof value === 'number') return String(value);
-  if (Array.isArray(value)) return `[${value.length}]`;
-  if (typeof value === 'object') return `{${Object.keys(value).length}}`;
+  if (typeof value === 'number') return `<span class="json-number">${value}</span>`;
+  if (typeof value === 'boolean') return `<span class="json-boolean">${value}</span>`;
+  if (Array.isArray(value)) return `<span class="json-null">[${value.length}]</span>`;
+  if (typeof value === 'object') return `<span class="json-null">{${Object.keys(value).length}}</span>`;
   return String(value);
 }
 
@@ -362,52 +274,13 @@ function getJsonPreview(value) {
  * 特殊渲染 actionsQueue
  */
 function renderActionsQueue(queue) {
-  if (!queue || queue.length === 0) {
-    return '<div class="json-null">队列为空</div>';
-  }
+  if (!queue || queue.length === 0) return '<span class="json-null">队列为空</span>';
 
-  return `
-    <div>
-      ${queue.map((item, index) => {
-        const platform = item.platform || 'unknown';
-        const message = item.message ? (typeof item.message === 'string' ? item.message : JSON.stringify(item.message).substring(0, 100)) : '';
-        return `
-          <div class="queue-item">
-            <div class="queue-item-index">${index + 1}</div>
-            <div class="queue-item-content">
-              <span class="queue-item-platform">${escapeHtml(platform)}</span>
-              ${message ? `<div style="color: #6c757d; margin-top: 2px;">${escapeHtml(message)}</div>` : ''}
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-}
-
-/**
- * 格式化值用于显示
- */
-function formatValue(value) {
-  if (value === null) return 'null';
-  if (value === undefined) return 'undefined';
-  if (typeof value === 'string') return `"${escapeHtml(value)}"`;
-  if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (typeof value === 'number') return String(value);
-  if (Array.isArray(value)) return `Array[${value.length}]`;
-  if (typeof value === 'object') return `Object{${Object.keys(value).length} keys}`;
-  return String(value);
-}
-
-/**
- * 获取 JSON CSS 类名
- */
-function getJsonClass(value) {
-  if (value === null) return 'null';
-  if (typeof value === 'string') return 'string';
-  if (typeof value === 'number') return 'number';
-  if (typeof value === 'boolean') return 'boolean';
-  return 'object';
+  return queue.slice(0, 5).map((item, index) => {
+    const platform = item.platform || 'unknown';
+    const message = item.message ? (typeof item.message === 'string' ? item.message : JSON.stringify(item.message).substring(0, 50)) : '';
+    return `[${index + 1}] <span class="json-string">${escapeHtml(platform)}</span>: ${escapeHtml(message)}`;
+  }).join('<br>');
 }
 
 /**
@@ -424,7 +297,7 @@ function escapeHtml(text) {
  */
 function deleteStorageKey(key) {
   chrome.storage.local.remove(key, () => {
-    showStatusMessage(`已删除 key: ${key}`, 'success');
+    showStatusMessage(`已删除: ${key}`, 'success');
     loadStorageDebug();
   });
 }
@@ -437,31 +310,71 @@ function clearAllStorage() {
     chrome.storage.local.clear(() => {
       showStatusMessage('存储数据已清空', 'success');
       loadStorageDebug();
+      loadStorageSize();
     });
   }
 }
 
-/**
- * 显示状态消息
- */
-function showStatusMessage(message, type = 'success') {
-  statusMessage.textContent = message;
-  statusMessage.className = `status-message show ${type}`;
+// ==================== 备份设置功能 ====================
 
-  // 3秒后自动隐藏
-  setTimeout(() => {
-    statusMessage.classList.remove('show');
-  }, 3000);
+let totalBackupsCount;
+let storageSizeCount;
+let nextBackupCount;
+
+/**
+ * 加载备份设置
+ */
+function loadSettings() {
+  chrome.runtime.sendMessage({ action: 'getBackupSettings' }, (response) => {
+    if (response) {
+      document.getElementById('auto-backup-toggle').checked = response.enabled;
+      document.getElementById('backup-interval-select').value = response.intervalHours;
+      document.getElementById('max-backups-select').value = response.maxBackups;
+      document.getElementById('folder-name-input').value = response.folderName || 'bro_chat_backups';
+      updateNextBackupDisplay();
+    }
+  });
+
+  // 获取统计元素
+  totalBackupsCount = document.getElementById('total-backups-count');
+  storageSizeCount = document.getElementById('storage-size-count');
+  nextBackupCount = document.getElementById('next-backup-count');
 }
 
-// ==================== 备份功能 ====================
+/**
+ * 保存备份设置
+ */
+function saveSettings() {
+  const folderName = document.getElementById('folder-name-input').value.trim();
+  if (!folderName) {
+    showStatusMessage('请输入文件夹名称', 'error');
+    return;
+  }
+
+  const settings = {
+    enabled: document.getElementById('auto-backup-toggle').checked,
+    intervalHours: parseInt(document.getElementById('backup-interval-select').value),
+    maxBackups: parseInt(document.getElementById('max-backups-select').value),
+    folderName: folderName,
+    saveAs: false
+  };
+
+  chrome.runtime.sendMessage({ action: 'updateBackupSettings', settings }, (response) => {
+    if (response) {
+      showStatusMessage('设置已保存', 'success');
+      updateNextBackupDisplay();
+    } else {
+      showStatusMessage('保存失败', 'error');
+    }
+  });
+}
 
 /**
  * 加载最后备份时间
  */
 function loadLastBackupTime() {
   chrome.runtime.sendMessage({ action: 'getLastBackupTime' }, (response) => {
-    if (response) {
+    if (response !== undefined) {
       updateLastBackupTimeDisplay(response);
     }
   });
@@ -495,10 +408,80 @@ function updateLastBackupTimeDisplay(timestamp) {
   } else if (diffDays < 7) {
     timeText = `${diffDays} 天前`;
   } else {
-    timeText = `上次备份：${formatDateTime(date)}`;
+    timeText = `上次：${formatDateTime(date)}`;
   }
 
   lastBackupTimeElement.textContent = timeText;
+}
+
+/**
+ * 更新下次备份显示
+ */
+function updateNextBackupDisplay() {
+  if (!document.getElementById('auto-backup-toggle').checked) {
+    nextBackupCount.textContent = '未启用';
+    return;
+  }
+
+  chrome.alarms.get('storage-auto-backup', (alarm) => {
+    if (chrome.runtime.lastError || !alarm) {
+      nextBackupCount.textContent = '等待调度';
+      return;
+    }
+
+    const nextBackupTime = new Date(alarm.scheduledTime);
+    const now = new Date();
+    const diffMs = nextBackupTime - now;
+
+    if (diffMs <= 0) {
+      nextBackupCount.textContent = '即将执行';
+      return;
+    }
+
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMins < 60) {
+      nextBackupCount.textContent = `${diffMins} 分钟后`;
+    } else if (diffHours < 24) {
+      nextBackupCount.textContent = `${diffHours} 小时后`;
+    } else {
+      nextBackupCount.textContent = `${Math.floor(diffHours / 24)} 天后`;
+    }
+  });
+}
+
+/**
+ * 加载存储大小
+ */
+function loadStorageSize() {
+  chrome.storage.local.get(null, (items) => {
+    const jsonStr = JSON.stringify(items);
+    const sizeBytes = new Blob([jsonStr]).size;
+    storageSizeCount.textContent = formatBytes(sizeBytes);
+  });
+}
+
+/**
+ * 执行手动备份
+ */
+function performManualBackup() {
+  const btn = document.getElementById('backup-now-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 备份中...';
+
+  chrome.runtime.sendMessage({ action: 'performManualBackup' }, (response) => {
+    btn.disabled = false;
+    btn.textContent = '立即备份';
+
+    if (response && response.success) {
+      showStatusMessage(`备份成功: ${response.filename}`, 'success');
+      updateLastBackupTimeDisplay(response.time);
+      loadStorageSize();
+    } else {
+      showStatusMessage(`备份失败: ${response?.error || '未知错误'}`, 'error');
+    }
+  });
 }
 
 /**
@@ -514,24 +497,14 @@ function formatDateTime(date) {
 }
 
 /**
- * 执行手动备份
+ * 格式化字节大小
  */
-function performManualBackup() {
-  const btn = document.getElementById('backup-now-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ 备份中...';
-
-  chrome.runtime.sendMessage({ action: 'performBackup' }, (response) => {
-    btn.disabled = false;
-    btn.textContent = '立即备份';
-
-    if (response && response.success) {
-      showStatusMessage(`备份成功: ${response.filename}`, 'success');
-      updateLastBackupTimeDisplay(response.time);
-    } else {
-      showStatusMessage(`备份失败: ${response?.error || '未知错误'}`, 'error');
-    }
-  });
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
 // ==================== 导入功能 ====================
@@ -557,7 +530,6 @@ function handleImportFile(event) {
   };
   reader.readAsText(file);
 
-  // 清空input，允许重复选择同一文件
   event.target.value = '';
 }
 
@@ -565,7 +537,6 @@ function handleImportFile(event) {
  * 从备份数据恢复
  */
 function restoreFromBackup(data) {
-  // 检查数据格式
   if (!data || typeof data !== 'object') {
     showStatusMessage('导入失败: 数据格式无效', 'error');
     return;
@@ -575,34 +546,48 @@ function restoreFromBackup(data) {
   let storageData = data;
   if (data.data && typeof data.data === 'object') {
     storageData = data.data;
-    console.log('检测到备份包装格式，提取 data 字段');
   }
 
-  // 检查是否是备份文件格式
   const keys = Object.keys(storageData);
   if (keys.length === 0) {
     showStatusMessage('导入失败: 备份文件为空', 'error');
     return;
   }
 
-  // 确认恢复
-  const confirmed = confirm(
-    `即将导入 ${keys.length} 个存储项到扩展存储中。\n\n` +
-    `导入将覆盖现有数据。\n\n` +
-    `是否继续？`
-  );
+  const confirmed = confirm(`即将导入 ${keys.length} 个存储项到扩展存储中。\n导入将覆盖现有数据。\n是否继续？`);
 
   if (!confirmed) return;
 
-  // 执行恢复
   chrome.storage.local.set(storageData, () => {
     if (chrome.runtime.lastError) {
       showStatusMessage(`导入失败: ${chrome.runtime.lastError.message}`, 'error');
     } else {
       showStatusMessage(`成功导入 ${keys.length} 个存储项`, 'success');
       loadStorageDebug();
+      loadStorageSize();
     }
   });
+}
+
+// ==================== 状态消息 ====================
+
+function showStatusMessage(message, type = 'success') {
+  statusMessage.textContent = message;
+  statusMessage.className = `status-message show ${type}`;
+
+  setTimeout(() => {
+    statusMessage.classList.remove('show');
+  }, 3000);
+}
+
+// ==================== 工具函数 ====================
+
+function getJsonClass(value) {
+  if (value === null) return 'null';
+  if (typeof value === 'string') return 'string';
+  if (typeof value === 'number') return 'number';
+  if (typeof value === 'boolean') return 'boolean';
+  return 'object';
 }
 
 // 页面加载时初始化

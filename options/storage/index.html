@@ -2,39 +2,66 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>存储调试</title>
+    <title>存储管理</title>
     <link rel="stylesheet" href="../options.css" />
     <style>
       .backup-status-card {
         background: rgba(255, 252, 247, 0.82);
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 20px;
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(93, 67, 43, 0.1);
+      }
+
+      .backup-status-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px;
-      }
-
-      .backup-status-info {
-        flex: 1;
+        margin-bottom: 12px;
       }
 
       .backup-status-title {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 600;
         color: #2d241c;
-        margin-bottom: 4px;
       }
 
       .backup-status-time {
-        font-size: 13px;
+        font-size: 14px;
         color: #7a6858;
+        margin-bottom: 16px;
       }
 
       .backup-status-time.never {
         color: #ef5350;
         font-style: italic;
+      }
+
+      .backup-stats {
+        display: flex;
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .backup-stat-item {
+        flex: 1;
+        background: rgba(255, 252, 247, 0.72);
+        border: 1px solid rgba(93, 67, 43, 0.1);
+        border-radius: 18px;
+        padding: 12px;
+        text-align: center;
+      }
+
+      .backup-stat-value {
+        font-size: 20px;
+        font-weight: 600;
+        color: #2d241c;
+      }
+
+      .backup-stat-label {
+        font-size: 11px;
+        color: #7a6858;
+        margin-top: 4px;
       }
 
       /* JSON 递归显示样式 */
@@ -56,7 +83,7 @@
         top: 0;
         bottom: 0;
         width: 1px;
-        background: #dee2e6;
+        background: rgba(93, 67, 43, 0.12);
       }
 
       .json-key {
@@ -64,26 +91,10 @@
         font-weight: 500;
       }
 
-      .json-string {
-        color: #465f72;
-      }
-
-      .json-number {
-        color: #6c4b31;
-      }
-
-      .json-boolean {
-        color: #8250df;
-      }
-
-      .json-null {
-        color: #6e7781;
-        font-style: italic;
-      }
-
-      .json-object {
-        color: #6e7781;
-      }
+      .json-string { color: #465f72; }
+      .json-number { color: #6c4b31; }
+      .json-boolean { color: #8250df; }
+      .json-null { color: #6e7781; font-style: italic; }
 
       .json-collapsible {
         cursor: pointer;
@@ -91,7 +102,7 @@
       }
 
       .json-collapsible:hover {
-        background: rgba(9, 105, 218, 0.05);
+        background: rgba(107, 74, 49, 0.05);
       }
 
       .json-collapsible::before {
@@ -108,82 +119,290 @@
         transform: rotate(-90deg);
       }
 
-      .json-collapsed {
-        display: none;
+      .json-collapsed { display: none; }
+
+      /* 设置行 */
+      .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(93, 67, 43, 0.08);
+      }
+
+      .setting-row:last-child { border-bottom: none; }
+
+      .setting-label { flex: 1; }
+
+      .setting-title {
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 2px;
+        font-size: 14px;
+      }
+
+      .setting-description {
+        font-size: 12px;
+        color: #666;
+      }
+
+      .setting-control {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      /* 开关样式 */
+      .toggle-switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(88, 63, 41, 0.18);
+        transition: 0.3s;
+        border-radius: 24px;
+      }
+
+      .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+      }
+
+      .toggle-switch input:checked + .toggle-slider {
+        background-color: #99673f;
+      }
+
+      .toggle-switch input:checked + .toggle-slider:before {
+        transform: translateX(20px);
+      }
+
+      .setting-select {
+        padding: 6px 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 13px;
+        background: white;
+        cursor: pointer;
+        min-width: 100px;
+      }
+
+      .setting-select:focus {
+        outline: none;
+        border-color: #99673f;
+        box-shadow: 0 0 0 3px rgba(153, 103, 63, 0.08);
       }
 
       .delete-key-btn {
         padding: 2px 8px;
         font-size: 11px;
         margin-left: 8px;
-        background: #dc3545;
-        color: white;
+        background: rgba(154, 79, 64, 0.14);
+        color: #7a3025;
         border: none;
-        border-radius: 4px;
+        border-radius: 999px;
         cursor: pointer;
         opacity: 0.7;
         transition: opacity 0.2s;
       }
 
-      .delete-key-btn:hover {
-        opacity: 1;
+      .delete-key-btn:hover { opacity: 1; }
+      .storage-item-header:hover .delete-key-btn { opacity: 1; }
+
+      /* 存储分组 */
+      .storage-group {
+        margin-bottom: 16px;
       }
 
-      .storage-item-header:hover .delete-key-btn {
-        opacity: 1;
-      }
-      .backup-status-card {
-        border-radius: 20px;
-      }
-
-      .backup-status-title {
+      .storage-group-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: rgba(255, 252, 247, 0.72);
+        border: 1px solid rgba(93, 67, 43, 0.1);
+        border-radius: 14px;
+        cursor: pointer;
+        font-weight: 500;
         color: #2d241c;
+        margin-bottom: 8px;
       }
 
-      .backup-status-time {
+      .storage-group-content {
+        padding-left: 8px;
+      }
+
+      .storage-group-content.collapsed {
+        display: none;
+      }
+
+      .group-badge {
+        font-size: 11px;
+        background: rgba(93, 67, 43, 0.1);
+        padding: 2px 8px;
+        border-radius: 10px;
         color: #7a6858;
       }
 
-      .backup-status-time.never {
-        color: #9a4f40;
+      .storage-item {
+        margin-bottom: 6px;
       }
 
-      .json-item > .json-key::before {
-        background: rgba(93, 67, 43, 0.12);
+      .storage-item-header {
+        display: flex;
+        align-items: center;
+        padding: 6px 10px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
       }
 
-      .json-collapsible:hover {
-        background: rgba(107, 74, 49, 0.05);
+      .key-name {
+        color: #7a4d2b;
+        font-family: monospace;
+        flex: 1;
       }
 
-      .delete-key-btn {
-        background: rgba(154, 79, 64, 0.14);
-        color: #7a3025;
-        border-radius: 999px;
+      .key-type {
+        font-size: 11px;
+        color: #999;
+        margin-right: 8px;
+      }
+
+      .storage-item-content {
+        padding: 8px;
+        background: #fafafa;
+        border-radius: 6px;
+        margin-top: 4px;
+        font-family: monospace;
+        font-size: 12px;
       }
     </style>
   </head>
   <body>
     <div class="page-container">
       <header class="page-header">
-        <h1 class="page-title">存储调试</h1>
+        <h1 class="page-title">存储管理</h1>
         <p class="page-description">
-          查看插件在 chrome.storage.local 中存储的所有数据
+          查看、备份和恢复插件存储数据
         </p>
       </header>
 
+      <!-- 备份状态卡片 -->
       <section class="section">
         <div class="backup-status-card">
-          <div class="backup-status-info">
+          <div class="backup-status-header">
             <div class="backup-status-title">数据备份</div>
-            <div class="backup-status-time" id="last-backup-time">加载中...</div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-primary" id="backup-now-btn">立即备份</button>
+              <button class="btn btn-secondary" id="import-btn">导入备份</button>
+              <input type="file" id="import-file" accept=".json" style="display: none;">
+            </div>
           </div>
-          <button class="btn btn-primary" id="backup-now-btn">立即备份</button>
-          <button class="btn btn-secondary" id="import-btn">导入备份</button>
-          <input type="file" id="import-file" accept=".json" style="display: none;">
+          <div class="backup-status-time" id="last-backup-time">加载中...</div>
+          <div class="backup-stats">
+            <div class="backup-stat-item">
+              <div class="backup-stat-value" id="total-backups-count">-</div>
+              <div class="backup-stat-label">总备份次数</div>
+            </div>
+            <div class="backup-stat-item">
+              <div class="backup-stat-value" id="storage-size-count">-</div>
+              <div class="backup-stat-label">存储数据量</div>
+            </div>
+            <div class="backup-stat-item">
+              <div class="backup-stat-value" id="next-backup-count">-</div>
+              <div class="backup-stat-label">下次备份</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 自动备份设置 -->
+      <section class="section">
+        <h2 class="section-title">自动备份设置</h2>
+
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-title">启用自动备份</div>
+            <div class="setting-description">定期自动备份插件数据</div>
+          </div>
+          <div class="setting-control">
+            <label class="toggle-switch">
+              <input type="checkbox" id="auto-backup-toggle" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
 
-        <div class="debug-controls">
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-title">备份间隔</div>
+          </div>
+          <div class="setting-control">
+            <select class="setting-select" id="backup-interval-select">
+              <option value="1">每小时</option>
+              <option value="6">每 6 小时</option>
+              <option value="12">每 12 小时</option>
+              <option value="24" selected>每天</option>
+              <option value="48">每 2 天</option>
+              <option value="168">每周</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-title">最大备份数量</div>
+          </div>
+          <div class="setting-control">
+            <select class="setting-select" id="max-backups-select">
+              <option value="3">3 个</option>
+              <option value="5">5 个</option>
+              <option value="7" selected>7 个</option>
+              <option value="10">10 个</option>
+              <option value="0">不限制</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-title">备份文件夹名称</div>
+          </div>
+          <div class="setting-control">
+            <input type="text" class="setting-select" id="folder-name-input" placeholder="bro_chat_backups" />
+          </div>
+        </div>
+
+        <div class="button-group" style="margin-top: 12px;">
+          <button class="btn btn-success" id="save-settings-btn">保存设置</button>
+        </div>
+      </section>
+
+      <!-- 存储数据 -->
+      <section class="section">
+        <div class="debug-controls" style="margin-bottom: 16px;">
           <button class="btn btn-success" id="refresh-storage">刷新</button>
           <button class="btn btn-danger" id="clear-storage">清空所有</button>
         </div>
