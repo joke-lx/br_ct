@@ -180,7 +180,7 @@ function renderPrompts() {
             </div>
           </div>
           <div class="prompt-item-body ${expandedIndex === i ? 'expanded' : ''}">
-            <textarea id="tpl-${i}">${escapeHtml(p.template)}</textarea>
+            <textarea id="tpl-${i}">${p.template}</textarea>
           </div>
         </div>
       `).join('')}
@@ -276,8 +276,9 @@ async function addPrompt() {
 function generateContent() {
   let content = `export const ${currentGroup} = [\n`;
   promptsList.forEach((p, i) => {
-    const tpl = p.template.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
-    content += `  {\n    label: "${p.label}",\n    template: "${tpl}"\n  }`;
+    // 转义模板中的反引号和 $
+    const tpl = p.template.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    content += `  {\n    label: "${p.label}",\n    template: \`${tpl}\`\n  }`;
     content += i < promptsList.length - 1 ? ',\n' : '\n';
   });
   return content + '];\n';
