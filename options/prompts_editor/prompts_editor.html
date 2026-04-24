@@ -390,8 +390,7 @@
         <div class="editor-toolbar">
           <span class="file-name" id="currentFileName">选择一个文件</span>
           <div class="actions">
-            <button class="btn btn-secondary" id="addPrompt">➕ 添加</button>
-            <button class="btn btn-primary" id="saveFile" disabled>💾 保存</button>
+            <button class="btn btn-secondary" id="addBtn">➕ 添加</button>
           </div>
         </div>
         <div class="editor-content" id="editorContent">
@@ -406,14 +405,13 @@
   </div>
 
   <!-- 添加提示词弹窗 -->
-  <div id="addPromptModal" class="modal-overlay" style="display:none;">
+  <div id="addModal" class="modal-overlay" style="display:none;">
     <div class="modal">
       <h3>添加提示词</h3>
       <input type="text" id="promptLabel" placeholder="提示词名称">
-      <input type="text" id="promptGroup" placeholder="分组（如：analyze_plan）">
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="cancelAddPrompt">取消</button>
-        <button class="btn btn-primary" id="confirmAddPrompt">添加</button>
+        <button class="btn btn-secondary" id="cancelAdd">取消</button>
+        <button class="btn btn-primary" id="confirmAdd">添加</button>
       </div>
     </div>
   </div>
