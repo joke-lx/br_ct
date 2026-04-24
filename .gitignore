@@ -2,3 +2,12 @@
 crxjs-demo
 sample
 docs/private
+
+# Native host executable
+native_host/*.exe
+
+# Generated keys
+key.pem
+manifest_key.txt
+manifest_id.txt
+generate_key.js
