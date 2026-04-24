@@ -40,9 +40,12 @@ function updateStatus(connected) {
   el.className = `status-badge ${connected ? 'connected' : 'disconnected'}`;
 }
 
+let pendingCommand = null;
+
 function handleMessage(msg) {
   if (msg.status === 'error') {
     toast(msg.message || '操作失败', 'error');
+    pendingCommand = null;
     return;
   }
   if (Array.isArray(msg.data)) {
@@ -50,9 +53,10 @@ function handleMessage(msg) {
     renderPrompts();
   } else if (msg.command === 'listDir') {
     renderFileList(msg.data || []);
-  } else if (msg.status === 'ok') {
+  } else if (msg.status === 'ok' && pendingCommand === 'savePrompts') {
     toast(msg.message || '操作成功');
   }
+  pendingCommand = null;
 }
 
 function send(cmd, params = {}) {
@@ -60,6 +64,7 @@ function send(cmd, params = {}) {
     toast('未连接', 'error');
     return Promise.reject();
   }
+  pendingCommand = cmd;
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => reject('超时'), 10000);
     const listener = (response) => {
@@ -92,6 +97,17 @@ async function loadFiles() {
     const dir = await send('getPromptsDir');
     const list = await send('listDir', { path: dir.data });
     renderFileList(list.data || []);
+
+    // 如果没有选中文件，自动选中第一个
+    if (!currentFile && list.data && list.data.length > 0) {
+      const firstJs = list.data.find(f => f.extension === 'js' && !f.isDir);
+      if (firstJs) {
+        selectFile(firstJs.name);
+      }
+    } else if (currentFile) {
+      // 刷新当前文件
+      selectFile(currentFile);
+    }
   } catch (err) {
     toast('加载失败', 'error');
   }
