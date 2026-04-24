@@ -33,7 +33,8 @@
     "clipboardRead",
     "history",
     "contextMenus",
-    "bookmarks"
+    "bookmarks",
+    "nativeMessaging"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
