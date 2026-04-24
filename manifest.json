@@ -3,6 +3,7 @@
   "name": "AI Assistant",
   "version": "1.5.0",
   "description": "多端AI调度工具，支持Yuanbao和Gemini",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApOT0L1uciNI3pSs4TQCze7chgoWZnhN8gtSPn/6GY/pL/Ie242oin3bFIanVDyLBtMIRvka5+TU9RQ+8RTK243FVmceZ3grU+dd/d5lH40czLj/Qc23ZcMpvCyLo4cdGyrGli/eOWdxwEH2VArcnsZIo3p13U76u0E/1ga8RKjlZ1RoiTqXdKclHuwo0P4VSVqat7q0/G6nC7GyNgQnuhEDexB/y3gKN+xJIEqW+HpsCNxvXefaHQnBrWw4S97dJ/RWL77pmUkxb9+W5a6aDYIEJAz7nmVQk0GC3wGXaXb1a65/v1v9KD8nlbIRKY8p8WyGz+xbRWCID7ucrNtNokwIDAQAB",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

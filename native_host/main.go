@@ -36,7 +36,7 @@ const (
 )
 
 // 扩展 ID
-const extensionId = "egnmidblehkcglalbbbckcajkahdnjgm"
+const extensionId = "oklmcegaafghdpdbignoacfgmknleben"
 
 // 请求结构
 type Request struct {

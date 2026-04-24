@@ -571,8 +571,15 @@ function restoreFromBackup(data) {
     return;
   }
 
+  // 提取实际数据（备份文件有包装格式）
+  let storageData = data;
+  if (data.data && typeof data.data === 'object') {
+    storageData = data.data;
+    console.log('检测到备份包装格式，提取 data 字段');
+  }
+
   // 检查是否是备份文件格式
-  const keys = Object.keys(data);
+  const keys = Object.keys(storageData);
   if (keys.length === 0) {
     showStatusMessage('导入失败: 备份文件为空', 'error');
     return;
@@ -588,7 +595,7 @@ function restoreFromBackup(data) {
   if (!confirmed) return;
 
   // 执行恢复
-  chrome.storage.local.set(data, () => {
+  chrome.storage.local.set(storageData, () => {
     if (chrome.runtime.lastError) {
       showStatusMessage(`导入失败: ${chrome.runtime.lastError.message}`, 'error');
     } else {
