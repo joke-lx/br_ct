@@ -1,13 +1,12 @@
 /**
  * 提示词编辑器
- * 每个条目独立操作，展开后显示保存/删除按钮
  */
 
 let port = null;
 let currentFile = null;
 let currentGroup = null;
 let promptsList = [];
-let expandedItems = new Set();
+let expandedIndex = -1;
 
 document.addEventListener('DOMContentLoaded', init);
 
@@ -16,7 +15,6 @@ function init() {
   initEvents();
 }
 
-// 连接
 function initConnection() {
   try {
     port = chrome.runtime.connectNative('com.brochat.prompts_editor');
@@ -33,9 +31,9 @@ function initConnection() {
 }
 
 function updateStatus(connected) {
-  const el = document.getElementById('connectionStatus');
   document.getElementById('connectBtn').style.display = connected ? 'none' : 'inline-block';
   document.getElementById('disconnectBtn').style.display = connected ? 'inline-block' : 'none';
+  const el = document.getElementById('connectionStatus');
   el.textContent = connected ? '已连接' : '未连接';
   el.className = `status-badge ${connected ? 'connected' : 'disconnected'}`;
 }
@@ -50,6 +48,7 @@ function handleMessage(msg) {
   }
   if (Array.isArray(msg.data)) {
     promptsList = msg.data;
+    expandedIndex = -1;
     renderPrompts();
   } else if (msg.command === 'listDir') {
     renderFileList(msg.data || []);
@@ -98,14 +97,10 @@ async function loadFiles() {
     const list = await send('listDir', { path: dir.data });
     renderFileList(list.data || []);
 
-    // 如果没有选中文件，自动选中第一个
     if (!currentFile && list.data && list.data.length > 0) {
       const firstJs = list.data.find(f => f.extension === 'js' && !f.isDir);
-      if (firstJs) {
-        selectFile(firstJs.name);
-      }
+      if (firstJs) selectFile(firstJs.name);
     } else if (currentFile) {
-      // 刷新当前文件
       selectFile(currentFile);
     }
   } catch (err) {
@@ -118,13 +113,13 @@ function renderFileList(files) {
   const jsFiles = files.filter(f => f.extension === 'js' && !f.isDir);
 
   if (!jsFiles.length) {
-    el.innerHTML = '<div class="empty-state"><p>无提示词文件</p></div>';
+    el.innerHTML = '<div style="padding: 16px; color: var(--text-muted); font-size: 13px;">无提示词文件</div>';
     return;
   }
 
   el.innerHTML = jsFiles.map(f => `
     <div class="file-item ${f.name === currentFile ? 'active' : ''}" data-name="${f.name}">
-      <span>📄</span><span>${f.name}</span>
+      <span>${f.name}</span>
     </div>
   `).join('');
 
@@ -141,7 +136,6 @@ async function selectFile(fileName) {
   document.getElementById('currentFileName').textContent = fileName;
   currentFile = fileName;
   currentGroup = fileName.replace(/\.js$/, '');
-  expandedItems.clear();
 
   document.getElementById('editorContent').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
@@ -149,6 +143,7 @@ async function selectFile(fileName) {
     const dir = await send('getPromptsDir');
     const result = await send('parsePrompts', { path: `${dir.data}\\${fileName}` });
     promptsList = result.data || [];
+    expandedIndex = -1;
     renderPrompts();
   } catch (err) {
     document.getElementById('editorContent').innerHTML = `<div class="empty-state"><p>加载失败</p></div>`;
@@ -159,54 +154,57 @@ function renderPrompts() {
   const el = document.getElementById('editorContent');
 
   if (!promptsList.length) {
-    el.innerHTML = '<div class="empty-state"><p>空文件，点击上方添加</p></div>';
+    el.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        <p>点击上方添加按钮创建提示词</p>
+      </div>
+    `;
     return;
   }
 
   el.innerHTML = `
     <div class="prompts-list">
       ${promptsList.map((p, i) => `
-        <div class="prompt-item">
-          <div class="prompt-item-header" data-index="${i}">
+        <div class="prompt-item ${expandedIndex === i ? 'expanded' : ''}" data-index="${i}">
+          <div class="prompt-item-header">
             <span class="prompt-item-title">${escapeHtml(p.label)}</span>
-          </div>
-          <div class="prompt-item-body" id="body-${i}" style="display: ${expandedItems.has(i) ? 'block' : 'none'};">
-            <textarea id="tpl-${i}">${escapeHtml(p.template)}</textarea>
             <div class="item-buttons">
-              <button class="btn btn-secondary" data-action="delete" data-index="${i}">🗑️</button>
-              <button class="btn btn-primary" data-action="save" data-index="${i}">💾</button>
+              <button data-action="delete" data-index="${i}">删除</button>
+              <button class="btn-primary" data-action="save" data-index="${i}">保存</button>
             </div>
+          </div>
+          <div class="prompt-item-body ${expandedIndex === i ? 'expanded' : ''}">
+            <textarea id="tpl-${i}">${escapeHtml(p.template)}</textarea>
           </div>
         </div>
       `).join('')}
     </div>
   `;
 
-  // 点击 header 展开/收起
+  // 点击标题展开
   el.querySelectorAll('.prompt-item-header').forEach(header => {
     header.addEventListener('click', (e) => {
-      // 如果点击的是按钮，不触发展开
       if (e.target.closest('button')) return;
-      const i = parseInt(header.dataset.index);
-      expandedItems.has(i) ? expandedItems.delete(i) : expandedItems.add(i);
+      const i = parseInt(header.closest('.prompt-item').dataset.index);
+      expandedIndex = expandedIndex === i ? -1 : i;
       renderPrompts();
     });
   });
 
   // 保存按钮
   el.querySelectorAll('[data-action="save"]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      savePrompt(parseInt(btn.dataset.index));
-    });
+    btn.addEventListener('click', () => savePrompt(parseInt(btn.dataset.index)));
   });
 
   // 删除按钮
   el.querySelectorAll('[data-action="delete"]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deletePrompt(parseInt(btn.dataset.index));
-    });
+    btn.addEventListener('click', () => deletePrompt(parseInt(btn.dataset.index)));
   });
 }
 
@@ -226,10 +224,10 @@ async function savePrompt(index) {
 }
 
 async function deletePrompt(index) {
-  if (!confirm(`删除 "${promptsList[index].label}"?`)) return;
+  if (!confirm(`确定删除 "${promptsList[index].label}" ?`)) return;
 
   const deleted = promptsList.splice(index, 1)[0];
-  expandedItems.delete(index);
+  if (expandedIndex >= index && expandedIndex > 0) expandedIndex--;
 
   try {
     await send('savePrompts', {
