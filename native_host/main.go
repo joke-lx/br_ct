@@ -414,11 +414,6 @@ func generateID() string {
 
 // 保存提示词文件
 func savePromptsFile(path, content string) Response {
-	// 先创建备份
-	if err := createBackupFile(path); err != nil {
-		fmt.Fprintf(os.Stderr, "Backup error: %v\n", err)
-	}
-
 	err := os.WriteFile(path, []byte(content), 0644)
 	if err != nil {
 		return Response{Status: "error", Message: err.Error()}
@@ -426,21 +421,7 @@ func savePromptsFile(path, content string) Response {
 	return Response{Status: "ok", Message: "File saved successfully"}
 }
 
-// 创建备份
+// 创建备份（不再使用）
 func createBackup(path string) Response {
-	if err := createBackupFile(path); err != nil {
-		return Response{Status: "error", Message: err.Error()}
-	}
-	return Response{Status: "ok", Message: "Backup created"}
-}
-
-// 创建备份文件
-func createBackupFile(path string) error {
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	backupPath := path + ".bak"
-	return os.WriteFile(backupPath, content, 0644)
+	return Response{Status: "ok", Message: "Backup disabled"}
 }
