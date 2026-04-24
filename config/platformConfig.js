@@ -98,6 +98,14 @@ export const PLATFORM_CONFIG = {
     color: '#8b5cf6',
     url: 'https://chat.z.ai/',
     defaultVisible: true
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    icon: 'DS',
+    shortIcon: 'DS',
+    color: '#0066cc',
+    url: 'https://chat.deepseek.com/',
+    defaultVisible: true
   }
 };
 
