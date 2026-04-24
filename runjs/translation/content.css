@@ -423,6 +423,7 @@
 #selection-copy-original,
 #selection-copy-result,
 #selection-add-favorites,
+#selection-auto-translate,
 #selection-close-panel {
   flex: 1;
   padding: 8px 16px;
@@ -435,15 +436,25 @@
 
 #selection-copy-original,
 #selection-copy-result,
-#selection-add-favorites {
+#selection-add-favorites,
+#selection-auto-translate {
   background: #6c757d;
   color: white;
 }
 
 #selection-copy-original:hover,
 #selection-copy-result:hover,
-#selection-add-favorites:hover {
+#selection-add-favorites:hover,
+#selection-auto-translate:hover {
   background: #5a6268;
+}
+
+#selection-auto-translate.active {
+  background: #28a745;
+}
+
+#selection-auto-translate.active:hover {
+  background: #218838;
 }
 
 #selection-close-panel {
@@ -564,8 +575,17 @@
 
   #selection-copy-original:hover,
   #selection-copy-result:hover,
-  #selection-add-favorites:hover {
+  #selection-add-favorites:hover,
+  #selection-auto-translate:hover {
     background: #5a5a5a;
+  }
+
+  #selection-auto-translate.active {
+    background: #28a745;
+  }
+
+  #selection-auto-translate.active:hover {
+    background: #218838;
   }
 
   #selection-close-panel {
@@ -597,6 +617,7 @@
   #selection-copy-original,
   #selection-copy-result,
   #selection-add-favorites,
+  #selection-auto-translate,
   #selection-close-panel {
     min-width: calc(50% - 5px);
   }

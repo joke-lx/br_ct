@@ -276,6 +276,7 @@ function createResultPanel() {
       <button id="selection-copy-original">📋 复制原文</button>
       <button id="selection-copy-result">📋 复制结果</button>
       <button id="selection-add-favorites">⭐ 收藏</button>
+      <button id="selection-auto-translate" class="auto-translate-btn" title="自动翻译开关">🔄 自动翻译</button>
       <button id="selection-close-panel">关闭</button>
     </div>
   `;
@@ -288,6 +289,7 @@ function createResultPanel() {
   panel.querySelector('#selection-copy-original').addEventListener('click', copyOriginalText);
   panel.querySelector('#selection-copy-result').addEventListener('click', copyResult);
   panel.querySelector('#selection-add-favorites').addEventListener('click', addCurrentToFavorites);
+  panel.querySelector('#selection-auto-translate').addEventListener('click', toggleAutoTranslate);
 
   // 绑定原文编辑功能
   panel.querySelector('#selection-edit-original').addEventListener('click', startEditingOriginal);
@@ -441,6 +443,9 @@ async function showResultPanel(originalText, resultText) {
   }
 
   resultPanel.style.visibility = 'visible';
+
+  // 更新自动翻译按钮状态
+  updateAutoTranslateButton();
 }
 
 /**
@@ -933,6 +938,98 @@ function addToFavorites(text, url) {
     url: url,
     timestamp: new Date().toISOString()
   });
+}
+
+/**
+ * 切换自动翻译开关
+ */
+function toggleAutoTranslate() {
+  const newAutoTranslate = !settings.autoTranslate;
+  settings.autoTranslate = newAutoTranslate;
+
+  // 更新按钮样式
+  const btn = document.getElementById('selection-auto-translate');
+  if (btn) {
+    if (newAutoTranslate) {
+      btn.classList.add('active');
+      btn.textContent = '🔄 自动翻译';
+    } else {
+      btn.classList.remove('active');
+      btn.textContent = '⏸ 自动翻译';
+    }
+  }
+
+  // 保存到存储
+  chrome.storage.local.get(['translation.settings'], (result) => {
+    const translationSettings = result['translation.settings'] || {};
+    translationSettings.autoTranslate = newAutoTranslate;
+    chrome.storage.local.set({ 'translation.settings': translationSettings }, () => {
+      console.log('[Translation] 自动翻译设置已更新:', newAutoTranslate);
+    });
+  });
+
+  // 显示切换提示
+  showAutoTranslateNotification(newAutoTranslate);
+}
+
+/**
+ * 显示自动翻译切换提示
+ */
+function showAutoTranslateNotification(enabled) {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${enabled ? '#28a745' : '#6c757d'};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 2147483647;
+    font-size: 14px;
+    animation: slideIn 0.3s ease-out;
+  `;
+  notification.textContent = enabled ? '✅ 已开启自动翻译' : '⏸ 已关闭自动翻译';
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease-in';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+      if (style.parentNode) {
+        style.parentNode.removeChild(style);
+      }
+    }, 300);
+  }, 2000);
+}
+
+/**
+ * 更新自动翻译按钮状态
+ */
+function updateAutoTranslateButton() {
+  const btn = document.getElementById('selection-auto-translate');
+  if (btn) {
+    if (settings.autoTranslate) {
+      btn.classList.add('active');
+      btn.textContent = '🔄 自动翻译';
+    } else {
+      btn.classList.remove('active');
+      btn.textContent = '⏸ 自动翻译';
+    }
+  }
 }
 
 /**
