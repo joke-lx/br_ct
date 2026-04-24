@@ -30,6 +30,14 @@ function initializeStorageDebug() {
   // 备份按钮
   document.getElementById('backup-now-btn').addEventListener('click', performManualBackup);
 
+  // 导入按钮
+  document.getElementById('import-btn').addEventListener('click', () => {
+    document.getElementById('import-file').click();
+  });
+
+  // 导入文件选择
+  document.getElementById('import-file').addEventListener('change', handleImportFile);
+
   // 使用事件委托处理折叠/展开和删除
   debugContent.addEventListener('click', (e) => {
     // 处理分组折叠
@@ -522,6 +530,70 @@ function performManualBackup() {
       updateLastBackupTimeDisplay(response.time);
     } else {
       showStatusMessage(`备份失败: ${response?.error || '未知错误'}`, 'error');
+    }
+  });
+}
+
+// ==================== 导入功能 ====================
+
+/**
+ * 处理导入文件选择
+ */
+function handleImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      restoreFromBackup(data);
+    } catch (err) {
+      showStatusMessage(`导入失败: 文件格式错误 - ${err.message}`, 'error');
+    }
+  };
+  reader.onerror = () => {
+    showStatusMessage('导入失败: 无法读取文件', 'error');
+  };
+  reader.readAsText(file);
+
+  // 清空input，允许重复选择同一文件
+  event.target.value = '';
+}
+
+/**
+ * 从备份数据恢复
+ */
+function restoreFromBackup(data) {
+  // 检查数据格式
+  if (!data || typeof data !== 'object') {
+    showStatusMessage('导入失败: 数据格式无效', 'error');
+    return;
+  }
+
+  // 检查是否是备份文件格式
+  const keys = Object.keys(data);
+  if (keys.length === 0) {
+    showStatusMessage('导入失败: 备份文件为空', 'error');
+    return;
+  }
+
+  // 确认恢复
+  const confirmed = confirm(
+    `即将导入 ${keys.length} 个存储项到扩展存储中。\n\n` +
+    `导入将覆盖现有数据。\n\n` +
+    `是否继续？`
+  );
+
+  if (!confirmed) return;
+
+  // 执行恢复
+  chrome.storage.local.set(data, () => {
+    if (chrome.runtime.lastError) {
+      showStatusMessage(`导入失败: ${chrome.runtime.lastError.message}`, 'error');
+    } else {
+      showStatusMessage(`成功导入 ${keys.length} 个存储项`, 'success');
+      loadStorageDebug();
     }
   });
 }
