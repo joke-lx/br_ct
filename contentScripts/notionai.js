@@ -62,41 +62,31 @@ const PLATFORM_CONFIG = {
  * 输入框选择器列表（按优先级排序）
  */
 const INPUT_SELECTORS = [
-  // 通过 data-content-editable-leaf 属性定位
+  // data-content-editable-leaf + role（最可靠）
   { type: 'css', value: 'div[data-content-editable-leaf="true"][role="textbox"]' },
 
-  // 通过 placeholder 和 contenteditable 定位
+  // placeholder + contenteditable
   { type: 'css', value: 'div[contenteditable="true"][placeholder*="AI"]' },
-  { type: 'css', value: 'div[contenteditable="true"][placeholder="使用 AI 处理各种任务..."]' },
 
-  // 通过 class 和 contenteditable 定位
-  { type: 'css', value: 'div.content-editable-leaf[contenteditable="true"]' },
+  // class（实际 class 名是 content-editable-leaf-rtl）
+  { type: 'css', value: 'div.content-editable-leaf-rtl[contenteditable="true"]' },
 
-  // XPath 备选方案（完整的 DOM 路径）
+  // XPath: role + contenteditable
   { type: 'xpath', value: '//div[@role="textbox"][@contenteditable="true"]' },
-  { type: 'xpath', value: '//div[@data-content-editable-leaf="true"]' },
-
-  // 完整路径（最后备选）
-  { type: 'xpath', value: '//*[@id="notion-app"]//div[@contenteditable="true"]' },
 ];
 
 /**
  * 发送按钮选择器列表（按优先级排序）
  */
 const BUTTON_SELECTORS = [
-  // 通过 data-testid 属性定位（最可靠）
+  // data-testid（最可靠）
   { type: 'css', value: 'div[data-testid="agent-send-message-button"]' },
 
-  // 通过 aria-label 定位
+  // aria-label + role
   { type: 'css', value: 'div[role="button"][aria-label="提交 AI 消息"]' },
-  { type: 'css', value: 'button[aria-label="提交 AI 消息"]' },
 
-  // 通过 class 定位（结合 aria-label）
-  { type: 'css', value: 'div.x87ps6o[role="button"][aria-label*="提交"]' },
-
-  // XPath 备选方案
+  // XPath 备选
   { type: 'xpath', value: '//div[@data-testid="agent-send-message-button"]' },
-  { type: 'xpath', value: '//div[@role="button"][@aria-label="提交 AI 消息"]' },
 ];
 
 // ==========================================================
@@ -149,14 +139,86 @@ function findElementBySelectors(selectors) {
   return null;
 }
 
+// ==========================================================
+//                     智能元素发现（兜底机制）
+// ==========================================================
+
+/**
+ * 兜底机制：查找第一个可用的输入元素
+ */
+function findInputElementIntelligently() {
+  logInfo("选择器失败，启动兜底机制查找输入元素...");
+
+  const selectors = [
+    'textarea:not([readonly]):not([disabled])',
+    '[contenteditable="true"]:not([readonly])',
+    'input[type="text"]:not([readonly]):not([disabled])',
+    'input[type="search"]:not([readonly]):not([disabled])',
+    'input:not([type]):not([readonly]):not([disabled])'
+  ];
+
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    if (element && isElementVisible(element)) {
+      logInfo(`兜底机制找到输入元素: ${selector}`);
+      return element;
+    }
+  }
+
+  logWarning("兜底机制未找到任何可输入元素");
+  return null;
+}
+
+/**
+ * 兜底机制：查找第一个可用的按钮元素
+ */
+function findButtonElementIntelligently() {
+  logInfo("选择器失败，启动兜底机制查找按钮元素...");
+
+  const selectors = [
+    'button[aria-label*="send" i], button[aria-label*="submit" i], button[aria-label*="发送" i], button[aria-label*="提交" i]',
+    'button:not([disabled])',
+    '[role="button"]:not([aria-disabled="true"])'
+  ];
+
+  for (const selector of selectors) {
+    const elements = document.querySelectorAll(selector);
+    for (const element of elements) {
+      if (isElementVisible(element)) {
+        logInfo(`兜底机制找到按钮元素: ${selector}`);
+        return element;
+      }
+    }
+  }
+
+  logWarning("兜底机制未找到任何可点击按钮");
+  return null;
+}
+
+/**
+ * 检查元素是否可见
+ */
+function isElementVisible(element) {
+  if (!element) return false;
+
+  const style = window.getComputedStyle(element);
+  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+    return false;
+  }
+
+  if (!document.body.contains(element)) return false;
+
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
 /**
  * 异步等待元素出现
  */
-async function waitForElement(selectors, timeout, enableSmartDiscovery) {
+async function waitForElement(selectors, timeout, elementType = 'input') {
   const startTime = Date.now();
   const endTime = startTime + timeout;
   let attemptCount = 0;
-  const smartDiscovery = enableSmartDiscovery !== undefined ? enableSmartDiscovery : PLATFORM_CONFIG.enableSmartDiscovery;
 
   return new Promise((resolve) => {
     const checkElement = () => {
@@ -171,6 +233,21 @@ async function waitForElement(selectors, timeout, enableSmartDiscovery) {
 
       if (Date.now() >= endTime) {
         logWarning(`元素查找超时 (${timeout}ms)，共尝试 ${attemptCount} 次`);
+
+        // 启用智能发现兜底机制
+        if (PLATFORM_CONFIG.enableSmartDiscovery) {
+          logInfo("预定义选择器失败，启动兜底机制...");
+          const fallbackElement = elementType === 'button'
+            ? findButtonElementIntelligently()
+            : findInputElementIntelligently();
+
+          if (fallbackElement) {
+            logInfo("兜底机制成功找到元素！");
+            resolve(fallbackElement);
+            return;
+          }
+        }
+
         resolve(null);
         return;
       }
@@ -188,6 +265,8 @@ async function waitForElement(selectors, timeout, enableSmartDiscovery) {
 
 /**
  * 模拟 Contenteditable 元素输入
+ * Notion 等现代编辑器：先清空内容，再聚焦输入
+ * 避免输入到 placeholder 层
  */
 async function simulateContenteditableInput(element, text, mode = 'beforeinput') {
   if (!element || !text) {
@@ -197,15 +276,21 @@ async function simulateContenteditableInput(element, text, mode = 'beforeinput')
 
   logInfo(`使用 ${mode} 模式输入到 contenteditable 元素，长度: ${text.length}`);
 
-  // 确保元素有焦点
+  // 1. 清空现有内容（移除 placeholder）
+  element.textContent = '';
+  element.dispatchEvent(new Event('input', { bubbles: true }));
+
+  // 2. 确保元素有焦点
   element.focus();
   await delay(50);
 
-  // 清空现有内容
-  document.execCommand('selectAll', false, null);
-  await delay(20);
-  document.execCommand('delete', false, null);
-  await delay(50);
+  // 3. 将光标移到开头（清空后默认位置）
+  const range = document.createRange();
+  const selection = window.getSelection();
+  range.selectNodeContents(element);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
 
   switch (mode) {
     case 'beforeinput':
@@ -225,10 +310,16 @@ async function simulateContenteditableInput(element, text, mode = 'beforeinput')
 
 /**
  * 使用 beforeinput 事件输入
+ * 先全选内容，再输入替换（模拟用户真实输入行为）
  */
 async function inputWithBeforeInput(element, text) {
   try {
-    // 触发 beforeinput 事件
+    // 1. Ctrl+A 全选内容（替换提示词/已有内容）
+    element.focus();
+    document.execCommand('selectAll', false, null);
+    await delay(30);
+
+    // 2. 触发 beforeinput 事件
     const beforeInputEvent = new InputEvent('beforeinput', {
       bubbles: true,
       cancelable: true,
@@ -237,15 +328,15 @@ async function inputWithBeforeInput(element, text) {
     });
     element.dispatchEvent(beforeInputEvent);
 
-    // 使用 execCommand 插入文本
+    // 3. 使用 execCommand 替换选中的内容
     const success = document.execCommand('insertText', false, text);
 
     if (!success) {
-      logWarning("execCommand 失败，降级到直接设置");
+      logWarning("execCommand 失败，尝试直接设置");
       element.textContent = text;
     }
 
-    // 触发后续事件
+    // 4. 触发后续事件
     element.dispatchEvent(new InputEvent('input', {
       bubbles: true,
       cancelable: true,
@@ -321,11 +412,21 @@ async function inputWithTyping(element, text, charDelay = 30) {
 }
 
 /**
- * 直接设置文本内容
+ * 直接设置文本内容 - 先全选再替换（模拟用户输入行为）
  */
 function inputDirectly(element, text) {
   try {
-    element.textContent = text;
+    // 1. 全选内容
+    element.focus();
+    document.execCommand('selectAll', false, null);
+
+    // 2. 使用 execCommand 替换选中的内容
+    const success = document.execCommand('insertText', false, text);
+    if (!success) {
+      // 如果失败，直接设置 textContent
+      element.textContent = text;
+    }
+
     element.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
     element.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
     logInfo("直接设置模式完成");

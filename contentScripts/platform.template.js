@@ -427,15 +427,21 @@ async function simulateContenteditableInput(element, text, mode = 'beforeinput')
 
   logInfo(`使用 ${mode} 模式输入到 contenteditable 元素，长度: ${text.length}`);
 
-  // 确保元素有焦点
+  // 1. 清空现有内容（移除 placeholder/提示词层）
+  element.textContent = '';
+  element.dispatchEvent(new Event('input', { bubbles: true }));
+
+  // 2. 确保元素有焦点
   element.focus();
   await delay(50);
 
-  // 清空现有内容
-  document.execCommand('selectAll', false, null);
-  await delay(20);
-  document.execCommand('delete', false, null);
-  await delay(50);
+  // 3. 将光标移到开头
+  const range = document.createRange();
+  const selection = window.getSelection();
+  range.selectNodeContents(element);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
 
   switch (mode) {
     case 'beforeinput':
@@ -453,7 +459,7 @@ async function simulateContenteditableInput(element, text, mode = 'beforeinput')
     case 'direct':
       // ========== 直接设置模式 ==========
       // 适用：不需要触发编辑器状态的场景
-      // 原理：直接修改 DOM，不触发编辑器事件
+      // 原理：先全选再替换，模拟用户输入行为
       return inputDirectly(element, text);
 
     default:
@@ -464,13 +470,19 @@ async function simulateContenteditableInput(element, text, mode = 'beforeinput')
 
 /**
  * 使用 beforeinput 事件输入（现代编辑器推荐）
+ * 先全选内容，再输入替换（模拟用户真实输入行为）
  * @param {Element} element - 目标元素
  * @param {string} text - 输入文本
  * @returns {Promise<boolean>}
  */
 async function inputWithBeforeInput(element, text) {
   try {
-    // 1. 触发 beforeinput 事件（现代编辑器标准）
+    // 1. Ctrl+A 全选内容（替换提示词/已有内容）
+    element.focus();
+    document.execCommand('selectAll', false, null);
+    await delay(30);
+
+    // 2. 触发 beforeinput 事件（现代编辑器标准）
     const beforeInputEvent = new InputEvent('beforeinput', {
       bubbles: true,
       cancelable: true,
@@ -479,7 +491,7 @@ async function inputWithBeforeInput(element, text) {
     });
     element.dispatchEvent(beforeInputEvent);
 
-    // 2. 使用 execCommand 插入文本
+    // 3. 使用 execCommand 替换选中的内容
     const success = document.execCommand('insertText', false, text);
 
     if (!success) {
@@ -487,7 +499,7 @@ async function inputWithBeforeInput(element, text) {
       element.textContent = text;
     }
 
-    // 3. 触发后续事件确保状态同步
+    // 4. 触发后续事件确保状态同步
     element.dispatchEvent(new InputEvent('input', {
       bubbles: true,
       cancelable: true,
@@ -497,7 +509,7 @@ async function inputWithBeforeInput(element, text) {
     element.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
     document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
 
-    logInfo("✅ beforeinput 模式输入完成");
+    logInfo("beforeinput 模式输入完成");
     return true;
   } catch (e) {
     logError("beforeinput 模式失败", e);
@@ -573,17 +585,28 @@ async function inputWithTyping(element, text, charDelay = 30) {
 }
 
 /**
- * 直接设置文本内容（不推荐用于现代编辑器）
+ * 直接设置文本内容 - 先全选再替换（模拟用户输入行为）
+ * 适用于 Notion AI 等现代编辑器
  * @param {Element} element - 目标元素
  * @param {string} text - 输入文本
  * @returns {boolean}
  */
 function inputDirectly(element, text) {
   try {
-    element.textContent = text;
+    // 1. 全选内容
+    element.focus();
+    document.execCommand('selectAll', false, null);
+
+    // 2. 使用 execCommand 替换选中的内容
+    const success = document.execCommand('insertText', false, text);
+    if (!success) {
+      // 如果失败，直接设置 textContent
+      element.textContent = text;
+    }
+
     element.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
     element.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
-    logInfo("✅ 直接设置模式完成");
+    logInfo("直接设置模式完成");
     return true;
   } catch (e) {
     logError("直接设置模式失败", e);
