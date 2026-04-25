@@ -18,6 +18,9 @@
     "default_popup": "popup/main/main.html",
     "default_title": "AI Assistant"
   },
+  "side_panel": {
+    "default_path": "popup/main/main.html"
+  },
   "options_ui": {
     "page": "/options/options.html",
     "open_in_tab": true
@@ -35,7 +38,8 @@
     "history",
     "contextMenus",
     "bookmarks",
-    "nativeMessaging"
+    "nativeMessaging",
+    "sidePanel"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
