@@ -180,7 +180,8 @@ function renderPrompts() {
             </div>
           </div>
           <div class="prompt-item-body ${expandedIndex === i ? 'expanded' : ''}">
-            <textarea id="tpl-${i}">${p.template}</textarea>
+            <input type="text" id="label-${i}" value="${escapeHtml(p.label)}" placeholder="输入标题">
+            <textarea id="tpl-${i}" placeholder="输入提示词内容">${escapeHtml(p.template)}</textarea>
           </div>
         </div>
       `).join('')}
@@ -209,8 +210,20 @@ function renderPrompts() {
 }
 
 async function savePrompt(index) {
+  const labelInput = document.getElementById(`label-${index}`);
   const ta = document.getElementById(`tpl-${index}`);
-  promptsList[index].template = ta.value;
+  const newLabel = labelInput.value.trim();
+  const newTemplate = ta.value;
+
+  if (!newLabel) { toast('标题不能为空', 'error'); return; }
+
+  // 检查是否与其他标题重复
+  if (promptsList.some((p, i) => i !== index && p.label === newLabel)) {
+    toast('标题已存在', 'error'); return;
+  }
+
+  promptsList[index].label = newLabel;
+  promptsList[index].template = newTemplate;
 
   try {
     await send('savePrompts', {
@@ -245,6 +258,7 @@ async function deletePrompt(index) {
 function showAddModal() {
   document.getElementById('addModal').style.display = 'flex';
   document.getElementById('promptLabel').value = '';
+  document.getElementById('promptTemplate').value = '';
   document.getElementById('promptLabel').focus();
 }
 
@@ -254,10 +268,11 @@ function hideAddModal() {
 
 async function addPrompt() {
   const label = document.getElementById('promptLabel').value.trim();
+  const template = document.getElementById('promptTemplate').value.trim();
   if (!label) { toast('请输入名称', 'error'); return; }
   if (promptsList.some(p => p.label === label)) { toast('名称已存在', 'error'); return; }
 
-  promptsList.push({ id: Date.now().toString(36), group: currentGroup, label, template: '' });
+  promptsList.push({ id: Date.now().toString(36), group: currentGroup, label, template });
   hideAddModal();
 
   try {
