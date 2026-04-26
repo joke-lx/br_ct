@@ -12,8 +12,6 @@ package main
 
 import (
 	"bufio"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -62,8 +60,6 @@ type FileEntry struct {
 
 // 提示词条目结构
 type PromptEntry struct {
-	ID       string `json:"id"`
-	Group    string `json:"group"`
 	Label    string `json:"label"`
 	Alias    string `json:"alias"`
 	Template string `json:"template"`
@@ -328,10 +324,7 @@ func parsePromptsJSONFormat(content string, group string) ([]PromptEntry, error)
 
 	var prompts []PromptEntry
 	for _, item := range raw {
-		entry := PromptEntry{
-			ID:    generateID(),
-			Group: group,
-		}
+		entry := PromptEntry{}
 		if v, ok := item["label"].(string); ok {
 			entry.Label = v
 		}
@@ -372,8 +365,6 @@ func parsePromptsLegacyFormat(content string, group string) ([]PromptEntry, erro
 			// 保存之前的条目
 			if currentLabel != "" && currentTemplate.Len() > 0 {
 				prompts = append(prompts, PromptEntry{
-					ID:       generateID(),
-					Group:    group,
 					Label:    currentLabel,
 					Alias:    currentAlias,
 					Template: currentTemplate.String(),
@@ -452,8 +443,6 @@ func parsePromptsLegacyFormat(content string, group string) ([]PromptEntry, erro
 	// 保存最后一个条目
 	if currentLabel != "" && currentTemplate.Len() > 0 {
 		prompts = append(prompts, PromptEntry{
-			ID:       generateID(),
-			Group:    group,
 			Label:    currentLabel,
 			Alias:    currentAlias,
 			Template: currentTemplate.String(),
@@ -463,13 +452,6 @@ func parsePromptsLegacyFormat(content string, group string) ([]PromptEntry, erro
 	return prompts, nil
 }
 
-
-// 生成唯一 ID
-func generateID() string {
-	bytes := make([]byte, 8)
-	rand.Read(bytes)
-	return base64.URLEncoding.EncodeToString(bytes)[:12]
-}
 
 // 保存提示词文件
 func savePromptsFile(path, content string) Response {

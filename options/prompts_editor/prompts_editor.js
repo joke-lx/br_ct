@@ -284,7 +284,7 @@ async function addPrompt() {
   if (promptsList.some(p => p.label === label)) { toast('名称已存在', 'error'); return; }
   if (alias && promptsList.some(p => p.alias === alias)) { toast('别名已存在', 'error'); return; }
 
-  promptsList.push({ id: Date.now().toString(36), group: currentGroup, label, alias, template });
+  promptsList.push({ label, alias, template });
   hideAddModal();
 
   try {
