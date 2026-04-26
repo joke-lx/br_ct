@@ -301,19 +301,9 @@ async function addPrompt() {
 }
 
 function generateContent() {
-  let content = `export const ${currentGroup} = [\n`;
-  promptsList.forEach((p, i) => {
-    // 转义模板中的反引号、$ 和换行符
-    const tpl = p.template
-      .replace(/\\/g, '\\\\')  // 先转义反斜杠
-      .replace(/`/g, '\\`')
-      .replace(/\$/g, '\\$')
-      .replace(/\n/g, '\\n');  // 换行符转回 \n 字面量
-    const alias = p.alias ? `,\n    alias: "${p.alias}"` : '';
-    content += `  {\n    label: "${p.label}",${alias}\n    template: \`${tpl}\`\n  }`;
-    content += i < promptsList.length - 1 ? ',\n' : '\n';
-  });
-  return content + '];\n';
+  // 使用 JSON.stringify 序列化，无手动转义
+  const jsonStr = JSON.stringify(promptsList, null, 2);
+  return `export default ${jsonStr};\n`;
 }
 
 function escapeHtml(str) {

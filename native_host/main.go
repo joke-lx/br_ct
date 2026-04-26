@@ -302,10 +302,56 @@ func parsePromptsFile(path string) Response {
 
 // 解析提示词内容
 func parsePromptsContent(content string, group string) ([]PromptEntry, error) {
+	// 检测是否是 export default JSON 格式 (新格式)
+	if strings.Contains(content, "export default") {
+		return parsePromptsJSONFormat(content, group)
+	}
+	// 旧格式: 逐行解析
+	return parsePromptsLegacyFormat(content, group)
+}
+
+// 解析 export default JSON 格式 (新格式)
+func parsePromptsJSONFormat(content string, group string) ([]PromptEntry, error) {
+	// 提取 JSON 数组: export default [...] ;
+	jsonStart := strings.Index(content, "[")
+	jsonEnd := strings.LastIndex(content, "]")
+	if jsonStart == -1 || jsonEnd == -1 || jsonEnd < jsonStart {
+		return nil, fmt.Errorf("invalid export default format: no JSON array found")
+	}
+
+	jsonStr := strings.TrimSpace(content[jsonStart : jsonEnd+1])
+
+	var raw []map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
+		return nil, fmt.Errorf("JSON parse error: %v", err)
+	}
+
+	var prompts []PromptEntry
+	for _, item := range raw {
+		entry := PromptEntry{
+			ID:    generateID(),
+			Group: group,
+		}
+		if v, ok := item["label"].(string); ok {
+			entry.Label = v
+		}
+		if v, ok := item["alias"].(string); ok {
+			entry.Alias = v
+		}
+		if v, ok := item["template"].(string); ok {
+			entry.Template = v
+		}
+		prompts = append(prompts, entry)
+	}
+	return prompts, nil
+}
+
+// 解析旧格式 (逐行)
+func parsePromptsLegacyFormat(content string, group string) ([]PromptEntry, error) {
 	var prompts []PromptEntry
 	lines := strings.Split(content, "\n")
 
-	// 匹配 label 属性：支持单引号和双引号
+	// 匹配 label 属性
 	labelPattern := regexp.MustCompile(`label:\s*"([^"]+)"`)
 	// 匹配 alias 属性
 	aliasPattern := regexp.MustCompile(`alias:\s*"([^"]*)"`)

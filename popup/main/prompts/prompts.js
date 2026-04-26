@@ -1,9 +1,9 @@
-import { code_gen } from './groups/code_gen.js';
-import { analyze_plan } from './groups/analyze_plan.js';
-import { custom_design } from './groups/custom_design.js';
-import { read } from './groups/read.js';
-import { search } from './groups/search.js';
-import { other } from './groups/other.js';
+import code_gen from './groups/code_gen.js';
+import analyze_plan from './groups/analyze_plan.js';
+import custom_design from './groups/custom_design.js';
+import read from './groups/read.js';
+import search from './groups/search.js';
+import other from './groups/other.js';
 
 // 将数组转换为 PROMPTS 格式
 function convertToPrompts(data, group) {
