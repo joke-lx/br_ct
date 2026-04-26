@@ -19,7 +19,7 @@
     "default_title": "AI Assistant"
   },
   "side_panel": {
-    "default_path": "popup/main/main.html"
+    "default_path": "sidebar/main/main.html"
   },
   "options_ui": {
     "page": "/options/options.html",

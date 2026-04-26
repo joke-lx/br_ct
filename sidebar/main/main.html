@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>AI Assistant - 多端AI调度工具</title>
+    <!-- 引入外部CSS文件 -->
+    <link rel="stylesheet" href="./prompts/promptsUI.css" />
+    <link rel="stylesheet" href="sidebar.css" />
+  </head>
+  <body>
+    <!-- 标题容器 -->
+    <div class="header">
+      <h1>AI Assistant</h1>
+    </div>
+
+    <!-- 平台选择区 -->
+    <div class="platform-selector">
+      <div class="platform-selector-header">
+        <h3>选择平台</h3>
+        <div class="header-buttons">
+          <div class="select-all" id="select-all">全选</div>
+          <div class="close-tabs" id="close-tabs-button">关闭</div>
+        </div>
+      </div>
+
+      <div class="platform-options-row" id="platform-options-row">
+        <!-- 平台选项将由 JS 从 platformConfig.js 动态生成 -->
+      </div>
+    </div>
+
+    <!-- 历史消息选择框 -->
+    <select id="history-select" class="history-select">
+      <option value="">选择历史消息</option>
+    </select>
+
+    <!-- 提示词优化选择框 -->
+    <div class="prompt-optimizer-selector">
+      <div class="custom-select" id="prompt-optimizer-select">
+        <div class="selected-value">不使用优化</div>
+        <div class="custom-select-options">
+          <!-- 由JS动态填充选项 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 消息输入框 -->
+    <textarea
+      class="message-input"
+      id="message-input"
+      placeholder="输入要发送的消息或拖放文件/文件夹到此处"
+    ></textarea>
+
+    <!-- 发送按钮 -->
+    <div class="button-group">
+      <button class="send-button" id="send-button">发送消息</button>
+    </div>
+
+    <!-- 脚本引用 -->
+    <script src="main.js" type="module"></script>
+  </body>
+</html>
