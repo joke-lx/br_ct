@@ -2,7 +2,7 @@ export default [
   {
     "label": "CODE_模块demo",
     "alias": "demo",
-    "template": "%s 具体在什么地方查看细节 或者帮助我更深层次理解这部分逻辑，或者给一些demo案例 帮助我理解这个设计方案的构成部分"
+    "template": "%s 具体在什么地方查看细节 或者帮助我更深层次理解这部分逻辑，或者给一些demo案例 帮助我理解这个设计方案的构成部分 \n"
   },
   {
     "label": "CODE_GOOD",
