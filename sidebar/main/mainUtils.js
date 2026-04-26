@@ -8,14 +8,14 @@ import {
   saveOptimizerSetting,
   loadStoredData as loadData,
   addToHistory
-} from "./modules/storage.js";
+} from "../../popup/main/modules/storage.js";
 import {
   loadPlatformVisibilitySettings,
   applyPlatformVisibilitySettings,
   getVisiblePlatformCheckboxes,
   areAllVisiblePlatformsChecked,
   setupPlatformVisibilityMessageListener
-} from "./modules/platformVisibility.js";
+} from "../../popup/main/modules/platformVisibility.js";
 import {
   copyToClipboard,
   showTempMessage,
@@ -27,7 +27,7 @@ import {
   focusInputAndSetCursor,
   validateMessageInput,
   validatePlatformSelection
-} from "./modules/uiHelpers.js";
+} from "../../popup/main/modules/uiHelpers.js";
 
 // DOM 元素缓存
 let elements = {};
