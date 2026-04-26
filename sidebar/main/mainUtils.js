@@ -1,6 +1,6 @@
 // mainUtils.js - 核心popup功能模块
-import { populateOptimizer } from "./prompts/promptsUI.js";
-import { PROMPT_TEMPLATES } from "./prompts/prompts.js";
+import { populateOptimizer } from "../../popup/main/prompts/promptsUI.js";
+import { PROMPT_TEMPLATES } from "../../popup/main/prompts/prompts.js";
 import {
   STORAGE_KEYS,
   saveMessageContent,
@@ -462,9 +462,9 @@ async function startSending() {
             showTempMessage("发送完成");
         }
 
-        // 5. Sidebar 模式下不关闭侧栏，保持打开
-        // await new Promise((resolve) => setTimeout(resolve, 2500));
-        // window.close();
+        // 5. Sidebar 模式下重置按钮状态（popup依赖window.close自动重置，sidebar需要手动重置）
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        resetButtonState(elements.sendButton, "发送消息");
 
     } catch (error) {
         console.error("发送消息失败:", error);
