@@ -291,8 +291,12 @@ async function addPrompt() {
 function generateContent() {
   let content = `export const ${currentGroup} = [\n`;
   promptsList.forEach((p, i) => {
-    // 转义模板中的反引号和 $
-    const tpl = p.template.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    // 转义模板中的反引号、$ 和换行符
+    const tpl = p.template
+      .replace(/\\/g, '\\\\')  // 先转义反斜杠
+      .replace(/`/g, '\\`')
+      .replace(/\$/g, '\\$')
+      .replace(/\n/g, '\\n');  // 换行符转回 \n 字面量
     content += `  {\n    label: "${p.label}",\n    template: \`${tpl}\`\n  }`;
     content += i < promptsList.length - 1 ? ',\n' : '\n';
   });
