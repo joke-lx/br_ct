@@ -107,9 +107,10 @@ function populateOptimizer(promptOptimizerSelect, templates) {
     groups[groupName].forEach(template => {
       const option = document.createElement('div');
       option.className = 'select-option';
-      option.textContent = template.label;
+      option.textContent = template.alias ? `${template.label} (/${template.alias})` : template.label;
       option.dataset.value = template.key;
       option.dataset.template = template.template;
+      option.dataset.alias = template.alias || '';
       
       option.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -187,4 +188,159 @@ function populateOptimizer(promptOptimizerSelect, templates) {
   });
 }
 
-export { populateOptimizer };
+/**
+ * 初始化输入框的 /alias 快捷触发
+ * 用户输入 /alias 时弹出匹配列表，选择后自动切换下拉框模板并删除 /alias
+ * @param {HTMLElement} textarea - 消息输入框
+ * @param {Object} templates - PROMPT_TEMPLATES 模板对象
+ * @param {HTMLElement} promptOptimizerSelect - 提示词下拉框容器
+ */
+function initAliasShortcut(textarea, templates, promptOptimizerSelect) {
+  const PROMPT_TEMPLATES = templates || {};
+  let popup = null;
+  let selectedIndex = -1;
+  let matches = [];
+
+  function buildAliasMap() {
+    const map = [];
+    for (const key in PROMPT_TEMPLATES) {
+      const t = PROMPT_TEMPLATES[key];
+      if (t.alias) {
+        map.push({ alias: t.alias, label: t.label, template: t.template, key });
+      }
+    }
+    return map;
+  }
+
+  const aliasMap = buildAliasMap();
+
+  function createPopup() {
+    popup = document.createElement('div');
+    popup.className = 'alias-popup';
+    popup.style.cssText = 'position:absolute;z-index:10000;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-height:200px;overflow-y:auto;min-width:200px;display:none;';
+    document.body.appendChild(popup);
+
+    popup.addEventListener('click', (e) => {
+      const item = e.target.closest('.alias-item');
+      if (item) applyAlias(parseInt(item.dataset.index));
+    });
+  }
+
+  function showPopup() {
+    if (!popup) createPopup();
+    const rect = textarea.getBoundingClientRect();
+    popup.style.left = rect.left + 'px';
+    popup.style.top = (rect.bottom + 4) + 'px';
+    popup.style.display = 'block';
+  }
+
+  function hidePopup() {
+    if (popup) popup.style.display = 'none';
+    matches = [];
+    selectedIndex = -1;
+  }
+
+  function renderMatches() {
+    if (!popup) createPopup();
+    if (matches.length === 0) { hidePopup(); return; }
+
+    popup.innerHTML = matches.map((m, i) => `
+      <div class="alias-item" data-index="${i}" style="padding:8px 12px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center;${i === selectedIndex ? 'background:#f0f4ff;' : ''}">
+        <span style="color:#4361ee;font-weight:600;">/${m.alias}</span>
+        <span style="color:#6b7280;font-size:12px;margin-left:12px;">${m.label}</span>
+      </div>
+    `).join('');
+
+    popup.querySelectorAll('.alias-item').forEach(item => {
+      item.addEventListener('mouseenter', () => {
+        selectedIndex = parseInt(item.dataset.index);
+        renderMatches();
+      });
+    });
+
+    showPopup();
+  }
+
+  function applyAlias(index) {
+    if (index < 0 || index >= matches.length) return;
+    const match = matches[index];
+
+    // 1. 删除文本中的 /alias
+    const value = textarea.value;
+    const before = value.substring(0, textarea.selectionStart);
+    const slashPos = before.lastIndexOf('/');
+    const after = value.substring(textarea.selectionEnd);
+    textarea.value = before.substring(0, slashPos) + after;
+    textarea.setSelectionRange(slashPos, slashPos);
+    textarea.dispatchEvent(new Event('input'));
+
+    // 2. 自动选中下拉框对应的模板
+    if (promptOptimizerSelect) {
+      const selectedValue = promptOptimizerSelect.querySelector('.selected-value');
+      if (selectedValue) {
+        selectedValue.textContent = match.label;
+        selectedValue.dataset.value = match.key;
+        selectedValue.dataset.template = match.template;
+
+        chrome.storage.sync.set({ lastPromptTemplate: match.key });
+
+        const event = new CustomEvent('change', {
+          detail: { value: match.key, template: match.template, label: match.label }
+        });
+        promptOptimizerSelect.dispatchEvent(event);
+      }
+    }
+
+    hidePopup();
+  }
+
+  function getCurrentAliasInput() {
+    const pos = textarea.selectionStart;
+    const text = textarea.value.substring(0, pos);
+    const slashPos = text.lastIndexOf('/');
+    if (slashPos === -1) return null;
+    const afterSlash = text.substring(slashPos + 1);
+    if (afterSlash.length === 0 || afterSlash.length > 15) return null;
+    if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(afterSlash)) {
+      if (slashPos === 0 || /[\s\n]/.test(text[slashPos - 1])) {
+        return afterSlash;
+      }
+    }
+    return null;
+  }
+
+  textarea.addEventListener('input', () => {
+    const aliasInput = getCurrentAliasInput();
+    if (aliasInput === null) { hidePopup(); return; }
+    const lower = aliasInput.toLowerCase();
+    matches = aliasMap.filter(m => m.alias.toLowerCase().startsWith(lower));
+    selectedIndex = 0;
+    renderMatches();
+  });
+
+  textarea.addEventListener('keydown', (e) => {
+    if (!popup || popup.style.display === 'none') return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIndex = (selectedIndex + 1) % matches.length;
+      renderMatches();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIndex = (selectedIndex - 1 + matches.length) % matches.length;
+      renderMatches();
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      applyAlias(selectedIndex);
+    } else if (e.key === 'Escape') {
+      hidePopup();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (popup && !popup.contains(e.target) && e.target !== textarea) {
+      hidePopup();
+    }
+  });
+}
+
+export { populateOptimizer, initAliasShortcut };

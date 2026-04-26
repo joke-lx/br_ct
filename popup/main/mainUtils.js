@@ -1,5 +1,5 @@
 // mainUtils.js - 核心popup功能模块
-import { populateOptimizer } from "./prompts/promptsUI.js";
+import { populateOptimizer, initAliasShortcut } from "./prompts/promptsUI.js";
 import { PROMPT_TEMPLATES } from "./prompts/prompts.js";
 import {
   STORAGE_KEYS,
@@ -89,6 +89,9 @@ export async function initializePopup() {
 
   // 自动聚焦输入框
   focusInputAndSetCursor(elements.messageInput);
+
+  // 初始化 /alias 快捷输入
+  initAliasShortcut(elements.messageInput, PROMPT_TEMPLATES, elements.promptOptimizerSelect);
 
   // 初始化优化器下拉框
   populateOptimizer(elements.promptOptimizerSelect, PROMPT_TEMPLATES);

@@ -12,6 +12,7 @@ function convertToPrompts(data, group) {
     prompts[item.label] = {
       group: group,
       label: item.label,
+      alias: item.alias || '',
       template: item.template,
     };
   });
@@ -26,3 +27,15 @@ export const PROMPT_TEMPLATES = {
   ...convertToPrompts(search, 'search'),
   ...convertToPrompts(other, 'other'),
 };
+
+// 别名到模板的快速映射表（用于 /alias 快捷输入）
+export function getAliasMap() {
+  const map = {};
+  for (const key in PROMPT_TEMPLATES) {
+    const t = PROMPT_TEMPLATES[key];
+    if (t.alias) {
+      map[t.alias] = { key, ...t };
+    }
+  }
+  return map;
+}

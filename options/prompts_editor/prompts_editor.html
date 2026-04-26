@@ -476,6 +476,10 @@
       border-color: var(--accent-light);
     }
 
+    .modal input + input {
+      margin-top: 12px;
+    }
+
     .modal-actions {
       display: flex;
       justify-content: flex-end;
@@ -533,6 +537,7 @@
     <div class="modal">
       <h3>添加提示词</h3>
       <input type="text" id="promptLabel" placeholder="输入提示词名称">
+      <input type="text" id="promptAlias" placeholder="输入别名（如 fix）用于 /fix 快捷触发" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg-paper);color:var(--text-primary);transition:border-color 0.2s;box-sizing:border-box;margin-top:12px;">
       <textarea id="promptTemplate" placeholder="输入提示词内容" style="width:100%;min-height:100px;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:13px;resize:vertical;box-sizing:border-box;margin-top:12px;"></textarea>
       <div class="modal-actions">
         <button class="btn" id="cancelAdd">取消</button>

@@ -65,6 +65,7 @@ type PromptEntry struct {
 	ID       string `json:"id"`
 	Group    string `json:"group"`
 	Label    string `json:"label"`
+	Alias    string `json:"alias"`
 	Template string `json:"template"`
 }
 
@@ -306,10 +307,13 @@ func parsePromptsContent(content string, group string) ([]PromptEntry, error) {
 
 	// 匹配 label 属性：支持单引号和双引号
 	labelPattern := regexp.MustCompile(`label:\s*"([^"]+)"`)
+	// 匹配 alias 属性
+	aliasPattern := regexp.MustCompile(`alias:\s*"([^"]*)"`)
 	// 匹配 template: 后面的内容
 	templateStart := regexp.MustCompile(`template:\s*`)
 
 	var currentLabel string
+	var currentAlias string
 	var currentTemplate strings.Builder
 	inTemplate := false
 	var templateQuoteChar string
@@ -325,12 +329,20 @@ func parsePromptsContent(content string, group string) ([]PromptEntry, error) {
 					ID:       generateID(),
 					Group:    group,
 					Label:    currentLabel,
+					Alias:    currentAlias,
 					Template: currentTemplate.String(),
 				})
 			}
 			currentLabel = match[1]
+			currentAlias = ""
 			currentTemplate.Reset()
 			inTemplate = false
+			continue
+		}
+
+		// 提取 alias
+		if match := aliasPattern.FindStringSubmatch(line); match != nil {
+			currentAlias = match[1]
 			continue
 		}
 
@@ -397,6 +409,7 @@ func parsePromptsContent(content string, group string) ([]PromptEntry, error) {
 			ID:       generateID(),
 			Group:    group,
 			Label:    currentLabel,
+			Alias:    currentAlias,
 			Template: currentTemplate.String(),
 		})
 	}

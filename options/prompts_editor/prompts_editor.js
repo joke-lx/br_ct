@@ -173,7 +173,7 @@ function renderPrompts() {
       ${promptsList.map((p, i) => `
         <div class="prompt-item ${expandedIndex === i ? 'expanded' : ''}" data-index="${i}">
           <div class="prompt-item-header">
-            <span class="prompt-item-title">${escapeHtml(p.label)}</span>
+            <span class="prompt-item-title">${escapeHtml(p.label)}${p.alias ? ` <small style="color:var(--text-muted);font-weight:400;font-size:11px;">/${escapeHtml(p.alias)}</small>` : ''}</span>
             <div class="item-buttons">
               <button data-action="delete" data-index="${i}">删除</button>
               <button class="btn-primary" data-action="save" data-index="${i}">保存</button>
@@ -181,6 +181,7 @@ function renderPrompts() {
           </div>
           <div class="prompt-item-body ${expandedIndex === i ? 'expanded' : ''}">
             <input type="text" id="label-${i}" value="${escapeHtml(p.label)}" placeholder="输入标题">
+            <input type="text" id="alias-${i}" value="${escapeHtml(p.alias || '')}" placeholder="输入别名（如 fix）用于 /fix 快捷触发">
             <textarea id="tpl-${i}" placeholder="输入提示词内容">${escapeHtml(p.template)}</textarea>
           </div>
         </div>
@@ -211,8 +212,10 @@ function renderPrompts() {
 
 async function savePrompt(index) {
   const labelInput = document.getElementById(`label-${index}`);
+  const aliasInput = document.getElementById(`alias-${index}`);
   const ta = document.getElementById(`tpl-${index}`);
   const newLabel = labelInput.value.trim();
+  const newAlias = aliasInput.value.trim();
   const newTemplate = ta.value;
 
   if (!newLabel) { toast('标题不能为空', 'error'); return; }
@@ -222,7 +225,13 @@ async function savePrompt(index) {
     toast('标题已存在', 'error'); return;
   }
 
+  // 检查别名是否与其他条目重复
+  if (newAlias && promptsList.some((p, i) => i !== index && p.alias === newAlias)) {
+    toast('别名已存在', 'error'); return;
+  }
+
   promptsList[index].label = newLabel;
+  promptsList[index].alias = newAlias;
   promptsList[index].template = newTemplate;
 
   try {
@@ -258,6 +267,7 @@ async function deletePrompt(index) {
 function showAddModal() {
   document.getElementById('addModal').style.display = 'flex';
   document.getElementById('promptLabel').value = '';
+  document.getElementById('promptAlias').value = '';
   document.getElementById('promptTemplate').value = '';
   document.getElementById('promptLabel').focus();
 }
@@ -268,11 +278,13 @@ function hideAddModal() {
 
 async function addPrompt() {
   const label = document.getElementById('promptLabel').value.trim();
+  const alias = document.getElementById('promptAlias').value.trim();
   const template = document.getElementById('promptTemplate').value.trim();
   if (!label) { toast('请输入名称', 'error'); return; }
   if (promptsList.some(p => p.label === label)) { toast('名称已存在', 'error'); return; }
+  if (alias && promptsList.some(p => p.alias === alias)) { toast('别名已存在', 'error'); return; }
 
-  promptsList.push({ id: Date.now().toString(36), group: currentGroup, label, template });
+  promptsList.push({ id: Date.now().toString(36), group: currentGroup, label, alias, template });
   hideAddModal();
 
   try {
@@ -297,7 +309,8 @@ function generateContent() {
       .replace(/`/g, '\\`')
       .replace(/\$/g, '\\$')
       .replace(/\n/g, '\\n');  // 换行符转回 \n 字面量
-    content += `  {\n    label: "${p.label}",\n    template: \`${tpl}\`\n  }`;
+    const alias = p.alias ? `,\n    alias: "${p.alias}"` : '';
+    content += `  {\n    label: "${p.label}",${alias}\n    template: \`${tpl}\`\n  }`;
     content += i < promptsList.length - 1 ? ',\n' : '\n';
   });
   return content + '];\n';
