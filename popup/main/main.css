@@ -40,6 +40,28 @@ body {
   transition: var(--transition);
 }
 
+/* 打开侧边栏按钮 */
+.open-sidepanel-btn {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--primary-color);
+  transition: background 0.2s;
+  z-index: 1;
+}
+
+.open-sidepanel-btn:hover {
+  background: rgba(67, 97, 238, 0.1);
+}
+
 .header:hover h1 {
   transform: scale(1.03);
 }

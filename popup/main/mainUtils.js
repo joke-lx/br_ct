@@ -276,6 +276,22 @@ export function setupEventListeners() {
   elements.openOptionsButton.addEventListener("click", () => {
     chrome.runtime.openOptionsPage();
   });
+
+  // 打开侧边栏按钮
+  elements.openSidepanelButton = document.getElementById("open-sidepanel-btn");
+  if (elements.openSidepanelButton) {
+    elements.openSidepanelButton.addEventListener("click", async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab) {
+          await chrome.sidePanel.open({ tabId: tab.id });
+          window.close();
+        }
+      } catch (error) {
+        console.error("打开侧边栏失败:", error);
+      }
+    });
+  }
 }
 
 /**
