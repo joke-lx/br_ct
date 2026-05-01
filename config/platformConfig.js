@@ -122,6 +122,14 @@ export const PLATFORM_CONFIG = {
     color: '#00b4d8',
     url: 'https://coder.qwen.ai/',
     defaultVisible: true
+  },
+  coze: {
+    name: 'Coze',
+    icon: 'CZ',
+    shortIcon: 'CZ',
+    color: '#ff6b6b',
+    url: 'https://www.coze.cn/',
+    defaultVisible: true
   }
 };
 
