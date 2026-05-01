@@ -114,6 +114,14 @@ export const PLATFORM_CONFIG = {
     color: '#6c5ce7',
     url: 'https://www.kimi.com/',
     defaultVisible: true
+  },
+  coderqwen: {
+    name: 'CoderQwen',
+    icon: 'CQ',
+    shortIcon: 'CQ',
+    color: '#00b4d8',
+    url: 'https://coder.qwen.ai/',
+    defaultVisible: true
   }
 };
 
