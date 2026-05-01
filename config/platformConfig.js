@@ -106,6 +106,14 @@ export const PLATFORM_CONFIG = {
     color: '#0066cc',
     url: 'https://chat.deepseek.com/',
     defaultVisible: true
+  },
+  kimi: {
+    name: 'Kimi',
+    icon: 'K',
+    shortIcon: 'K',
+    color: '#6c5ce7',
+    url: 'https://www.kimi.com/',
+    defaultVisible: true
   }
 };
 
