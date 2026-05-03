@@ -362,23 +362,32 @@ async function startSending() {
     }
     await debouncedSaveMessage(elements.messageInput.value);
 
-    const originalMessage = validateMessageInput(elements.messageInput.value);
-    if (!originalMessage) {
-        return;
-    }
-
     // 从selectedValue中直接获取当前选中的模板
     const selectedValue =
         elements.promptOptimizerSelect.querySelector(".selected-value");
     const templateKey = selectedValue.dataset.value;
     const templateContent = selectedValue.dataset.template;
 
+    const originalMessage = elements.messageInput.value;
     let finalMessage = originalMessage;
 
     if (templateKey && templateContent) {
-        finalMessage = templateContent.includes("%s")
-            ? templateContent.replace("%s", originalMessage)
-            : originalMessage + " " + templateContent;
+        if (templateContent.includes("%s")) {
+            // 有 %s 占位符，用用户输入替换（可为空）
+            finalMessage = templateContent.replace("%s", originalMessage);
+        } else {
+            // 无 %s 占位符，直接使用模板作为短指令
+            finalMessage = templateContent;
+            if (originalMessage.trim()) {
+                showTempMessage(`使用模板: ${templateContent.substring(0, 20)}...`);
+            }
+        }
+    } else {
+        // 无模板，用户输入不能为空
+        const trimmed = validateMessageInput(originalMessage);
+        if (!trimmed) {
+            return;
+        }
     }
 
     // 只获取可见且被勾选的平台
