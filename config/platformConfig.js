@@ -106,6 +106,30 @@ export const PLATFORM_CONFIG = {
     color: '#0066cc',
     url: 'https://chat.deepseek.com/',
     defaultVisible: true
+  },
+  kimi: {
+    name: 'Kimi',
+    icon: 'K',
+    shortIcon: 'K',
+    color: '#6c5ce7',
+    url: 'https://www.kimi.com/',
+    defaultVisible: true
+  },
+  coderqwen: {
+    name: 'CoderQwen',
+    icon: 'CQ',
+    shortIcon: 'CQ',
+    color: '#00b4d8',
+    url: 'https://coder.qwen.ai/',
+    defaultVisible: true
+  },
+  coze: {
+    name: 'Coze',
+    icon: 'CZ',
+    shortIcon: 'CZ',
+    color: '#ff6b6b',
+    url: 'https://www.coze.cn/',
+    defaultVisible: true
   }
 };
 

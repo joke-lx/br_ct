@@ -30,6 +30,14 @@
  * 场景：直接设置 value 不会触发状态更新
  * 原因：React 覆盖了原生的 value setter
  * 解决方案：设置 inputMode: 'nativeSetter'
+ *
+ * 【Enter 键发送】
+ * 场景：某些平台（如 Coze）使用 Enter 键发送消息，而非点击按钮
+ * 原因：编辑器型输入框，Enter 键是默认发送快捷键
+ * 解决方案：
+ *   - 不查找发送按钮，直接在输入框上模拟 Enter 键事件
+ *   - 设置 clickMode: 'enter' 启用此模式
+ *   - 示例：Coze (coze.cn)
  */
 
 // ==========================================================
@@ -47,10 +55,11 @@ const PLATFORM_CONFIG = {
   // 域名检查（支持部分匹配）
   hostname: 'platform-domain.com',
 
-  // 点击模式：'click' | 'mouseup' | 'both'
+  // 点击模式：'click' | 'mouseup' | 'both' | 'enter'
   // - 'click': 普通点击（ChatGPT, Claude, Gemini, Doubao, Tongyi 等）
   // - 'mouseup': GLM 特殊模式（只需 mouseup，不需要 click）
   // - 'both': 同时尝试两种方式
+  // - 'enter': 使用 Enter 键发送（Coze 等编辑器型平台）
   clickMode: 'click',
 
   // 输入模式：'value' | 'textContent' | 'nativeSetter' | 'custom'
@@ -793,6 +802,11 @@ function triggerClick(element) {
         logInfo("普通点击失败，尝试 mouseup 模式");
         return triggerMouseUpClick(element);
 
+      case 'enter':
+        // Enter 键模式：应该在 sendChatMessage 中处理，这里不应被调用
+        logWarning("Enter 模式不应调用 triggerClick，请使用 sendWithEnterKey");
+        return false;
+
       default:
         logWarning(`未知的点击模式: ${clickMode}`);
         return false;
@@ -872,6 +886,109 @@ function triggerMouseUpClick(element) {
     logError("MouseUp 点击失败", e);
     return false;
   }
+}
+
+// ==========================================================
+//                     键盘工具 (Enter 键发送)
+// ==========================================================
+
+/**
+ * 模拟 Enter 键发送消息
+ *
+ * 使用场景：
+ * - Coze (coze.cn)：使用 CodeMirror 编辑器，Enter 键是发送快捷键
+ * - 原因：编辑器型输入框，平台设计使用 Enter 发送而非按钮点击
+ *
+ * 使用方式：
+ * 1. 设置 PLATFORM_CONFIG.clickMode = 'enter'
+ * 2. 确保输入框已聚焦
+ * 3. 调用 triggerEnterKey(inputElement)
+ *
+ * @param {Element} element - 输入框元素（需要先聚焦）
+ * @returns {boolean} 是否成功
+ */
+function triggerEnterKey(element) {
+  if (!element) {
+    logWarning("元素为空，无法模拟 Enter 键");
+    return false;
+  }
+
+  try {
+    // 确保元素聚焦
+    element.focus();
+
+    // 获取元素位置（用于事件坐标）
+    const rect = element.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // 1. keydown 事件
+    element.dispatchEvent(new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      key: 'Enter',
+      keyCode: 13,
+      which: 13,
+      code: 'Enter',
+      location: 0,
+      clientX: centerX,
+      clientY: centerY,
+    }));
+
+    // 2. keypress 事件
+    element.dispatchEvent(new KeyboardEvent('keypress', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      key: 'Enter',
+      keyCode: 13,
+      which: 13,
+      code: 'Enter',
+      location: 0,
+    }));
+
+    // 3. keyup 事件
+    element.dispatchEvent(new KeyboardEvent('keyup', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      key: 'Enter',
+      keyCode: 13,
+      which: 13,
+      code: 'Enter',
+      location: 0,
+    }));
+
+    logInfo("Enter 键事件链已触发");
+    return true;
+  } catch (e) {
+    logError("Enter 键模拟失败", e);
+    return false;
+  }
+}
+
+/**
+ * 使用 Enter 键发送消息（替代按钮点击）
+ * 调用此函数替代 triggerClick
+ *
+ * @param {Element} inputElement - 输入框元素
+ * @returns {boolean} 是否成功
+ */
+function sendWithEnterKey(inputElement) {
+  if (!inputElement) {
+    logWarning("输入框为空，无法发送");
+    return false;
+  }
+
+  logInfo("使用 Enter 键发送消息");
+
+  // 确保输入框聚焦
+  inputElement.focus();
+  delay(50); // 等待聚焦生效
+
+  // 触发 Enter 键
+  return triggerEnterKey(inputElement);
 }
 
 // ==========================================================
@@ -985,14 +1102,29 @@ async function sendChatMessage(message) {
       await delay(PLATFORM_CONFIG.clickDelay);
     }
 
-    // 10. 点击发送
-    logInfo("正在点击发送按钮...");
-    if (triggerClick(buttonElement)) {
-      logInfo("消息发送成功");
-      return true;
+    // 10. 发送消息（根据 clickMode 选择方式）
+    const clickMode = PLATFORM_CONFIG.clickMode;
+
+    if (clickMode === 'enter') {
+      // Enter 键发送模式（Coze 等编辑器型平台）
+      logInfo("使用 Enter 键发送模式...");
+      if (sendWithEnterKey(inputElement)) {
+        logInfo("消息发送成功");
+        return true;
+      } else {
+        logError("Enter 键发送失败");
+        return false;
+      }
     } else {
-      logError("点击发送按钮失败");
-      return false;
+      // 普通按钮点击模式
+      logInfo("正在点击发送按钮...");
+      if (triggerClick(buttonElement)) {
+        logInfo("消息发送成功");
+        return true;
+      } else {
+        logError("点击发送按钮失败");
+        return false;
+      }
     }
   } catch (e) {
     logError("发送流程异常", e);
@@ -1123,6 +1255,10 @@ if (typeof window !== 'undefined') {
     triggerClick,
     triggerNormalClick,
     triggerMouseUpClick,
+
+    // 键盘工具
+    triggerEnterKey,
+    sendWithEnterKey,
 
     // 输入工具
     setInputValue,
