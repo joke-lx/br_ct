@@ -41,11 +41,120 @@ function loadAPIConfig() {
 let settings = {
   autoTranslate: false,
   showContextMenu: true,
-  translatePrompt: '请解释 %s'  // 默认提示词
+  translatePrompt: '请解释 %s',  // 默认提示词
+  selectionMode: 'panel'  // 'auto' | 'panel' | 'off'
 };
 
 // 标记设置是否已加载
 let settingsInitialized = false;
+
+// ========== 划词选项面板（panel 模式） ==========
+let selectionPanel = null;
+let selectionPanelSelection = '';
+let transPrompts = []; // 提示词
+
+// 内嵌提示词（与 xxxx_trans.js 同步）
+const EMBEDDED_PROMPTS = [
+  { label: '翻译', alias: 'fy', template: '请翻译：%s' },
+  { label: '解释', alias: 'js', template: '请详细解释：%s' },
+  { label: '摘要', alias: 'zy', template: '请简要总结以下内容：%s' },
+  { label: '扩展', alias: 'kz', template: '请详细扩展讲解：%s' },
+  { label: '分析', alias: 'fx', template: '请深入分析：%s' }
+];
+
+/**
+ * 初始化提示词（使用内嵌版本）
+ */
+function initTransPrompts() {
+  transPrompts = EMBEDDED_PROMPTS;
+  console.log('[Translation] 提示词已初始化:', transPrompts);
+}
+
+/**
+ * 创建划词选项面板
+ */
+function createSelectionPanel() {
+  const panel = document.createElement('div');
+  panel.id = 'selection-trans-panel';
+  panel.className = 'selection-trans-panel';
+
+  let itemsHtml = transPrompts.map((p, i) =>
+    `<div class="selection-trans-item" data-index="${i}">${p.label}</div>`
+  ).join('');
+
+  panel.innerHTML = itemsHtml;
+
+  // 绑定点击事件
+  panel.querySelectorAll('.selection-trans-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const index = parseInt(item.dataset.index);
+      handlePanelItemClick(transPrompts[index].template);
+    });
+  });
+
+  return panel;
+}
+
+/**
+ * 显示划词选项面板
+ */
+function showSelectionPanel(rect) {
+  if (!selectionPanel) {
+    selectionPanel = createSelectionPanel();
+    document.body.appendChild(selectionPanel);
+  }
+
+  const padding = 8;
+  // 先显示面板以获取真实尺寸
+  selectionPanel.style.display = 'block';
+  const panelRect = selectionPanel.getBoundingClientRect();
+  const panelWidth = panelRect.width || 120;
+  const panelHeight = panelRect.height || (40 + transPrompts.length * 36);
+
+  // 定位：选区右下方
+  let left = rect.right + padding;
+  let top = rect.bottom + padding;
+
+  // 右侧空间不够，放到左侧
+  if (left + panelWidth > window.innerWidth) {
+    left = rect.left - panelWidth - padding;
+  }
+
+  // 下方空间不够，放到上方
+  if (top + panelHeight > window.innerHeight) {
+    top = rect.top - panelHeight - padding;
+  }
+
+  // 确保不超出左/上边界
+  if (left < 0) left = padding;
+  if (top < 0) top = padding;
+
+  selectionPanel.style.left = `${left}px`;
+  selectionPanel.style.top = `${top}px`;
+}
+
+/**
+ * 隐藏划词选项面板
+ */
+function hideSelectionPanel() {
+  if (selectionPanel) {
+    selectionPanel.style.display = 'none';
+  }
+}
+
+/**
+ * 处理面板项点击
+ */
+function handlePanelItemClick(template) {
+  if (!selectionPanelSelection) return;
+
+  // 将 %s 替换为选中文本，生成完整提示词
+  const prompt = template.replace('%s', selectionPanelSelection);
+  hideSelectionPanel();
+
+  // 调用翻译逻辑，传入自定义提示词
+  processSelectedText(selectionPanelSelection, prompt);
+}
 
 // 收藏快捷键
 let favoritesShortcut = null;
@@ -276,7 +385,7 @@ function createResultPanel() {
       <button id="selection-copy-original">📋 复制原文</button>
       <button id="selection-copy-result">📋 复制结果</button>
       <button id="selection-add-favorites">⭐ 收藏</button>
-      <button id="selection-auto-translate" class="auto-translate-btn" title="自动翻译开关">🔄 自动翻译</button>
+      <button id="selection-auto-translate" class="auto-translate-btn" title="点击切换模式">🔄 自动</button>
       <button id="selection-close-panel">关闭</button>
     </div>
   `;
@@ -802,7 +911,7 @@ function isSelectionInsidePanel(panel) {
 /**
  * 处理选中的文本
  */
-async function processSelectedText(selectedText) {
+async function processSelectedText(selectedText, customPrompt) {
   // 严格检查：文本必须是非空且不仅仅是空白字符
   const trimmedText = selectedText?.trim() || '';
   if (!trimmedText || trimmedText === lastSelection) return;
@@ -822,12 +931,6 @@ async function processSelectedText(selectedText) {
     resultPanel = createResultPanel();
   }
 
-  // 显示原文
-  const originalTextElement = document.getElementById('selection-original-text');
-  if (originalTextElement) {
-    originalTextElement.textContent = selectedText;
-  }
-
   // 显示加载状态
   const resultTextElement = document.getElementById('selection-result-text');
   if (resultTextElement) {
@@ -836,7 +939,34 @@ async function processSelectedText(selectedText) {
 
   resultPanel.style.visibility = 'visible';
 
-  // 获取提示词设置
+  // 如果有自定义提示词，直接使用；否则从 storage 读取
+  if (customPrompt) {
+    // 面板模式：customPrompt 已是完整提示词（已替换 %s）
+    const originalTextElement = document.getElementById('selection-original-text');
+    if (originalTextElement) {
+      originalTextElement.textContent = customPrompt;
+    }
+
+    const useStream = settings.selectionStream !== false;
+
+    if (currentAbortController) {
+      currentAbortController.abort();
+    }
+
+    try {
+      if (useStream) {
+        await callLLMStream(selectedText, customPrompt);
+      } else {
+        const apiResult = await callLLMNonStream(selectedText, customPrompt);
+        await updateResultText(apiResult);
+      }
+    } catch (error) {
+      await showResultPanel(selectedText, '处理失败: ' + error.message);
+    }
+    return;
+  }
+
+  // 自动模式：从 storage 读取提示词
   chrome.storage.local.get(['translation.settings'], async (result) => {
     const selectionSettings = result['translation.settings'] || {
       selectionPrompt: '请解释 %s',
@@ -844,7 +974,14 @@ async function processSelectedText(selectedText) {
     };
 
     const prompt = selectionSettings.selectionPrompt;
+    const fullPrompt = prompt.replace('%s', selectedText);
     const useStream = selectionSettings.selectionStream;
+
+    // 显示完整提示词作为原文
+    const originalTextElement = document.getElementById('selection-original-text');
+    if (originalTextElement) {
+      originalTextElement.textContent = fullPrompt;
+    }
 
     // 取消之前的请求
     if (currentAbortController) {
@@ -941,95 +1078,50 @@ function addToFavorites(text, url) {
 }
 
 /**
- * 切换自动翻译开关
+ * 循环切换模式：auto → panel → off → auto
  */
 function toggleAutoTranslate() {
-  const newAutoTranslate = !settings.autoTranslate;
-  settings.autoTranslate = newAutoTranslate;
+  const modeCycle = ['auto', 'panel', 'off'];
+  const currentIdx = modeCycle.indexOf(settings.selectionMode);
+  const nextIdx = (currentIdx + 1) % modeCycle.length;
+  const newMode = modeCycle[nextIdx];
+  settings.selectionMode = newMode;
 
-  // 更新按钮样式
-  const btn = document.getElementById('selection-auto-translate');
-  if (btn) {
-    if (newAutoTranslate) {
-      btn.classList.add('active');
-      btn.textContent = '🔄 自动翻译';
-    } else {
-      btn.classList.remove('active');
-      btn.textContent = '⏸ 自动翻译';
-    }
-  }
+  updateModeButton();
 
-  // 保存到存储
   chrome.storage.local.get(['translation.settings'], (result) => {
     const translationSettings = result['translation.settings'] || {};
-    translationSettings.autoTranslate = newAutoTranslate;
+    translationSettings.selectionMode = newMode;
     chrome.storage.local.set({ 'translation.settings': translationSettings }, () => {
-      console.log('[Translation] 自动翻译设置已更新:', newAutoTranslate);
+      console.log('[Translation] 模式已切换:', newMode);
     });
   });
-
-  // 显示切换提示
-  showAutoTranslateNotification(newAutoTranslate);
 }
 
 /**
- * 显示自动翻译切换提示
+ * 更新模式按钮显示
  */
-function showAutoTranslateNotification(enabled) {
-  const notification = document.createElement('div');
-  notification.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: ${enabled ? '#28a745' : '#6c757d'};
-    color: white;
-    padding: 12px 20px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    z-index: 2147483647;
-    font-size: 14px;
-    animation: slideIn 0.3s ease-out;
-  `;
-  notification.textContent = enabled ? '✅ 已开启自动翻译' : '⏸ 已关闭自动翻译';
+function updateModeButton() {
+  const btn = document.getElementById('selection-auto-translate');
+  if (!btn) return;
 
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-  `;
-  document.head.appendChild(style);
+  const modeConfig = {
+    auto:  { icon: '🔄', text: '自动', cls: 'active', bg: '#28a745' },
+    panel: { icon: '📋', text: '面板', cls: 'active', bg: '#6c757d' },
+    off:   { icon: '⏸', text: '关闭', cls: '', bg: '' }
+  };
+  const cfg = modeConfig[settings.selectionMode] || modeConfig.off;
 
-  document.body.appendChild(notification);
-
-  setTimeout(() => {
-    notification.style.animation = 'slideOut 0.3s ease-in';
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
-      }
-      if (style.parentNode) {
-        style.parentNode.removeChild(style);
-      }
-    }, 300);
-  }, 2000);
+  btn.textContent = `${cfg.icon} ${cfg.text}`;
+  btn.className = 'auto-translate-btn';
+  if (cfg.cls) btn.classList.add(cfg.cls);
 }
 
 /**
  * 更新自动翻译按钮状态
  */
 function updateAutoTranslateButton() {
-  const btn = document.getElementById('selection-auto-translate');
-  if (btn) {
-    if (settings.autoTranslate) {
-      btn.classList.add('active');
-      btn.textContent = '🔄 自动翻译';
-    } else {
-      btn.classList.remove('active');
-      btn.textContent = '⏸ 自动翻译';
-    }
-  }
+  updateModeButton();
 }
 
 /**
@@ -1239,32 +1331,62 @@ document.addEventListener('selectionchange', () => {
 // ========== 文本选择监听 ==========
 
 document.addEventListener('mouseup', (e) => {
-  // 检查设置是否已初始化，以及是否启用了自动翻译
+  // 检查设置是否已初始化
   if (!settingsInitialized) {
     return;
   }
 
-  if (!settings.autoTranslate) {
+  // 如果是关闭模式，不处理
+  if (settings.selectionMode === 'off') {
     return;
   }
+
+  // 保存鼠标位置用于定位
+  const mouseUpX = e.clientX;
+  const mouseUpY = e.clientY;
 
   // 延迟一小段时间确保选择完成
   setTimeout(() => {
     const selection = window.getSelection();
     const selectedText = selection.toString().trim();
+    // 优先用 range rect，回退到鼠标位置
+    let rect = selection.rangeCount > 0 ? selection.getRangeAt(0).getBoundingClientRect() : null;
+    if (!rect || rect.width === 0) {
+      rect = { left: mouseUpX, right: mouseUpX, top: mouseUpY, bottom: mouseUpY, width: 0, height: 0 };
+    }
 
     // 如果有选中文本且与上次不同
     if (selectedText && selectedText !== lastSelection) {
-      // 检查是否在面板内部选中，如果是则不处理
+      // 检查是否在面板内部选中
       if (resultPanel && isSelectionInsidePanel(resultPanel)) {
         return;
       }
-      processSelectedText(selectedText);
+      if (selectionPanel && selectionPanel.contains(e.target)) {
+        return;
+      }
+
+      // 注意：不在这里设置 lastSelection，由 processSelectedText 内部处理
+      selectionPanelSelection = selectedText;
+
+      if (settings.selectionMode === 'panel') {
+        if (rect) {
+          showSelectionPanel(rect);
+        }
+      } else if (settings.selectionMode === 'auto') {
+        processSelectedText(selectedText);
+      }
     } else if (!selectedText) {
-      // 没有选中文本时不隐藏面板，让用户手动关闭
       lastSelection = '';
+      hideSelectionPanel();
     }
   }, 100);
+});
+
+// 点击页面其他地方关闭选项面板
+document.addEventListener('mousedown', (e) => {
+  if (selectionPanel && !selectionPanel.contains(e.target)) {
+    hideSelectionPanel();
+  }
 });
 
 // ========== 监听来自后台的消息 ==========
@@ -1331,7 +1453,8 @@ function loadSettings() {
       const defaultSettings = {
         autoTranslate: false,
         showContextMenu: true,
-        selectionPrompt: '请解释 %s'
+        selectionPrompt: '请解释 %s',
+        selectionMode: 'panel'
       };
 
       if (result['translation.settings']) {
@@ -1343,6 +1466,9 @@ function loadSettings() {
       // 加载划词设置
       if (result['translation.settings']) {
         settings.translatePrompt = result['translation.settings'].selectionPrompt || '请解释 %s';
+        if (result['translation.settings'].selectionMode) {
+          settings.selectionMode = result['translation.settings'].selectionMode;
+        }
       }
 
       settingsInitialized = true;
@@ -1368,8 +1494,17 @@ function loadFavoritesShortcut() {
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local') {
     if (changes['translation.settings']) {
-      settings = { ...settings, ...changes['translation.settings'].newValue };
+      const newSettings = changes['translation.settings'].newValue;
+      settings = { ...settings, ...newSettings };
       settingsInitialized = true;
+
+      // 监听 selectionMode 变化
+      if (newSettings.selectionMode) {
+        settings.selectionMode = newSettings.selectionMode;
+        if (newSettings.selectionMode === 'off') {
+          hideSelectionPanel();
+        }
+      }
     }
 
     if (changes['translation.favoritesShortcut']) {
@@ -1391,9 +1526,12 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 });
 
+// 立即初始化提示词（不依赖异步）
+initTransPrompts();
+
 // 立即加载设置和 API 配置
 loadSettings().then(() => {
-  console.log('[划词] 设置加载完成');
+  console.log('[划词] 设置加载完成', settings);
 });
 
 loadFavoritesShortcut();

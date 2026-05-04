@@ -93,6 +93,68 @@
   user-select: none;
 }
 
+/* 单选按钮组 */
+.radio-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.radio-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-color);
+}
+
+.radio-item input[type="radio"] {
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+/* 复选框项 */
+.inline-options {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-color);
+}
+
+.checkbox-item input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+/* 下拉选择器 */
+.setting-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  background: var(--bg-page);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.setting-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
 /* 快捷键输入 */
 .shortcut-input-wrapper {
   display: flex;

@@ -23,38 +23,65 @@
     </div>
 
     <div class="main-content">
-      <!-- 划词翻译设置 -->
+      <!-- ========== 划词翻译区域 ========== -->
       <div class="setting-section">
         <div class="section-title">
-          <span>📝 划词翻译设置</span>
+          <span>📝 划词翻译</span>
         </div>
+
+        <!-- 模式选择 -->
         <div class="setting-item">
-          <label class="setting-label">提示词模板</label>
-          <textarea
-            id="selectionPromptInput"
-            class="setting-textarea"
-            placeholder="请输入提示词，使用 %s 作为选中文本的占位符..."
-            rows="2"
-          >请解释 %s</textarea>
+          <label class="setting-label">触发模式</label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="selectionMode" value="panel" id="modePanel" checked>
+              <span>面板选择</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="selectionMode" value="auto" id="modeAuto">
+              <span>自动翻译</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="selectionMode" value="off" id="modeOff">
+              <span>关闭</span>
+            </label>
+          </div>
           <small class="setting-hint">
-            使用 %s 代表选中的文本，例如："请翻译 %s"、"请解释 %s 的含义"
+            面板选择：划词后显示选项面板 | 自动翻译：划词后直接翻译
           </small>
         </div>
-        <label class="setting-item">
-          <input type="checkbox" id="selectionStreamToggle" class="toggle" checked>
-          <span class="toggle-label">流式输出（实时显示处理结果）</span>
-        </label>
-        <label class="setting-item">
-          <input type="checkbox" id="selectionThinkingToggle" class="toggle">
-          <span class="toggle-label">思考模式（显示 AI 推理过程）</span>
-        </label>
+
+        <!-- 提示词模板（仅面板模式显示） -->
+        <div id="promptSelectorContainer" class="setting-item">
+          <label class="setting-label">快捷提示词</label>
+          <select id="promptSelector" class="setting-select">
+            <option value="fy">翻译</option>
+            <option value="js">解释</option>
+            <option value="zy">摘要</option>
+            <option value="kz">扩展</option>
+            <option value="fx">分析</option>
+          </select>
+        </div>
+
+        <!-- 划词翻译选项 -->
+        <div class="inline-options">
+          <label class="checkbox-item">
+            <input type="checkbox" id="selectionStreamToggle" class="toggle" checked>
+            <span>流式输出</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="selectionThinkingToggle" class="toggle">
+            <span>思考模式</span>
+          </label>
+        </div>
       </div>
 
-      <!-- OCR 设置 -->
+      <!-- ========== OCR 识别区域 ========== -->
       <div class="setting-section">
         <div class="section-title">
-          <span>📷 OCR 设置</span>
+          <span>📷 OCR 识别</span>
         </div>
+
         <div class="setting-item">
           <label class="setting-label">识别提示词</label>
           <textarea
@@ -64,18 +91,21 @@
             rows="2"
           >请识别图片中的所有文字内容</textarea>
         </div>
-        <label class="setting-item">
-          <input type="checkbox" id="ocrStreamToggle" class="toggle">
-          <span class="toggle-label">流式输出（实时显示识别结果）</span>
-        </label>
-        <label class="setting-item">
-          <input type="checkbox" id="ocrThinkingToggle" class="toggle">
-          <span class="toggle-label">思考模式（显示 AI 推理过程）</span>
-        </label>
-        <label class="setting-item">
-          <input type="checkbox" id="ocrSilentModeToggle" class="toggle">
-          <span class="toggle-label">静默模式（只显示图片+状态灯，完成后自动复制）</span>
-        </label>
+
+        <div class="inline-options">
+          <label class="checkbox-item">
+            <input type="checkbox" id="ocrStreamToggle" class="toggle">
+            <span>流式输出</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="ocrThinkingToggle" class="toggle">
+            <span>思考模式</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="ocrSilentModeToggle" class="toggle">
+            <span>静默模式</span>
+          </label>
+        </div>
 
         <!-- 流速控制 -->
         <div id="flowRateControl" class="flow-rate-control" style="display: none; margin-top: 12px;">
@@ -100,30 +130,10 @@
             ⚠️ 输出速度较快可能导致页面卡顿
           </div>
         </div>
-      </div>
 
-      <!-- 功能开关 -->
-      <div class="setting-section">
-        <div class="section-title">
-          <span>⚙️ 功能开关</span>
-        </div>
-        <label class="setting-item">
-          <input type="checkbox" id="autoTranslate" class="toggle">
-          <span class="toggle-label">自动翻译（选中文本后自动显示翻译）</span>
-        </label>
-        <label class="setting-item">
-          <input type="checkbox" id="showContextMenu" class="toggle" checked>
-          <span class="toggle-label">显示右键菜单</span>
-        </label>
-      </div>
-
-      <!-- 快捷键设置 -->
-      <div class="setting-section">
-        <div class="section-title">
-          <span>⌨️ 快捷键</span>
-        </div>
-        <div class="setting-item">
-          <label class="setting-label">OCR 快捷键</label>
+        <!-- OCR 快捷键 -->
+        <div class="setting-item" style="margin-top: 12px;">
+          <label class="setting-label">快捷键</label>
           <div class="shortcut-input-wrapper">
             <input
               type="text"
@@ -134,10 +144,15 @@
             >
             <button id="clearOcrShortcutBtn" class="shortcut-clear-btn" title="清除快捷键">✕</button>
           </div>
-          <small class="setting-hint">
-            点击输入框，然后按下键盘组合键（如 Ctrl+Shift+O）
-          </small>
         </div>
+      </div>
+
+      <!-- ========== 收藏功能区域 ========== -->
+      <div class="setting-section">
+        <div class="section-title">
+          <span>⭐ 收藏功能</span>
+        </div>
+
         <div class="setting-item">
           <label class="setting-label">收藏快捷键</label>
           <div class="shortcut-input-wrapper">
@@ -154,14 +169,9 @@
             选中文字后，按下快捷键即可收藏
           </small>
         </div>
-      </div>
 
-      <!-- 统计信息 -->
-      <div class="setting-section">
-        <div class="section-title">
-          <span>📊 统计</span>
-        </div>
-        <div class="stats-row">
+        <!-- 统计信息 -->
+        <div class="stats-row" style="margin-top: 12px;">
           <div class="stat-item">
             <span class="stat-label">今日翻译：</span>
             <span id="todayCount" class="stat-value">0</span>

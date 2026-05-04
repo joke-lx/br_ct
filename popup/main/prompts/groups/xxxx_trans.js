@@ -1,7 +1,27 @@
 export default [
   {
-    "label": "CODE_数据结构实战",
-    "alias": "explain",
-    "template": "%s 具体在什么地方查看细节 或者帮助我更深层次理解这部分逻辑，或者给一些demo案例 帮助我理解这个设计方案的构成部分 , 接口设计的流程图和使用方法和接口设计的完备性的思考 以及组合其他接口进行抽象使用\n"
+    "label": "翻译",
+    "alias": "fy",
+    "template": "请翻译：%s"
+  },
+  {
+    "label": "解释",
+    "alias": "js",
+    "template": "请详细解释：%s"
+  },
+  {
+    "label": "摘要",
+    "alias": "zy",
+    "template": "请简要总结以下内容：%s"
+  },
+  {
+    "label": "扩展",
+    "alias": "kz",
+    "template": "请详细扩展讲解：%s"
+  },
+  {
+    "label": "分析",
+    "alias": "fx",
+    "template": "请深入分析：%s"
   }
 ];

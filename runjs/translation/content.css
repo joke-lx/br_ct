@@ -645,3 +645,50 @@
     opacity: 0;
   }
 }
+
+/* ========== 划词选项面板样式 ========== */
+.selection-trans-panel {
+  position: fixed;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  display: none;
+}
+
+.selection-trans-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: background 0.15s;
+}
+
+.selection-trans-item:hover {
+  background: #f0f0f0;
+}
+
+.selection-trans-item:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.selection-trans-item:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+/* 深色主题 */
+@media (prefers-color-scheme: dark) {
+  .selection-trans-panel {
+    background: #2d2d2d;
+  }
+
+  .selection-trans-item {
+    color: #e0e0e0;
+  }
+
+  .selection-trans-item:hover {
+    background: #3a3a3a;
+  }
+}

@@ -4,17 +4,28 @@
  */
 
 // DOM 元素
-let selectionPromptInput, selectionStreamToggle, selectionThinkingToggle;
+let selectionModeRadios;  // 模式单选按钮
+let promptSelector;        // 提示词选择器
+let promptSelectorContainer; // 提示词选择器容器
+let selectionStreamToggle, selectionThinkingToggle;
 let ocrPromptInput, ocrStreamToggle, ocrThinkingToggle, ocrSilentModeToggle;
 let flowRateControl, flowRateSlider, flowRateValue, flowRateWarning;
 let ocrShortcutInput, clearOcrShortcutBtn;
 let favoritesShortcutInput, clearFavoritesShortcutBtn;
-let autoTranslateToggle, showContextMenuToggle;
 let todayCountEl, totalCountEl;
 
 // 快捷键录制状态
 let isRecordingOcrShortcut = false;
 let isRecordingFavoritesShortcut = false;
+
+// 提示词映射
+const PROMPT_MAP = {
+  'fy': '请翻译：%s',
+  'js': '请详细解释：%s',
+  'zy': '请简要总结以下内容：%s',
+  'kz': '请详细扩展讲解：%s',
+  'fx': '请深入分析：%s'
+};
 
 // 流速档位配置
 const FLOW_RATE_PRESETS = {
@@ -28,7 +39,9 @@ const FLOW_RATE_PRESETS = {
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   // 获取 DOM 元素
-  selectionPromptInput = document.getElementById('selectionPromptInput');
+  selectionModeRadios = document.querySelectorAll('input[name="selectionMode"]');
+  promptSelector = document.getElementById('promptSelector');
+  promptSelectorContainer = document.getElementById('promptSelectorContainer');
   selectionStreamToggle = document.getElementById('selectionStreamToggle');
   selectionThinkingToggle = document.getElementById('selectionThinkingToggle');
   ocrPromptInput = document.getElementById('ocrPromptInput');
@@ -43,8 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
   clearOcrShortcutBtn = document.getElementById('clearOcrShortcutBtn');
   favoritesShortcutInput = document.getElementById('favoritesShortcutInput');
   clearFavoritesShortcutBtn = document.getElementById('clearFavoritesShortcutBtn');
-  autoTranslateToggle = document.getElementById('autoTranslate');
-  showContextMenuToggle = document.getElementById('showContextMenu');
   todayCountEl = document.getElementById('todayCount');
   totalCountEl = document.getElementById('totalCount');
 
@@ -58,16 +69,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 绑定事件
 function bindEvents() {
-  // 返回按钮
-  const backBtn = document.getElementById('back-to-popup');
-  if (backBtn) {
-    backBtn.addEventListener('click', () => {
-      window.location.href = '../main/main.html';
+  // 划词翻译设置 - 模式切换
+  selectionModeRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      updatePromptSelectorVisibility();
+      saveSelectionSettings();
+    });
+  });
+
+  // 提示词选择
+  if (promptSelector) {
+    promptSelector.addEventListener('change', () => {
+      saveSelectionSettings();
     });
   }
 
-  // 划词翻译设置
-  if (selectionPromptInput) selectionPromptInput.addEventListener('input', saveSelectionSettings);
+  // 划词翻译选项
   if (selectionStreamToggle) selectionStreamToggle.addEventListener('change', saveSelectionSettings);
   if (selectionThinkingToggle) selectionThinkingToggle.addEventListener('change', saveSelectionSettings);
 
@@ -85,10 +102,6 @@ function bindEvents() {
     flowRateSlider.addEventListener('input', updateFlowRateDisplay);
     flowRateSlider.addEventListener('change', saveFlowRate);
   }
-
-  // 功能开关
-  if (autoTranslateToggle) autoTranslateToggle.addEventListener('change', saveSettings);
-  if (showContextMenuToggle) showContextMenuToggle.addEventListener('change', saveSettings);
 
   // 快捷键设置
   if (ocrShortcutInput) ocrShortcutInput.addEventListener('click', startOcrShortcutRecording);
@@ -115,32 +128,47 @@ function bindEvents() {
   }
 }
 
+// 更新提示词选择器可见性
+function updatePromptSelectorVisibility() {
+  const selectedMode = document.querySelector('input[name="selectionMode"]:checked')?.value;
+  if (promptSelectorContainer) {
+    promptSelectorContainer.style.display = selectedMode === 'auto' ? 'block' : 'none';
+  }
+}
+
 // 加载设置
 function loadSettings() {
   chrome.storage.local.get(['translation.settings'], (result) => {
     const settings = result['translation.settings'] || {
-      autoTranslate: false,
-      showContextMenu: true,
-      selectionPrompt: '请解释 %s',
+      selectionMode: 'panel',
+      selectionPromptKey: 'fy',
+      selectionPrompt: '请翻译：%s',
       selectionStream: true,
       selectionThinking: false,
       ocrPrompt: '请识别图片中的所有文字内容',
       ocrStream: false,
       ocrThinking: false,
+      ocrSilentMode: false,
       flowRate: 3
     };
 
-    // 应用设置
-    autoTranslateToggle.checked = settings.autoTranslate;
-    showContextMenuToggle.checked = settings.showContextMenu;
-    selectionPromptInput.value = settings.selectionPrompt || '请解释 %s';
-    selectionStreamToggle.checked = settings.selectionStream !== false;
-    selectionThinkingToggle.checked = settings.selectionThinking || false;
-    ocrPromptInput.value = settings.ocrPrompt || '请识别图片中的所有文字内容';
-    ocrStreamToggle.checked = settings.ocrStream || false;
-    ocrThinkingToggle.checked = settings.ocrThinking || false;
-    ocrSilentModeToggle.checked = settings.ocrSilentMode || false;
-    flowRateSlider.value = settings.flowRate || 3;
+    // 应用划词翻译设置
+    const modeRadio = document.querySelector(`input[name="selectionMode"][value="${settings.selectionMode}"]`);
+    if (modeRadio) modeRadio.checked = true;
+    updatePromptSelectorVisibility();
+
+    if (promptSelector) {
+      promptSelector.value = settings.selectionPromptKey || 'fy';
+    }
+    if (selectionStreamToggle) selectionStreamToggle.checked = settings.selectionStream !== false;
+    if (selectionThinkingToggle) selectionThinkingToggle.checked = settings.selectionThinking || false;
+
+    // 应用 OCR 设置
+    if (ocrPromptInput) ocrPromptInput.value = settings.ocrPrompt || '请识别图片中的所有文字内容';
+    if (ocrStreamToggle) ocrStreamToggle.checked = settings.ocrStream || false;
+    if (ocrThinkingToggle) ocrThinkingToggle.checked = settings.ocrThinking || false;
+    if (ocrSilentModeToggle) ocrSilentModeToggle.checked = settings.ocrSilentMode || false;
+    if (flowRateSlider) flowRateSlider.value = settings.flowRate || 3;
 
     updateFlowRateDisplay();
     updateFlowRateControlVisibility();
@@ -151,30 +179,29 @@ function loadSettings() {
   });
 }
 
-// 保存基础设置
-function saveSettings() {
-  chrome.storage.local.get(['translation.settings'], (result) => {
-    const settings = result['translation.settings'] || {};
-    settings.autoTranslate = autoTranslateToggle.checked;
-    settings.showContextMenu = showContextMenuToggle.checked;
-
-    chrome.storage.local.set({ 'translation.settings': settings }, () => {
-      console.log('[Translation] 设置已保存');
-      notifySettingsChanged();
-    });
-  });
-}
-
 // 保存划词翻译设置
 function saveSelectionSettings() {
   chrome.storage.local.get(['translation.settings'], (result) => {
     const settings = result['translation.settings'] || {};
-    settings.selectionPrompt = selectionPromptInput.value;
-    settings.selectionStream = selectionStreamToggle.checked;
-    settings.selectionThinking = selectionThinkingToggle.checked;
+
+    // 模式
+    const selectedMode = document.querySelector('input[name="selectionMode"]:checked')?.value || 'panel';
+    settings.selectionMode = selectedMode;
+
+    // 提示词
+    if (promptSelector) {
+      settings.selectionPromptKey = promptSelector.value;
+      settings.selectionPrompt = PROMPT_MAP[promptSelector.value] || PROMPT_MAP['fy'];
+    }
+
+    // 选项
+    if (selectionStreamToggle) settings.selectionStream = selectionStreamToggle.checked;
+    if (selectionThinkingToggle) settings.selectionThinking = selectionThinkingToggle.checked;
+    settings.autoTranslate = selectedMode === 'auto'; // 向后兼容
 
     chrome.storage.local.set({ 'translation.settings': settings }, () => {
       console.log('[Translation] 划词翻译设置已保存');
+      notifySettingsChanged();
     });
   });
 }
@@ -183,10 +210,10 @@ function saveSelectionSettings() {
 function saveOCRSettings() {
   chrome.storage.local.get(['translation.settings'], (result) => {
     const settings = result['translation.settings'] || {};
-    settings.ocrPrompt = ocrPromptInput.value;
-    settings.ocrStream = ocrStreamToggle.checked;
-    settings.ocrThinking = ocrThinkingToggle.checked;
-    settings.ocrSilentMode = ocrSilentModeToggle.checked;
+    settings.ocrPrompt = ocrPromptInput?.value || '请识别图片中的所有文字内容';
+    settings.ocrStream = ocrStreamToggle?.checked || false;
+    settings.ocrThinking = ocrThinkingToggle?.checked || false;
+    settings.ocrSilentMode = ocrSilentModeToggle?.checked || false;
 
     chrome.storage.local.set({ 'translation.settings': settings }, () => {
       console.log('[Translation] OCR 设置已保存');
@@ -197,24 +224,24 @@ function saveOCRSettings() {
 
 // 更新流速控制显示
 function updateFlowRateDisplay() {
-  const level = parseInt(flowRateSlider.value);
+  const level = parseInt(flowRateSlider?.value || 3);
   const preset = FLOW_RATE_PRESETS[level];
 
-  flowRateValue.textContent = preset.name;
-  flowRateWarning.style.display = preset.warning ? 'block' : 'none';
+  if (flowRateValue) flowRateValue.textContent = preset.name;
+  if (flowRateWarning) flowRateWarning.style.display = preset.warning ? 'block' : 'none';
 }
 
 // 更新流速控制可见性
 function updateFlowRateControlVisibility() {
-  const show = ocrStreamToggle.checked;
-  flowRateControl.style.display = show ? 'block' : 'none';
+  const show = ocrStreamToggle?.checked;
+  if (flowRateControl) flowRateControl.style.display = show ? 'block' : 'none';
 }
 
 // 保存流速设置
 function saveFlowRate() {
   chrome.storage.local.get(['translation.settings'], (result) => {
     const settings = result['translation.settings'] || {};
-    settings.flowRate = parseInt(flowRateSlider.value);
+    settings.flowRate = parseInt(flowRateSlider?.value || 3);
 
     chrome.storage.local.set({ 'translation.settings': settings }, () => {
       console.log('[Translation] 流速设置已保存');
@@ -224,7 +251,6 @@ function saveFlowRate() {
 
 // ==================== OCR 快捷键 ====================
 
-// 开始录制 OCR 快捷键
 function startOcrShortcutRecording() {
   if (isRecordingOcrShortcut) return;
 
@@ -233,38 +259,31 @@ function startOcrShortcutRecording() {
   ocrShortcutInput.value = '请按下快捷键组合...';
   ocrShortcutInput.disabled = true;
 
-  // 监听键盘事件
   document.addEventListener('keydown', recordOcrShortcut);
   document.addEventListener('keyup', finishOcrShortcutRecording);
 }
 
-// 录制 OCR 快捷键
 function recordOcrShortcut(e) {
   e.preventDefault();
   e.stopPropagation();
 
-  // 获取按下的修饰键
   const modifiers = [];
   if (e.ctrlKey) modifiers.push('Ctrl');
   if (e.altKey) modifiers.push('Alt');
   if (e.shiftKey) modifiers.push('Shift');
   if (e.metaKey) modifiers.push('Meta');
 
-  // 获取主键（排除修饰键）
   const mainKey = e.key;
 
-  // 验证快捷键是否有效
   if (modifiers.length === 0) {
     ocrShortcutInput.value = '请至少按下一个修饰键 (Ctrl/Alt/Shift/Meta)';
     return;
   }
 
-  // 构建快捷键字符串
   const shortcutString = [...modifiers, mainKey].join('+');
   ocrShortcutInput.value = shortcutString;
 }
 
-// 完成 OCR 快捷键录制
 function finishOcrShortcutRecording(e) {
   e.preventDefault();
   e.stopPropagation();
@@ -273,28 +292,21 @@ function finishOcrShortcutRecording(e) {
   ocrShortcutInput.classList.remove('recording');
   ocrShortcutInput.disabled = false;
 
-  // 移除监听器
   document.removeEventListener('keydown', recordOcrShortcut);
   document.removeEventListener('keyup', finishOcrShortcutRecording);
 
-  // 解析快捷键
   const shortcutString = ocrShortcutInput.value;
 
-  // 验证快捷键格式
   if (!shortcutString || shortcutString.includes('请按下')) {
     ocrShortcutInput.value = '';
     return;
   }
 
-  // 保存快捷键
   const shortcut = parseShortcutString(shortcutString);
   saveOcrShortcut(shortcut);
-
-  // 显示友好的格式
   ocrShortcutInput.value = formatShortcutDisplay(shortcutString);
 }
 
-// 解析快捷键字符串为对象
 function parseShortcutString(shortcutString) {
   const parts = shortcutString.split('+');
   return {
@@ -302,37 +314,31 @@ function parseShortcutString(shortcutString) {
     altKey: parts.includes('Alt'),
     shiftKey: parts.includes('Shift'),
     metaKey: parts.includes('Meta'),
-    key: parts[parts.length - 1] // 最后一个是主键
+    key: parts[parts.length - 1]
   };
 }
 
-// 格式化快捷键显示
 function formatShortcutDisplay(shortcutString) {
   return shortcutString
     .replace('Control', 'Ctrl')
     .replace('Meta', 'Cmd');
 }
 
-// 保存 OCR 快捷键到存储
 function saveOcrShortcut(shortcut) {
   chrome.storage.local.set({ 'translation.ocr.shortcut': shortcut });
 
-  // 通知所有标签页更新快捷键监听
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach(tab => {
       chrome.tabs.sendMessage(tab.id, {
         action: 'translation.ocr.updateShortcut',
         shortcut: shortcut
-      }).catch(() => {
-        // 忽略无法发送消息的标签页
-      });
+      }).catch(() => {});
     });
   });
 
   console.log('[Translation] OCR 快捷键已保存:', shortcut);
 }
 
-// 加载 OCR 快捷键
 function loadOcrShortcut() {
   chrome.storage.local.get(['translation.ocr.shortcut'], (result) => {
     if (result['translation.ocr.shortcut']) {
@@ -351,19 +357,15 @@ function loadOcrShortcut() {
   });
 }
 
-// 清除 OCR 快捷键
 function clearOcrShortcut() {
   chrome.storage.local.remove('translation.ocr.shortcut');
   ocrShortcutInput.value = '';
 
-  // 通知所有标签页清除快捷键监听
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach(tab => {
       chrome.tabs.sendMessage(tab.id, {
         action: 'translation.ocr.clearShortcut'
-      }).catch(() => {
-        // 忽略无法发送消息的标签页
-      });
+      }).catch(() => {});
     });
   });
 
@@ -372,7 +374,6 @@ function clearOcrShortcut() {
 
 // ==================== 收藏快捷键 ====================
 
-// 开始录制收藏快捷键
 function startFavoritesShortcutRecording() {
   if (isRecordingFavoritesShortcut) return;
 
@@ -381,38 +382,31 @@ function startFavoritesShortcutRecording() {
   favoritesShortcutInput.value = '请按下快捷键组合...';
   favoritesShortcutInput.disabled = true;
 
-  // 监听键盘事件
   document.addEventListener('keydown', recordFavoritesShortcut);
   document.addEventListener('keyup', finishFavoritesShortcutRecording);
 }
 
-// 录制收藏快捷键
 function recordFavoritesShortcut(e) {
   e.preventDefault();
   e.stopPropagation();
 
-  // 获取按下的修饰键
   const modifiers = [];
   if (e.ctrlKey) modifiers.push('Ctrl');
   if (e.altKey) modifiers.push('Alt');
   if (e.shiftKey) modifiers.push('Shift');
   if (e.metaKey) modifiers.push('Meta');
 
-  // 获取主键（排除修饰键）
   const mainKey = e.key;
 
-  // 验证快捷键是否有效
   if (modifiers.length === 0) {
     favoritesShortcutInput.value = '请至少按下一个修饰键 (Ctrl/Alt/Shift/Meta)';
     return;
   }
 
-  // 构建快捷键字符串
   const shortcutString = [...modifiers, mainKey].join('+');
   favoritesShortcutInput.value = shortcutString;
 }
 
-// 完成收藏快捷键录制
 function finishFavoritesShortcutRecording(e) {
   e.preventDefault();
   e.stopPropagation();
@@ -421,47 +415,36 @@ function finishFavoritesShortcutRecording(e) {
   favoritesShortcutInput.classList.remove('recording');
   favoritesShortcutInput.disabled = false;
 
-  // 移除监听器
   document.removeEventListener('keydown', recordFavoritesShortcut);
   document.removeEventListener('keyup', finishFavoritesShortcutRecording);
 
-  // 解析快捷键
   const shortcutString = favoritesShortcutInput.value;
 
-  // 验证快捷键格式
   if (!shortcutString || shortcutString.includes('请按下')) {
     favoritesShortcutInput.value = '';
     return;
   }
 
-  // 保存快捷键
   const shortcut = parseShortcutString(shortcutString);
   saveFavoritesShortcut(shortcut);
-
-  // 显示友好的格式
   favoritesShortcutInput.value = formatShortcutDisplay(shortcutString);
 }
 
-// 保存收藏快捷键到存储
 function saveFavoritesShortcut(shortcut) {
   chrome.storage.local.set({ 'translation.favoritesShortcut': shortcut });
 
-  // 通知所有标签页更新快捷键监听
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach(tab => {
       chrome.tabs.sendMessage(tab.id, {
         action: 'translation.updateFavoritesShortcut',
         shortcut: shortcut
-      }).catch(() => {
-        // 忽略无法发送消息的标签页
-      });
+      }).catch(() => {});
     });
   });
 
   console.log('[Translation] 收藏快捷键已保存:', shortcut);
 }
 
-// 加载收藏快捷键
 function loadFavoritesShortcut() {
   chrome.storage.local.get(['translation.favoritesShortcut'], (result) => {
     if (result['translation.favoritesShortcut']) {
@@ -480,19 +463,15 @@ function loadFavoritesShortcut() {
   });
 }
 
-// 清除收藏快捷键
 function clearFavoritesShortcut() {
   chrome.storage.local.remove('translation.favoritesShortcut');
   favoritesShortcutInput.value = '';
 
-  // 通知所有标签页清除快捷键监听
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach(tab => {
       chrome.tabs.sendMessage(tab.id, {
         action: 'translation.clearFavoritesShortcut'
-      }).catch(() => {
-        // 忽略无法发送消息的标签页
-      });
+      }).catch(() => {});
     });
   });
 
@@ -502,8 +481,8 @@ function clearFavoritesShortcut() {
 // 加载统计信息
 function loadStatistics() {
   chrome.storage.local.get(['translation.todayCount', 'translation.totalCount'], (result) => {
-    todayCountEl.textContent = result['translation.todayCount'] || 0;
-    totalCountEl.textContent = result['translation.totalCount'] || 0;
+    if (todayCountEl) todayCountEl.textContent = result['translation.todayCount'] || 0;
+    if (totalCountEl) totalCountEl.textContent = result['translation.totalCount'] || 0;
   });
 }
 
