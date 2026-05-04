@@ -3,17 +3,29 @@
  * 仅在 AI 平台页面显示模板面板，点击后发送消息
  */
 
-// ========== 提示词模板（硬编码） ==========
-const SELECTION_ASK_PROMPTS = [
-  { label: "复制", template: "" },  // 第一个是复制功能
-  { label: "解释", template: "请深入解释：%s" },
-  { label: "证据", template: "证据是什么,这是对的? 开源项目和社区?官方文档?\n%s" },
-  { label: "枚举关联", template: "和他们处理的需求,按照场景的推导出他们,而不是直接告诉我他们存在,从真实的问题出发,演进历史出发,没有他们会出现什么问题,以及在这个领域 有没有其他更多的技术\n%s" },
-  { label: "more", template: "如果你是一个面试官,你听到了这些实习生的解释,你会提出哪些更加深入的问题和企业级别的复杂场景,以及对应答案,进行深入的挖掘\n%s" },
-  { label: "具体具体", template: "具体具体,我要知道原子操作,让我自己也可以编码实现这个机制,我要自己实现类xx的机制,而不是简单的使用,作为一个核心开发者,以及开源案例或者案例结构设计\n%s" },
+// ========== 提示词 ==========
+let SELECTION_ASK_PROMPTS = [];
 
+const DEFAULT_ASK_PROMPTS = [
+  { label: "复制", alias: "copy", template: "" },
 
+  { label: "枚举关联", alias: "mjgl", template: "和他们处理的需求,按照场景的推导出他们,而不是直接告诉我他们存在,从真实的问题出发,演进历史出发,没有他们会出现什么问题,以及在这个领域 有没有其他更多的技术\n%s" },
+  { label: "more", alias: "more", template: "如果你是一个面试官,你听到了这些实习生的解释,你会提出哪些更加深入的问题和企业级别的复杂场景,以及对应答案,进行深入的挖掘\n%s" },
+  { label: "具体具体", alias: "jhjh", template: "具体具体,我要知道原子操作,让我自己也可以编码实现这个机制,我要自己实现类xx的机制,而不是简单的使用,作为一个核心开发者,以及开源案例或者案例结构设计\n%s" }
 ];
+
+async function loadAskPrompts() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'translation.getAskPrompts' });
+    if (response && response.success && response.prompts && response.prompts.length > 0) {
+      SELECTION_ASK_PROMPTS = response.prompts;
+      return;
+    }
+  } catch (e) {
+    console.warn('[SelectionAsk] 从 background 获取提示词失败:', e);
+  }
+  SELECTION_ASK_PROMPTS = DEFAULT_ASK_PROMPTS;
+}
 
 // ========== 全局状态 ==========
 let selectionAskPanel = null;
@@ -267,6 +279,28 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 // 初始化并加载配置
-initializeSelectionAsk();
+initializeSelectionAsk(); // 会内部 await loadAskPrompts()
+
+async function initializeSelectionAsk() {
+  await loadAskPrompts();
+
+  try {
+    // 获取平台域名映射
+    const domainResponse = await chrome.runtime.sendMessage({ action: 'getPlatformDomains' });
+    if (domainResponse && domainResponse.domains) {
+      platformDomains = domainResponse.domains;
+    }
+
+    // 获取启用设置
+    const settingsResponse = await chrome.runtime.sendMessage({ action: 'getSelectionAskSettings' });
+    if (settingsResponse && settingsResponse.settings) {
+      selectionAskEnabled = settingsResponse.settings.enabled !== false;
+    }
+
+    console.log('[SelectionAsk] 配置加载完成，启用状态:', selectionAskEnabled);
+  } catch (e) {
+    console.warn('[SelectionAsk] 配置加载失败，使用默认配置:', e);
+  }
+}
 
 console.log('[SelectionAsk] 划词快捷提问模块已加载');
