@@ -358,29 +358,29 @@ function createResultPanel() {
 
   panel.innerHTML = `
     <div class="panel-header">
-      <span>📝 划词识别</span>
+      <span>划词识别</span>
       <button id="selection-close-result">&times;</button>
     </div>
     <!-- 原文区域 -->
     <div class="original-text-section">
       <div class="section-title">
-        <span>📄 原文</span>
-        <button id="selection-edit-original" class="edit-btn" title="编辑原文">✏️ 编辑</button>
+        <span>PROMPT</span>
+        <button id="selection-edit-original" class="edit-btn" title="编辑原文">编辑</button>
       </div>
       <div id="selection-original-text" class="original-text-content"></div>
       <!-- 原文编辑区域 -->
       <div id="selection-original-edit-container" style="display: none;">
         <textarea id="selection-original-edit" class="original-edit-textarea"></textarea>
         <div class="original-edit-buttons">
-          <button id="selection-save-original" class="save-edit-btn">✓ 保存并处理</button>
-          <button id="selection-cancel-original" class="cancel-edit-btn">✕ 取消</button>
+          <button id="selection-save-original" class="save-edit-btn">保存并处理</button>
+          <button id="selection-cancel-original" class="cancel-edit-btn">取消</button>
         </div>
       </div>
     </div>
     <!-- 思考模式区域 (可折叠) -->
     <div id="selection-thinking-section">
       <div id="selection-thinking-toggle">
-        <span>🤔 思考过程</span>
+        <span>THINKING</span>
         <span id="selection-thinking-arrow">▼</span>
       </div>
       <div id="selection-thinking-content"></div>
@@ -391,10 +391,10 @@ function createResultPanel() {
     </div>
     <!-- 底部按钮区域 -->
     <div class="footer-section">
-      <button id="selection-copy-original">📋 复制原文</button>
-      <button id="selection-copy-result">📋 复制结果</button>
-      <button id="selection-add-favorites">⭐ 收藏</button>
-      <button id="selection-auto-translate" class="auto-translate-btn" title="点击切换模式">🔄 自动</button>
+      <button id="selection-copy-original">复制原文</button>
+      <button id="selection-copy-result">复制结果</button>
+      <button id="selection-add-favorites">收藏</button>
+      <button id="selection-auto-translate" class="auto-translate-btn" title="点击切换模式">自动</button>
       <button id="selection-close-panel">关闭</button>
     </div>
   `;
@@ -1022,7 +1022,7 @@ function copyOriginalText() {
     navigator.clipboard.writeText(text).then(() => {
       const btn = document.getElementById('selection-copy-original');
       const originalText = btn.textContent;
-      btn.textContent = '✓ 已复制';
+      btn.textContent = '已复制';
       setTimeout(() => {
         btn.textContent = originalText;
       }, 1500);
@@ -1053,7 +1053,7 @@ function copyResult() {
   navigator.clipboard.writeText(textToCopy).then(() => {
     const btn = document.getElementById('selection-copy-result');
     const originalText = btn.textContent;
-    btn.textContent = '✓ 已复制';
+    btn.textContent = '已复制';
     setTimeout(() => {
       btn.textContent = originalText;
     }, 1500);
@@ -1115,13 +1115,13 @@ function updateModeButton() {
   if (!btn) return;
 
   const modeConfig = {
-    auto:  { icon: '🔄', text: '自动', cls: 'active', bg: '#28a745' },
-    panel: { icon: '📋', text: '面板', cls: 'active', bg: '#6c757d' },
-    off:   { icon: '⏸', text: '关闭', cls: '', bg: '' }
+    auto:  { text: '自动', cls: 'active' },
+    panel: { text: '面板', cls: 'active' },
+    off:   { text: '关闭', cls: '' }
   };
   const cfg = modeConfig[settings.selectionMode] || modeConfig.off;
 
-  btn.textContent = `${cfg.icon} ${cfg.text}`;
+  btn.textContent = cfg.text;
   btn.className = 'auto-translate-btn';
   if (cfg.cls) btn.classList.add(cfg.cls);
 }

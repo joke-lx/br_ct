@@ -1,4 +1,4 @@
-/* 划词翻译设置页面样式 - 使用统一主题 */
+/* 划词翻译设置页面样式 */
 
 .translation-container {
   display: flex;
@@ -17,47 +17,50 @@
 }
 
 .main-content::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .main-content::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 3px;
+  background: #ddd;
+  border-radius: 2px;
 }
 
 .main-content::-webkit-scrollbar-thumb:hover {
-  background: #999;
+  background: #bbb;
 }
 
 /* 设置区块 */
 .setting-section {
   background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  padding: 12px;
-  margin-bottom: 12px;
-  box-shadow: var(--shadow-sm);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border-color);
 }
 
 .section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--primary-color);
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-color);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--primary-color);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .setting-item {
   display: flex;
   align-items: flex-start;
-  padding: 8px 0;
+  flex-direction: column;
+  padding: 6px 0;
 }
 
 .setting-label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-color);
-  font-weight: 500;
-  margin-bottom: 4px;
+  font-weight: 600;
+  margin-bottom: 6px;
   display: block;
 }
 
@@ -66,6 +69,7 @@
   font-size: 11px;
   margin-top: 4px;
   display: block;
+  line-height: 1.5;
 }
 
 .setting-textarea {
@@ -73,7 +77,7 @@
   min-height: 60px;
   padding: 8px 10px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   font-size: 13px;
   font-family: inherit;
   resize: vertical;
@@ -83,7 +87,6 @@
 .setting-textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px var(--primary-light);
 }
 
 .toggle-label {
@@ -98,15 +101,15 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .radio-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-color);
 }
 
@@ -120,15 +123,15 @@
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .checkbox-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-color);
 }
 
@@ -140,10 +143,10 @@
 /* 下拉选择器 */
 .setting-select {
   width: 100%;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-size: 13px;
+  border-radius: 6px;
+  font-size: 12px;
   background: var(--bg-page);
   cursor: pointer;
   transition: border-color 0.2s;
@@ -152,7 +155,6 @@
 .setting-select:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px var(--primary-light);
 }
 
 /* 快捷键输入 */
@@ -165,17 +167,17 @@
 
 .shortcut-input {
   flex: 1;
-  padding: 7px 10px;
+  padding: 6px 10px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 11px;
   background: var(--bg-page);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .shortcut-input:hover {
-  background: var(--primary-light);
+  border-color: var(--primary-color);
 }
 
 .shortcut-input:focus {
@@ -185,13 +187,13 @@
 }
 
 .shortcut-clear-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-color);
   background: var(--bg-page);
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--text-muted);
   transition: all 0.2s;
   flex-shrink: 0;
@@ -206,18 +208,19 @@
 .flow-rate-control {
   padding: 10px;
   background: var(--bg-page);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
 }
 
 .flow-rate-value {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--primary-color);
   font-weight: 600;
 }
 
 .flow-rate-slider {
   width: 100%;
-  height: 4px;
+  height: 3px;
   border-radius: 2px;
   background: var(--border-color);
   outline: none;
@@ -226,21 +229,21 @@
 
 .flow-rate-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   background: var(--primary-color);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
 }
 
 .flow-rate-warning {
   margin-top: 8px;
   padding: 6px 10px;
   background: #fff3cd;
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   color: #856404;
   font-size: 11px;
+  border-left: 3px solid #ffc107;
 }
 
 /* 统计信息 */
@@ -255,13 +258,13 @@
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
 .stat-value {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--primary-color);
   margin-left: 4px;
 }
@@ -278,19 +281,21 @@
 
 .footer-btn {
   flex: 1;
-  padding: 10px 16px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--primary-color);
-  color: white;
-  font-size: 13px;
+  padding: 9px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-color);
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .footer-btn:hover {
-  background: var(--primary-hover);
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
 }
 
 .footer-btn:active {
@@ -309,6 +314,6 @@
     box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(255, 193, 7, 0);
+    box-shadow: 0 0 0 6px rgba(255, 193, 7, 0);
   }
 }

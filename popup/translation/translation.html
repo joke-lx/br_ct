@@ -26,7 +26,7 @@
       <!-- ========== 划词翻译区域 ========== -->
       <div class="setting-section">
         <div class="section-title">
-          <span>📝 划词翻译</span>
+          <span>划词翻译</span>
         </div>
 
         <!-- 模式选择 -->
@@ -51,15 +51,10 @@
           </small>
         </div>
 
-        <!-- 提示词模板（仅面板模式显示） -->
+        <!-- 提示词模板（仅自动模式显示） -->
         <div id="promptSelectorContainer" class="setting-item">
           <label class="setting-label">快捷提示词</label>
           <select id="promptSelector" class="setting-select">
-            <option value="fy">翻译</option>
-            <option value="js">解释</option>
-            <option value="zy">摘要</option>
-            <option value="kz">扩展</option>
-            <option value="fx">分析</option>
           </select>
         </div>
 
@@ -79,7 +74,7 @@
       <!-- ========== OCR 识别区域 ========== -->
       <div class="setting-section">
         <div class="section-title">
-          <span>📷 OCR 识别</span>
+          <span>OCR 识别</span>
         </div>
 
         <div class="setting-item">
@@ -127,7 +122,7 @@
             <span>较快</span>
           </div>
           <div id="flowRateWarning" class="flow-rate-warning" style="display: none;">
-            ⚠️ 输出速度较快可能导致页面卡顿
+            输出速度较快可能导致页面卡顿
           </div>
         </div>
 
@@ -142,7 +137,7 @@
               placeholder="点击设置快捷键..."
               readonly
             >
-            <button id="clearOcrShortcutBtn" class="shortcut-clear-btn" title="清除快捷键">✕</button>
+            <button id="clearOcrShortcutBtn" class="shortcut-clear-btn" title="清除快捷键">x</button>
           </div>
         </div>
       </div>
@@ -150,7 +145,7 @@
       <!-- ========== 收藏功能区域 ========== -->
       <div class="setting-section">
         <div class="section-title">
-          <span>⭐ 收藏功能</span>
+          <span>收藏功能</span>
         </div>
 
         <div class="setting-item">
@@ -163,7 +158,7 @@
               placeholder="点击设置快捷键..."
               readonly
             >
-            <button id="clearFavoritesShortcutBtn" class="shortcut-clear-btn" title="清除快捷键">✕</button>
+            <button id="clearFavoritesShortcutBtn" class="shortcut-clear-btn" title="清除快捷键">x</button>
           </div>
           <small class="setting-hint">
             选中文字后，按下快捷键即可收藏
@@ -186,7 +181,7 @@
 
     <!-- 底部按钮 -->
     <div class="footer">
-      <button id="openFavoritesBtn" class="footer-btn">⭐ 收藏管理</button>
+      <button id="openFavoritesBtn" class="footer-btn">收藏管理</button>
     </div>
   </div>
 
