@@ -5,6 +5,7 @@
 
 import { updateContextMenuVisibility } from './contextMenu.js';
 import { handleOCRRequest } from './ocr.js';
+import transPrompts from '../../popup/main/prompts/groups/xxxx_trans.js';
 
 /**
  * 处理翻译请求
@@ -102,6 +103,10 @@ export function setupMessageHandler() {
 
       case 'translation.openFavorites':
         response = handleOpenFavorites();
+        break;
+
+      case 'translation.getTransPrompts':
+        response = { success: true, prompts: transPrompts };
         break;
 
       default:

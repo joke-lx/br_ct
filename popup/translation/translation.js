@@ -18,14 +18,43 @@ let todayCountEl, totalCountEl;
 let isRecordingOcrShortcut = false;
 let isRecordingFavoritesShortcut = false;
 
-// 提示词映射
-const PROMPT_MAP = {
-  'fy': '请翻译：%s',
-  'js': '请详细解释：%s',
-  'zy': '请简要总结以下内容：%s',
-  'kz': '请详细扩展讲解：%s',
-  'fx': '请深入分析：%s'
-};
+// 提示词数据（从 background 动态加载）
+let promptData = [];
+
+async function loadPromptData() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'translation.getTransPrompts' });
+    if (response && response.success && response.prompts) {
+      promptData = response.prompts;
+      updatePromptSelector();
+      return;
+    }
+  } catch (e) {
+    console.warn('[Translation] 从 background 获取提示词失败:', e);
+  }
+  promptData = [
+    { label: '翻译', alias: 'fy', template: '请翻译：%s' },
+    { label: '解释', alias: 'js', template: '请详细解释：%s' },
+    { label: '摘要', alias: 'zy', template: '请简要总结以下内容：%s' },
+    { label: '扩展', alias: 'kz', template: '请详细扩展讲解：%s' },
+    { label: '分析', alias: 'fx', template: '请深入分析：%s' }
+  ];
+  updatePromptSelector();
+}
+
+function updatePromptSelector() {
+  if (!promptSelector) return;
+  promptSelector.innerHTML = promptData.map(p =>
+    `<option value="${p.alias}">${p.label}</option>`
+  ).join('');
+  // 恢复之前保存的选择
+  chrome.storage.local.get(['translation.settings'], (result) => {
+    const settings = result['translation.settings'];
+    if (settings && settings.selectionPromptKey) {
+      promptSelector.value = settings.selectionPromptKey;
+    }
+  });
+}
 
 // 流速档位配置
 const FLOW_RATE_PRESETS = {
@@ -61,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 加载设置
   loadSettings();
+  loadPromptData();
   loadStatistics();
 
   // 绑定事件
@@ -157,9 +187,6 @@ function loadSettings() {
     if (modeRadio) modeRadio.checked = true;
     updatePromptSelectorVisibility();
 
-    if (promptSelector) {
-      promptSelector.value = settings.selectionPromptKey || 'fy';
-    }
     if (selectionStreamToggle) selectionStreamToggle.checked = settings.selectionStream !== false;
     if (selectionThinkingToggle) selectionThinkingToggle.checked = settings.selectionThinking || false;
 
@@ -191,7 +218,8 @@ function saveSelectionSettings() {
     // 提示词
     if (promptSelector) {
       settings.selectionPromptKey = promptSelector.value;
-      settings.selectionPrompt = PROMPT_MAP[promptSelector.value] || PROMPT_MAP['fy'];
+      const found = promptData.find(p => p.alias === promptSelector.value);
+      settings.selectionPrompt = found ? found.template : '请翻译：%s';
     }
 
     // 选项

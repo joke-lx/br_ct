@@ -15,11 +15,6 @@ export default [
     "template": "请简要总结以下内容：%s"
   },
   {
-    "label": "扩展",
-    "alias": "kz",
-    "template": "请详细扩展讲解：%s"
-  },
-  {
     "label": "分析",
     "alias": "fx",
     "template": "请深入分析：%s"

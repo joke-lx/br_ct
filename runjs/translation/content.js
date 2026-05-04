@@ -53,8 +53,8 @@ let selectionPanel = null;
 let selectionPanelSelection = '';
 let transPrompts = []; // 提示词
 
-// 内嵌提示词（与 xxxx_trans.js 同步）
-const EMBEDDED_PROMPTS = [
+// 默认提示词（background 不可用时的回退）
+const DEFAULT_PROMPTS = [
   { label: '翻译', alias: 'fy', template: '请翻译：%s' },
   { label: '解释', alias: 'js', template: '请详细解释：%s' },
   { label: '摘要', alias: 'zy', template: '请简要总结以下内容：%s' },
@@ -63,11 +63,20 @@ const EMBEDDED_PROMPTS = [
 ];
 
 /**
- * 初始化提示词（使用内嵌版本）
+ * 从 background 获取提示词
  */
-function initTransPrompts() {
-  transPrompts = EMBEDDED_PROMPTS;
-  console.log('[Translation] 提示词已初始化:', transPrompts);
+async function initTransPrompts() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'translation.getTransPrompts' });
+    if (response && response.success && response.prompts && response.prompts.length > 0) {
+      transPrompts = response.prompts;
+      console.log('[Translation] 提示词已从 background 加载:', transPrompts);
+      return;
+    }
+  } catch (e) {
+    console.warn('[Translation] 从 background 获取提示词失败，使用默认:', e);
+  }
+  transPrompts = DEFAULT_PROMPTS;
 }
 
 /**
@@ -1526,7 +1535,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 });
 
-// 立即初始化提示词（不依赖异步）
+// 初始化提示词（从 background 获取）
 initTransPrompts();
 
 // 立即加载设置和 API 配置
