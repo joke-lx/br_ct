@@ -79,11 +79,11 @@ function updateSilentModeIndicator(status) {
       break;
     case 'success':
       statusLight.classList.add('status-success');
-      statusText.textContent = '✓ 已完成，点击复制';
+      statusText.textContent = '已完成，点击复制';
       break;
     case 'error':
       statusLight.classList.add('status-error');
-      statusText.textContent = '✕ 识别失败';
+      statusText.textContent = '识别失败';
       break;
   }
 }
@@ -411,7 +411,7 @@ function createSelectionBox() {
 function createInstruction() {
   const instruction = document.createElement('div');
   instruction.id = 'ocr-instruction';
-  instruction.textContent = '🖱️ 按住鼠标左键拖动选择区域，按 ESC 取消';
+  instruction.textContent = '按住鼠标左键拖动选择区域，按 ESC 取消';
   document.body.appendChild(instruction);
   return instruction;
 }
@@ -425,7 +425,7 @@ function ocrCreateResultPanel() {
 
   panel.innerHTML = `
     <div id="ocr-panel-header">
-      <span>📝 识别结果</span>
+      <span>识别结果</span>
       <button id="ocr-close-result">&times;</button>
     </div>
     <!-- 静默模式指示灯 -->
@@ -435,7 +435,7 @@ function ocrCreateResultPanel() {
     </div>
     <div class="ocr-preview-section">
       <div class="ocr-preview-header">
-        <div>📷 截图预览</div>
+        <div>PREVIEW</div>
         <span class="ocr-preview-arrow">▼</span>
       </div>
       <div class="ocr-preview-content">
@@ -445,7 +445,7 @@ function ocrCreateResultPanel() {
     <!-- 思考模式区域 (可折叠) -->
     <div id="thinking-section">
       <div id="thinking-toggle">
-        <span>🤔 思考过程</span>
+        <span>THINKING</span>
         <span id="thinking-arrow">▼</span>
       </div>
       <div id="thinking-content"></div>
@@ -456,8 +456,8 @@ function ocrCreateResultPanel() {
     </div>
     <!-- 底部按钮区域 -->
     <div class="ocr-footer-section">
-      <button id="ocr-restart-btn">🔄 重新识别</button>
-      <button id="ocr-copy-result">📋 复制</button>
+      <button id="ocr-restart-btn">重新识别</button>
+      <button id="ocr-copy-result">复制</button>
       <button id="ocr-close-panel">关闭</button>
     </div>
   `;
@@ -744,7 +744,7 @@ function ocrCopyResult() {
   navigator.clipboard.writeText(textToCopy).then(() => {
     const btn = document.getElementById('ocr-copy-result');
     const originalText = btn.textContent;
-    btn.textContent = '✓ 已复制';
+    btn.textContent = '已复制';
     setTimeout(() => {
       btn.textContent = originalText;
     }, 1500);
@@ -766,7 +766,7 @@ async function autoCopyOCRResult() {
     const btn = document.getElementById('ocr-copy-result');
     if (btn) {
       const originalText = btn.textContent;
-      btn.textContent = '✓ 已自动复制';
+      btn.textContent = '已自动复制';
       setTimeout(() => {
         btn.textContent = originalText;
       }, 2000);
@@ -988,7 +988,7 @@ async function performOCR(rect) {
   try {
     // 检查扩展上下文是否有效
     if (!chrome.runtime || !chrome.runtime.id) {
-      await ocrShowResultPanel('❌ 扩展已重新加载\n\n请刷新页面后重试（按 F5 或 Ctrl+R）');
+      await ocrShowResultPanel('扩展已重新加载\n\n请刷新页面后重试（按 F5 或 Ctrl+R）');
       cleanup();
       return;
     }
@@ -1075,7 +1075,7 @@ async function performOCR(rect) {
     });
   } catch (error) {
     // 捕获扩展上下文失效等错误
-    await ocrShowResultPanel('❌ 扩展已重新加载\n\n请刷新页面后重试（按 F5 或 Ctrl+R）');
+    await ocrShowResultPanel('扩展已重新加载\n\n请刷新页面后重试（按 F5 或 Ctrl+R）');
     cleanup();
   }
 }
