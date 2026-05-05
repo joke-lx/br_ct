@@ -2,10 +2,12 @@
  * 实时资源选择器 (Resource Picker) 类。
  * 将所有 UI 元素、状态和事件处理逻辑封装在一起，提高可维护性。
  */
-if (window._ResourcePickerLoaded) {
-    console.log('[ResourcePicker] 已存在，跳过加载');
-} else {
-window._ResourcePickerLoaded = true;
+
+// 清理旧实例（如果存在）
+if (window.__pickerInstance) {
+    window.__pickerInstance.cleanup();
+    window.__pickerInstance = null;
+}
 
 // 定义 ResourcePicker 类
 window.ResourcePicker = class ResourcePicker {
@@ -23,7 +25,8 @@ window.ResourcePicker = class ResourcePicker {
         this._startPicking();
 
         console.log("实时资源嗅探已启动 (零资源时显示 HTML 结构)");
-        // 暴露清理方法，以便外部脚本可以停止工具
+        // 暴露实例和清理方法
+        window.__pickerInstance = this;
         window.__pickerCleanup = this.cleanup.bind(this);
     }
 
@@ -598,7 +601,8 @@ _escapeHtml(str) {
     html += `<button id="toggle-resource-picker" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #6c757d; border-radius: 6px; cursor: pointer; background: #6c757d; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">✅ 已锁定 (点击解锁)</button>`;
     html += `<button id="close-all-picker" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #dc3545; border-radius: 6px; cursor: pointer; background: #dc3545; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">完全关闭</button>`;
     html += `<button id="get-paths-btn" style="width: 100%; padding: 10px 12px; margin-bottom: 8px; border: 1px solid #17a2b8; border-radius: 6px; cursor: pointer; background: #17a2b8; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">📋 获得多种可能路径</button>`;
-    html += `<button id="copy-all-paths-btn" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #28a745; border-radius: 6px; cursor: pointer; background: #28a745; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">📄 一键复制所有路径</button>`;
+    html += `<button id="copy-all-paths-btn" style="width: 100%; padding: 10px 12px; margin-bottom: 8px; border: 1px solid #28a745; border-radius: 6px; cursor: pointer; background: #28a745; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">📄 一键复制所有路径</button>`;
+    html += `<button id="copy-html-btn" style="width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #9333ea; border-radius: 6px; cursor: pointer; background: #9333ea; color: #f8f9fa; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">📋 一键复制 HTML</button>`;
     html += `</div>`;
 
     // 总是显示资源列表（如果有资源的话）
@@ -653,7 +657,7 @@ _escapeHtml(str) {
 
     // 绑定事件
     this._bindHtmlCollapseEvent();
-    this._bindButtonEvents();
+    this._bindButtonEvents(element);
     this._bindPathButtonEvent(element);
     this._bindCopyAllPathsButton(element);
 }
@@ -689,7 +693,7 @@ _bindHtmlCollapseEvent() {
 }
 
 
-    _bindButtonEvents() {
+    _bindButtonEvents(element) {
         const toggleBtn = document.getElementById('toggle-resource-picker');
         if (toggleBtn) {
             toggleBtn.onclick = () => {
@@ -700,13 +704,53 @@ _bindHtmlCollapseEvent() {
                     // 在预览模式下，这个按钮实际触发的是锁定功能。
                     // 但由于 onClick 已经处理了锁定逻辑，这里主要处理解锁/关闭逻辑，
                     // 在预览模式下它会触发 startPicking 保持状态，或在初始状态下触发 onClick 锁定。
-                    this.cleanup(); 
+                    this.cleanup();
                 }
             };
         }
         const closeBtn = document.getElementById('close-all-picker');
         if (closeBtn) {
             closeBtn.onclick = this.cleanup.bind(this);
+        }
+
+        // 绑定复制 HTML 按钮
+        console.log('[_bindButtonEvents] element:', element);
+        const copyHtmlBtn = document.getElementById('copy-html-btn');
+        console.log('[_bindButtonEvents] copyHtmlBtn:', copyHtmlBtn);
+        if (copyHtmlBtn) {
+            console.log('[_bindButtonEvents] 绑定点击事件');
+            // 直接使用传入的 element 参数，避免 this._lockedElement 可能为空的问题
+            copyHtmlBtn.onclick = () => {
+                console.log('[_bindButtonEvents] 点击事件触发, element:', element);
+                if (!element) {
+                    console.error('没有锁定的元素');
+                    return;
+                }
+                const html = element.outerHTML || element.innerHTML;
+                console.log('[_bindButtonEvents] 复制 HTML:', html.substring(0, 100));
+                navigator.clipboard.writeText(html).then(() => {
+                    const originalText = copyHtmlBtn.innerText;
+                    copyHtmlBtn.innerText = "✓ HTML 已复制";
+                    copyHtmlBtn.style.background = '#6f42c1';
+                    copyHtmlBtn.style.borderColor = '#6f42c1';
+                    setTimeout(() => {
+                        copyHtmlBtn.innerText = originalText;
+                        copyHtmlBtn.style.background = '#9333ea';
+                        copyHtmlBtn.style.borderColor = '#9333ea';
+                    }, 2000);
+                }).catch((err) => {
+                    const originalText = copyHtmlBtn.innerText;
+                    copyHtmlBtn.innerText = "✗ 复制失败";
+                    copyHtmlBtn.style.background = '#dc3545';
+                    copyHtmlBtn.style.borderColor = '#dc3545';
+                    setTimeout(() => {
+                        copyHtmlBtn.innerText = originalText;
+                        copyHtmlBtn.style.background = '#9333ea';
+                        copyHtmlBtn.style.borderColor = '#9333ea';
+                    }, 2000);
+                    console.error('复制 HTML 失败:', err);
+                });
+            };
         }
     }
     
@@ -742,8 +786,8 @@ _bindHtmlCollapseEvent() {
     }
 
     _onClick = (e) => {
-        // 如果点击在工具箱内，且不是 HTML 复制按钮，则不进行锁定/解锁
-        if (this.container.contains(e.target) && e.target.id !== 'copy-html-btn') return;
+        // 如果点击在工具箱内，不处理（让按钮自己的 onclick 正常触发）
+        if (this.container.contains(e.target)) return;
 
         e.preventDefault();
         e.stopPropagation();
@@ -755,6 +799,7 @@ _bindHtmlCollapseEvent() {
 
         if (!this.isLocked) {
             this.isLocked = true;
+            this._lockedElement = el;  // 保存锁定元素的引用
             document.removeEventListener("mousemove", this._onMove, true);
 
             // 切换到锁定样式
@@ -769,6 +814,7 @@ _bindHtmlCollapseEvent() {
             console.log(`资源嗅探已锁定在元素 <${el.tagName.toLowerCase()}>`);
         } else {
             this.isLocked = false;
+            this._lockedElement = null;  // 清除锁定元素引用
             this._startPicking();
             console.log("资源嗅探已解锁，恢复实时预览");
         }
@@ -805,11 +851,12 @@ _bindHtmlCollapseEvent() {
         this.overlay.remove();
         this.tooltip.remove();
         this.container.remove();
+        this._lockedElement = null;  // 清理锁定元素引用
         window.__pickerCleanup = undefined;
+        window.__pickerInstance = null;  // 清理实例引用，允许重新创建
         console.log("资源嗅探工具已完全关闭");
     }
 };
-} // end of if/else guard
 
 // -------------------------------------------------------------------
 // --- 启动脚本 (保持原入口函数逻辑)
