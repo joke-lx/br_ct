@@ -11,3 +11,4 @@ key.pem
 manifest_key.txt
 manifest_id.txt
 generate_key.js
+.claude/repo
