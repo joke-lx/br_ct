@@ -12,6 +12,7 @@ import { init as initVideoPlaneServer } from './backgroudtask/video_plane_server
 import { initBackupService, setupBackupMessageListener } from './backgroudtask/backupService.js';
 import { setupTranslationModule } from './backgroudtask/translation/index.js';
 import { setupBinddomCommandListener, setupBinddomMessageListener } from './backgroudtask/binddom/index.js';
+import { setupHtmlTextReaderListener } from './backgroudtask/html_text_reader/index.js';
 
 // 初始化标签页更新监听器
 setupTabUpdateListener();
@@ -49,6 +50,10 @@ setupTranslationModule();
 setupBinddomCommandListener();
 setupBinddomMessageListener();
 console.log('[Background] BindDom 模块初始化完成');
+
+// 初始化页面文本提取模块
+setupHtmlTextReaderListener();
+console.log('[Background] HtmlTextReader 模块初始化完成');
 
 // 初始化划词快捷提问配置
 import { initSelectionAskConfig } from './backgroudtask/selectionAskConfig.js';

@@ -395,6 +395,97 @@ body {
   background-color: var(--primary-hover);
 }
 
+/* 提取页面文本按钮 */
+.extract-text-button {
+  flex: 1;
+  padding: 8px 12px;
+  background-color: #48bb78;
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.extract-text-button:hover {
+  background-color: #38a169;
+}
+
+.extract-text-button:disabled {
+  background-color: #cbd5e0;
+  cursor: not-allowed;
+}
+
+/* 提取结果展示区 */
+.extract-result {
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 12px;
+  margin-bottom: 10px;
+  max-height: 300px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.extract-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.extract-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-color);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.close-result {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #a0aec0;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.close-result:hover {
+  color: #e53e3e;
+}
+
+.extract-url {
+  font-size: 10px;
+  color: #718096;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extract-content {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-color);
+  background: #f7fafc;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  margin: 0;
+}
+
 .send-button:disabled {
   background-color: #cbd5e0;
   cursor: not-allowed;

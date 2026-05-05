@@ -50,6 +50,21 @@
       placeholder="输入要发送的消息或拖放文件/文件夹到此处"
     ></textarea>
 
+    <!-- 页面文本提取按钮 -->
+    <div class="button-group">
+      <button class="extract-text-button" id="extract-text-button">📄 提取页面文本</button>
+    </div>
+
+    <!-- 提取结果展示区 -->
+    <div class="extract-result" id="extract-result" style="display: none;">
+      <div class="extract-result-header">
+        <span class="extract-title" id="extract-title"></span>
+        <button class="close-result" id="close-result">×</button>
+      </div>
+      <div class="extract-url" id="extract-url"></div>
+      <pre class="extract-content" id="extract-content"></pre>
+    </div>
+
     <!-- 发送按钮 -->
     <div class="button-group">
       <button class="send-button" id="send-button">发送消息</button>

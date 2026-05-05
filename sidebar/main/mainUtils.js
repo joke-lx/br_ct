@@ -37,6 +37,14 @@ let saveTimeout;
 let lastSavedContent = "";
 let isSaving = false;
 
+// 提取页面文本相关变量
+let extractButton;
+let extractResult;
+let extractTitle;
+let extractUrl;
+let extractContent;
+let closeResult;
+
 /**
  * 防抖保存消息内容
  */
@@ -86,6 +94,14 @@ export async function initializePopup() {
     promptOptimizerSelect: document.getElementById("prompt-optimizer-select"),
     openOptionsButton: document.getElementById("open-options"),
   };
+
+  // 提取页面文本相关元素
+  extractButton = document.getElementById("extract-text-button");
+  extractResult = document.getElementById("extract-result");
+  extractTitle = document.getElementById("extract-title");
+  extractUrl = document.getElementById("extract-url");
+  extractContent = document.getElementById("extract-content");
+  closeResult = document.getElementById("close-result");
 
   // 自动聚焦输入框
   focusInputAndSetCursor(elements.messageInput);
@@ -272,6 +288,20 @@ export function setupEventListeners() {
   // 关闭AI标签页按钮
   elements.closeTabsButton.addEventListener("click", closeAllAITabs);
 
+  // 提取页面文本按钮
+  if (extractButton) {
+    extractButton.addEventListener("click", extractPageText);
+  }
+
+  // 关闭提取结果按钮
+  if (closeResult) {
+    closeResult.addEventListener("click", () => {
+      if (extractResult) {
+        extractResult.style.display = "none";
+      }
+    });
+  }
+
   // 打开设置页面按钮
   elements.openOptionsButton.addEventListener("click", () => {
     chrome.runtime.openOptionsPage();
@@ -333,6 +363,55 @@ function closeAllAITabs() {
       elements.closeTabsButton.style.cursor = 'pointer';
     }, 1500);
   });
+}
+
+/**
+ * 提取页面文本
+ */
+async function extractPageText() {
+  if (!extractButton) return;
+
+  const originalText = extractButton.textContent;
+  extractButton.textContent = "提取中...";
+  extractButton.disabled = true;
+
+  try {
+    const response = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { action: "extractPageText" },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(response);
+          }
+        }
+      );
+    });
+
+    if (response && response.status === "success" && response.result) {
+      const data = response.result;
+      if (data.extracted) {
+        // 显示提取结果
+        if (extractResult) extractResult.style.display = "block";
+        if (extractTitle) extractTitle.textContent = data.title || "未获取到标题";
+        if (extractUrl) extractUrl.textContent = data.url || "";
+        if (extractContent) extractContent.textContent = data.text || "未获取到内容";
+
+        showTempMessage(`已提取 ${data.text.length} 字符`, 2000);
+      } else {
+        showTempMessage("提取失败，请刷新页面后重试");
+      }
+    } else {
+      showTempMessage(response?.message || "提取失败");
+    }
+  } catch (error) {
+    console.error("提取页面文本失败:", error);
+    showTempMessage("提取失败: " + (error.message || "未知错误"));
+  } finally {
+    extractButton.textContent = originalText;
+    extractButton.disabled = false;
+  }
 }
 
 /**

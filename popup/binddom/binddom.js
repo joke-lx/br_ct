@@ -261,7 +261,7 @@ function startPick() {
     // 注入拾取器脚本
     chrome.scripting.executeScript({
       target: { tabId: tabs[0].id },
-      files: ['funcs/inject_mod/div_Img_wrapper_binddom.js']
+      files: ['funcs/mods/binddom/div_Img_wrapper_binddom.js']
     }, (results) => {
       if (chrome.runtime.lastError) {
         console.error('[BindDom] 注入失败:', chrome.runtime.lastError.message);
