@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>本地命令管理</title>
+  <link rel="stylesheet" href="../options.css" />
+  <style>
+    .local-cmd-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px 34px;
+    }
+
+    /* Tab 导航 */
+    .tab-nav {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 22px;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 0;
+    }
+
+    .tab-btn {
+      padding: 12px 24px;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 120ms ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--ink);
+      background: rgba(255, 252, 247, 0.5);
+    }
+
+    .tab-btn.active {
+      color: var(--ink);
+      background: rgba(255, 252, 247, 0.9);
+      border-color: var(--line);
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* 命令模板卡片 */
+    .cmd-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 252, 247, 0.72);
+      padding: 18px 20px;
+      margin-bottom: 14px;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+
+    .cmd-card:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .cmd-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .cmd-card-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .cmd-card-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .cmd-card-detail {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px 14px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .cmd-card-detail dt {
+      font-weight: 600;
+      color: rgba(45, 36, 28, 0.7);
+    }
+
+    /* 运行中进程 */
+    .process-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 252, 247, 0.72);
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .process-info {
+      flex: 1;
+    }
+
+    .process-name {
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--ink);
+    }
+
+    .process-meta {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-badge.running {
+      background: rgba(106, 135, 88, 0.15);
+      color: #4c6740;
+    }
+
+    .status-badge.stopped {
+      background: rgba(154, 79, 64, 0.12);
+      color: #7a3025;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .status-dot.running {
+      background: #6a8758;
+    }
+
+    .status-dot.stopped {
+      background: #9a4f40;
+    }
+
+    /* Git 目录卡片 */
+    .git-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 252, 247, 0.72);
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+
+    .git-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .git-card-dir {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .git-card-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .git-status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .git-stat {
+      text-align: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .git-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .git-stat-label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .git-stat-value.clean { color: #6a8758; }
+    .git-stat-value.dirty { color: #9a4f40; }
+
+    /* 弹窗 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(45, 36, 28, 0.3);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--paper);
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      min-width: 480px;
+      max-width: 560px;
+      box-shadow: var(--shadow);
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .modal .form-group {
+      margin-bottom: 16px;
+    }
+
+    .modal .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      color: rgba(45, 36, 28, 0.84);
+    }
+
+    .modal .form-group input,
+    .modal .form-group textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.92);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 120ms ease;
+    }
+
+    .modal .form-group input:focus,
+    .modal .form-group textarea:focus {
+      border-color: rgba(107, 74, 49, 0.34);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+
+    .batch-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 252, 247, 0.72);
+    }
+
+    .batch-bar .section-title {
+      font-size: 16px;
+      margin: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .native-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="local-cmd-container">
+    <header class="page-header">
+      <h1 class="page-title">本地命令管理</h1>
+      <p class="page-description">
+        管理本地命令模板、子进程生命周期，以及多目录 Git 仓库监控与同步。
+      </p>
+      <div class="native-status" style="margin-top: 12px;">
+        <span class="status-dot" id="nativeDot"></span>
+        <span id="nativeStatus">检测中...</span>
+      </div>
+    </header>
+
+    <!-- Tab 导航 -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="commands">命令管理</button>
+      <button class="tab-btn" data-tab="processes">运行中进程</button>
+      <button class="tab-btn" data-tab="git">Git 监控</button>
+    </nav>
+
+    <!-- 命令管理 Tab -->
+    <div class="tab-panel active" id="panel-commands">
+      <div class="toolbar">
+        <h2 class="section-title">命令模板</h2>
+        <button class="btn btn-primary" id="addCmdBtn">+ 新增命令</button>
+      </div>
+      <div id="cmdList"></div>
+    </div>
+
+    <!-- 运行中进程 Tab -->
+    <div class="tab-panel" id="panel-processes">
+      <div class="toolbar">
+        <h2 class="section-title">运行中进程</h2>
+        <button class="btn btn-secondary" id="refreshProcessesBtn">刷新</button>
+      </div>
+      <div id="processList"></div>
+    </div>
+
+    <!-- Git 监控 Tab -->
+    <div class="tab-panel" id="panel-git">
+      <div class="toolbar">
+        <h2 class="section-title">监控目录</h2>
+        <button class="btn btn-primary" id="addGitDirBtn">+ 添加目录</button>
+      </div>
+      <div class="batch-bar">
+        <span class="section-title">批量操作</span>
+        <button class="btn btn-secondary" id="batchRefreshBtn">刷新状态</button>
+        <button class="btn btn-success" id="batchPullBtn">全部 Pull</button>
+        <button class="btn btn-primary" id="batchPushBtn">全部 Push</button>
+      </div>
+      <div id="gitList"></div>
+    </div>
+  </div>
+
+  <!-- 新增/编辑命令弹窗 -->
+  <div class="modal-overlay" id="cmdModal">
+    <div class="modal">
+      <h3 class="modal-title" id="cmdModalTitle">新增命令</h3>
+      <div class="form-group">
+        <label>名称</label>
+        <input type="text" id="cmdName" placeholder="例如：启动前端开发服务器" />
+      </div>
+      <div class="form-group">
+        <label>工作目录</label>
+        <input type="text" id="cmdWorkDir" placeholder="例如：D:\projects\myapp" />
+      </div>
+      <div class="form-group">
+        <label>命令</label>
+        <input type="text" id="cmdCmd" placeholder="例如：npm" />
+      </div>
+      <div class="form-group">
+        <label>参数（空格分隔）</label>
+        <input type="text" id="cmdArgs" placeholder="例如：run dev" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cmdCancelBtn">取消</button>
+        <button class="btn btn-primary" id="cmdSaveBtn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加 Git 目录弹窗 -->
+  <div class="modal-overlay" id="gitDirModal">
+    <div class="modal">
+      <h3 class="modal-title">添加 Git 目录</h3>
+      <div class="form-group">
+        <label>目录名称</label>
+        <input type="text" id="gitDirName" placeholder="例如：主项目" />
+      </div>
+      <div class="form-group">
+        <label>目录路径</label>
+        <input type="text" id="gitDirPath" placeholder="例如：D:\projects\myapp" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="gitDirCancelBtn">取消</button>
+        <button class="btn btn-primary" id="gitDirSaveBtn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="local_cmd.js"></script>
+</body>
+</html>
