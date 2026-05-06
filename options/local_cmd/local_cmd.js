@@ -78,6 +78,28 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+// ========== Toast 提示 ==========
+
+function toast(message, type = 'info', duration = 3000) {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+
+  const sep = message.indexOf('\n');
+  if (sep > 0) {
+    el.innerHTML = `<div class="toast-title">${escapeHtml(message.slice(0, sep))}</div>`
+      + `<div class="toast-body">${escapeHtml(message.slice(sep + 1))}</div>`;
+  } else {
+    el.textContent = message;
+  }
+
+  container.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('hiding');
+    setTimeout(() => el.remove(), 200);
+  }, duration);
+}
+
 // ========== 初始化 ==========
 
 document.addEventListener('DOMContentLoaded', init);
@@ -210,7 +232,7 @@ async function saveCmd() {
   const args = document.getElementById('cmdArgs').value.trim();
 
   if (!name || !workDir || !cmd) {
-    alert('名称、工作目录和命令为必填项');
+    toast('名称、工作目录和命令为必填项', 'warning');
     return;
   }
 
@@ -258,9 +280,9 @@ async function executeCmd(id) {
       cmd: template.cmd,
       args: argsArray,
     });
-    alert(`已启动: ${template.name} (PID: ${resp.data.pid})`);
+    toast(`已启动: ${template.name} (PID: ${resp.data.pid})`, 'success');
   } catch (err) {
-    alert(`启动失败: ${err.message}`);
+    toast(`启动失败: ${err.message}`, 'error');
   }
 }
 
@@ -317,7 +339,7 @@ async function stopProcess(pid) {
     await sendNativeMessage({ command: 'stopProcess', pid });
     loadProcesses();
   } catch (err) {
-    alert(`停止失败: ${err.message}`);
+    toast(`停止失败: ${err.message}`, 'error');
   }
 }
 
@@ -326,7 +348,7 @@ async function removeProcess(pid) {
     await sendNativeMessage({ command: 'removeProcess', pid });
     loadProcesses();
   } catch (err) {
-    alert(`移除失败: ${err.message}`);
+    toast(`移除失败: ${err.message}`, 'error');
   }
 }
 
@@ -380,7 +402,7 @@ async function saveGitDir() {
   const path = document.getElementById('gitDirPath').value.trim();
 
   if (!name || !path) {
-    alert('名称和路径为必填项');
+    toast('名称和路径为必填项', 'warning');
     return;
   }
 
@@ -410,7 +432,7 @@ async function loadGitStatus() {
     gitStatusCache = resp.data || [];
     renderGitStatus(dirs, gitStatusCache);
   } catch (err) {
-    alert('获取 Git 状态失败: ' + err.message);
+    toast('获取 Git 状态失败: ' + err.message, 'error');
   }
 }
 

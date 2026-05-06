@@ -328,6 +328,62 @@
       font-size: 14px;
       color: var(--muted);
     }
+
+    /* Toast 提示 */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      min-width: 280px;
+      max-width: 460px;
+      padding: 14px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.6;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      animation: toastIn 200ms ease;
+      transition: opacity 200ms ease, transform 200ms ease;
+      white-space: pre-line;
+    }
+
+    .toast.hiding {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+
+    .toast-success { border-left: 4px solid #6a8758; }
+    .toast-error   { border-left: 4px solid #9a4f40; }
+    .toast-warning { border-left: 4px solid #b88a4a; }
+    .toast-info    { border-left: 4px solid #5a7ea0; }
+
+    .toast-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .toast-body {
+      font-weight: 400;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(30px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
   </style>
 </head>
 <body>
@@ -429,6 +485,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Toast 容器 -->
+  <div class="toast-container" id="toastContainer"></div>
 
   <script src="local_cmd.js"></script>
 </body>
