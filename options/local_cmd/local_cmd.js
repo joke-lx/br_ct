@@ -418,7 +418,7 @@ async function loadGitDirList() {
         <span class="git-card-dir">${escapeHtml(d.name)} <span style="color:var(--muted);font-weight:400;font-size:14px;">${escapeHtml(d.path)}</span></span>
         <div class="git-card-actions">
           <button class="btn btn-secondary" data-action="git-refresh" data-id="${d.id}">刷新</button>
-          <button class="btn btn-warning" data-action="git-add-commit-pull" data-id="${d.id}">Add+Commit+Pull</button>
+          <button class="btn btn-warning" data-action="git-add-commit-pull" data-id="${d.id}">Refresh</button>
           <button class="btn btn-success" data-action="git-pull" data-id="${d.id}">Pull</button>
           <button class="btn btn-primary" data-action="git-push" data-id="${d.id}">Push</button>
           <button class="btn btn-danger" data-action="git-delete" data-id="${d.id}">移除</button>
