@@ -384,6 +384,19 @@
       from { opacity: 0; transform: translateX(30px); }
       to   { opacity: 1; transform: translateX(0); }
     }
+
+    /* 确认态按钮 */
+    .btn-confirm-pending {
+      background: rgba(154, 79, 64, 0.2) !important;
+      color: #9a4f40 !important;
+      border-color: rgba(154, 79, 64, 0.3) !important;
+      animation: confirmPulse 600ms ease infinite alternate;
+    }
+
+    @keyframes confirmPulse {
+      from { opacity: 0.8; }
+      to   { opacity: 1; }
+    }
   </style>
 </head>
 <body>

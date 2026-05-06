@@ -100,6 +100,33 @@ function toast(message, type = 'info', duration = 3000) {
   }, duration);
 }
 
+// ========== 二次确认机制 ==========
+
+const confirmTimers = new Map();
+
+function needConfirm(btn) {
+  if (btn.dataset.confirmed === 'true') {
+    btn.dataset.confirmed = '';
+    clearTimeout(confirmTimers.get(btn));
+    confirmTimers.delete(btn);
+    btn.textContent = btn.dataset.origText;
+    btn.classList.remove('btn-confirm-pending');
+    return false;
+  }
+  btn.dataset.origText = btn.textContent;
+  btn.dataset.confirmed = 'true';
+  btn.textContent = '确认?';
+  btn.classList.add('btn-confirm-pending');
+  const timer = setTimeout(() => {
+    btn.dataset.confirmed = '';
+    btn.textContent = btn.dataset.origText;
+    btn.classList.remove('btn-confirm-pending');
+    confirmTimers.delete(btn);
+  }, 2500);
+  confirmTimers.set(btn, timer);
+  return true;
+}
+
 // ========== 初始化 ==========
 
 document.addEventListener('DOMContentLoaded', init);
@@ -140,11 +167,11 @@ function setupDelegation() {
       case 'add-cmd': openCmdModal(); break;
       case 'execute-cmd': executeCmd(id); break;
       case 'edit-cmd': editCmd(id); break;
-      case 'delete-cmd': deleteCmd(id); break;
+      case 'delete-cmd': if (needConfirm(btn)) return; deleteCmd(id); break;
 
       // 进程管理
       case 'refresh-processes': loadProcesses(); break;
-      case 'stop-process': stopProcess(pid); break;
+      case 'stop-process': if (needConfirm(btn)) return; stopProcess(pid); break;
       case 'remove-process': removeProcess(pid); break;
 
       // Git
@@ -152,10 +179,10 @@ function setupDelegation() {
       case 'git-refresh': gitRefreshDir(id); break;
       case 'git-pull': gitPullDir(id); break;
       case 'git-push': gitPushDir(id); break;
-      case 'git-delete': deleteGitDir(id); break;
+      case 'git-delete': if (needConfirm(btn)) return; deleteGitDir(id); break;
       case 'git-batch-refresh': loadGitStatus(); break;
       case 'git-batch-pull': batchPull(); break;
-      case 'git-batch-push': batchPush(); break;
+      case 'git-batch-push': if (needConfirm(btn)) return; batchPush(); break;
 
       // 弹窗
       case 'cmd-cancel': closeCmdModal(); break;
@@ -259,7 +286,6 @@ async function editCmd(id) {
 }
 
 async function deleteCmd(id) {
-  if (!confirm('确定删除此命令模板？')) return;
   const templates = await loadStorage(STORAGE_KEYS.commandTemplates);
   await saveStorage(STORAGE_KEYS.commandTemplates, templates.filter(t => t.id !== id));
   loadCommandList();
@@ -334,7 +360,6 @@ async function loadProcesses() {
 }
 
 async function stopProcess(pid) {
-  if (!confirm(`确定停止进程 ${pid}？`)) return;
   try {
     await sendNativeMessage({ command: 'stopProcess', pid });
     loadProcesses();
@@ -414,7 +439,6 @@ async function saveGitDir() {
 }
 
 async function deleteGitDir(id) {
-  if (!confirm('确定移除此监控目录？')) return;
   const dirs = await loadStorage(STORAGE_KEYS.gitMonitoredDirs);
   await saveStorage(STORAGE_KEYS.gitMonitoredDirs, dirs.filter(d => d.id !== id));
   loadGitDirList();
@@ -520,10 +544,11 @@ async function gitPullDir(id) {
   try {
     const resp = await sendNativeMessage({ command: 'gitPull', path: dir.path });
     const result = resp.data;
-    alert(result.success ? `Pull 成功\n${result.output}` : `Pull 失败\n${result.error}\n${result.output}`);
+    toast(result.success ? `Pull 成功\n${result.output}` : `Pull 失败\n${result.error}\n${result.output}`,
+          result.success ? 'success' : 'error');
     gitRefreshDir(id);
   } catch (err) {
-    alert('Pull 失败: ' + err.message);
+    toast('Pull 失败: ' + err.message, 'error');
   }
 }
 
@@ -535,10 +560,11 @@ async function gitPushDir(id) {
   try {
     const resp = await sendNativeMessage({ command: 'gitPush', path: dir.path });
     const result = resp.data;
-    alert(result.success ? `Push 成功\n${result.output}` : `Push 失败\n${result.error}\n${result.output}`);
+    toast(result.success ? `Push 成功\n${result.output}` : `Push 失败\n${result.error}\n${result.output}`,
+          result.success ? 'success' : 'error');
     gitRefreshDir(id);
   } catch (err) {
-    alert('Push 失败: ' + err.message);
+    toast('Push 失败: ' + err.message, 'error');
   }
 }
 
@@ -555,18 +581,17 @@ async function batchPull() {
     const summary = results.map(r =>
       `${r.dir}: ${r.success ? '成功' : '失败 - ' + r.error}`
     ).join('\n');
-    alert('批量 Pull 结果:\n' + summary);
+    const allOk = results.every(r => r.success);
+    toast('批量 Pull 结果:\n' + summary, allOk ? 'success' : 'error', 5000);
     loadGitStatus();
   } catch (err) {
-    alert('批量 Pull 失败: ' + err.message);
+    toast('批量 Pull 失败: ' + err.message, 'error');
   }
 }
 
 async function batchPush() {
   const dirs = await loadStorage(STORAGE_KEYS.gitMonitoredDirs);
   if (dirs.length === 0) return;
-
-  if (!confirm('确定对所有目录执行 Push？')) return;
 
   try {
     const resp = await sendNativeMessage({
@@ -577,9 +602,10 @@ async function batchPush() {
     const summary = results.map(r =>
       `${r.dir}: ${r.success ? '成功' : '失败 - ' + r.error}`
     ).join('\n');
-    alert('批量 Push 结果:\n' + summary);
+    const allOk = results.every(r => r.success);
+    toast('批量 Push 结果:\n' + summary, allOk ? 'success' : 'error', 5000);
     loadGitStatus();
   } catch (err) {
-    alert('批量 Push 失败: ' + err.message);
+    toast('批量 Push 失败: ' + err.message, 'error');
   }
 }
