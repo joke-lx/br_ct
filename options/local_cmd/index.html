@@ -446,24 +446,67 @@
       font-size: 14px;
     }
 
-    /* Skill 卡片列表 */
-    #skillList {
+    /* Skill 管理 - 左右分栏 */
+    .skill-layout {
+      display: flex;
+      gap: 16px;
+      min-height: calc(100vh - 160px);
+    }
+
+    .skill-panel {
+      flex: 1;
+      background: rgba(255, 252, 247, 0.72);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+    }
+
+    .skill-panel-header {
+      padding: 12px 16px;
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .skill-panel-header .panel-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    .skill-panel-header select {
+      padding: 6px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      font-size: 13px;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      max-width: 240px;
+    }
+
+    .skill-panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
     }
 
     .skill-card {
       border: 1px solid var(--line);
       border-radius: var(--radius-md);
       background: rgba(255, 252, 247, 0.72);
-      padding: 16px 18px;
-      transition: box-shadow 120ms ease, transform 120ms ease;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      transition: box-shadow 120ms ease;
     }
 
     .skill-card:hover {
       box-shadow: var(--shadow-soft);
-      transform: translateY(-1px);
     }
 
     .skill-card-header {
@@ -555,20 +598,23 @@
       justify-content: center;
       padding: 40px;
     }
+
+    .native-status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
   </style>
 </head>
 <body>
   <div class="local-cmd-container">
-    <header class="page-header">
-      <h1 class="page-title">本地命令管理</h1>
-      <p class="page-description">
-        管理本地命令模板、子进程生命周期，以及多目录 Git 仓库监控与同步。
-      </p>
-      <div class="native-status" style="margin-top: 12px;">
-        <span class="status-dot" id="nativeDot"></span>
-        <span id="nativeStatus">检测中...</span>
-      </div>
-    </header>
+    <div class="native-status-bar">
+      <span class="status-dot" id="nativeDot"></span>
+      <span id="nativeStatus">检测中...</span>
+    </div>
 
     <!-- Tab 导航 -->
     <nav class="tab-nav">
@@ -616,29 +662,40 @@
       <!-- 配置区 -->
       <div class="skill-config-bar">
         <div class="config-row">
-          <label>中心 Skill 仓库：</label>
+          <label>中心仓库：</label>
           <input type="text" id="skillCentralPath" placeholder="例如：D:\a_other\md\sl">
           <button class="btn btn-secondary" data-action="skill-save-central">保存</button>
         </div>
-        <div class="config-row">
-          <label>监控的 Git 项目：</label>
-          <span id="skillMonitoredCount" class="muted">0 个项目</span>
-          <button class="btn btn-secondary" data-action="skill-open-git-tab">前往 Git 监控</button>
-        </div>
       </div>
 
-      <!-- 操作工具栏 -->
-      <div class="toolbar">
-        <h2 class="section-title">Skills</h2>
-        <div class="action-group">
-          <button class="btn btn-secondary" data-action="skill-refresh">刷新</button>
-          <button class="btn btn-success" data-action="skill-push-all">推送全部到中心</button>
-          <button class="btn btn-warning" data-action="skill-pull-all">从中心拉取全部</button>
+      <!-- 左右分栏 -->
+      <div class="skill-layout">
+        <!-- 左侧：中心仓库 -->
+        <div class="skill-panel">
+          <div class="skill-panel-header">
+            <span class="panel-title">中心仓库</span>
+            <span class="muted" id="centralCount">0 个 Skill</span>
+          </div>
+          <div class="skill-panel-body" id="centralSkillList">
+            <div class="skill-loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- 右侧：项目 -->
+        <div class="skill-panel">
+          <div class="skill-panel-header">
+            <span class="panel-title">项目</span>
+            <select id="skillProjectSelect">
+              <option value="">-- 选择项目 --</option>
+            </select>
+            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" data-action="skill-add-project">+ 添加</button>
+            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" data-action="skill-import-from-git">从 Git 导入</button>
+          </div>
+          <div class="skill-panel-body" id="projectSkillList">
+            <div class="skill-empty"><p>从左侧选择一个 Skill 进行操作</p></div>
+          </div>
         </div>
       </div>
-
-      <!-- Skill 列表 -->
-      <div id="skillList"></div>
     </div>
   </div>
 
@@ -684,6 +741,25 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" data-action="gitdir-cancel">取消</button>
         <button class="btn btn-primary" data-action="gitdir-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加 Skill 项目目录弹窗 -->
+  <div class="modal-overlay" id="skillProjectModal">
+    <div class="modal">
+      <h3 class="modal-title">添加 Skill 项目</h3>
+      <div class="form-group">
+        <label>项目名称</label>
+        <input type="text" id="skillProjectName" placeholder="例如：主项目" />
+      </div>
+      <div class="form-group">
+        <label>目录路径</label>
+        <input type="text" id="skillProjectPath" placeholder="例如：D:\projects\myapp" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-action="skill-project-cancel">取消</button>
+        <button class="btn btn-primary" data-action="skill-project-save">保存</button>
       </div>
     </div>
   </div>
