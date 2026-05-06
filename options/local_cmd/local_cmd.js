@@ -306,7 +306,7 @@ async function executeCmd(id) {
       cmd: template.cmd,
       args: argsArray,
     });
-    toast(`已启动: ${template.name} (PID: ${resp.data.pid})`, 'success');
+    toast(`已启动: ${template.name} (PID: ${resp.data.pid})\n日志: ${resp.data.logFile || '无'}`, 'success');
   } catch (err) {
     toast(`启动失败: ${err.message}`, 'error');
   }
@@ -336,6 +336,7 @@ async function loadProcesses() {
           <div class="process-name">${escapeHtml(p.name || p.cmd)}</div>
           <div class="process-meta">
             PID: ${p.pid} | 目录: ${escapeHtml(p.workDir || '-')} | 命令: ${escapeHtml(p.cmd)} ${(p.args || []).join(' ')} | 启动时间: ${formatTime(p.startTime)}
+            ${p.logFile ? `<br>日志: <a href="file://${p.logFile.replace(/\\/g, '/')}" target="_blank" style="color:var(--accent-deep);">${escapeHtml(p.logFile)}</a>` : ''}
           </div>
         </div>
         <span class="status-badge ${p.running ? 'running' : 'stopped'}">

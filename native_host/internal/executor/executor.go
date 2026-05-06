@@ -16,8 +16,9 @@ type ProcessInfo struct {
 	Pid       int       `json:"pid"`
 	Name      string    `json:"name"`
 	Cmd       string    `json:"cmd"`
-	Args      []string  `json:"args"`
+	Args      []string `json:"args"`
 	WorkDir   string    `json:"workDir"`
+	LogFile   string    `json:"logFile"`
 	StartTime time.Time `json:"startTime"`
 }
 
@@ -35,6 +36,16 @@ func init() {
 
 func stateFilePath() string {
 	return filepath.Join(stateDir, "processes.json")
+}
+
+func logsDirPath() string {
+	return filepath.Join(stateDir, "logs")
+}
+
+func ensureLogsDir() error {
+	dir := logsDirPath()
+	os.MkdirAll(dir, 0755)
+	return nil
 }
 
 func loadProcesses() ([]ProcessInfo, error) {
@@ -75,28 +86,37 @@ func StartProcess(req protocol.Request) protocol.Response {
 		args = []string{}
 	}
 
+	if err := ensureLogsDir(); err != nil {
+		return protocol.Response{Status: "error", Message: fmt.Sprintf("创建日志目录失败: %v", err)}
+	}
+
+	// 生成日志文件名: {Name}_{Pid}_{Unix时间戳}.log
+	logName := fmt.Sprintf("%s_%d_%d.log", sanitizeFileName(req.Name), os.Getpid(), time.Now().Unix())
+	logPath := filepath.Join(logsDirPath(), logName)
+
 	cmd := exec.Command(req.Cmd, args...)
 	cmd.Dir = req.WorkDir
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
 	}
 
-	// Redirect output to NUL to avoid corrupting native messaging protocol
-	devNull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
-	if err == nil {
-		cmd.Stdout = devNull
-		cmd.Stderr = devNull
+	// 打开日志文件捕获 stdout 和 stderr
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		return protocol.Response{Status: "error", Message: fmt.Sprintf("创建日志文件失败: %v", err)}
 	}
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
 
 	if err := cmd.Start(); err != nil {
+		logFile.Close()
+		os.Remove(logPath)
 		return protocol.Response{Status: "error", Message: fmt.Sprintf("启动失败: %v", err)}
 	}
 
 	pid := cmd.Process.Pid
 	cmd.Process.Release()
-	if devNull != nil {
-		devNull.Close()
-	}
+	logFile.Close()
 
 	info := ProcessInfo{
 		Pid:       pid,
@@ -104,6 +124,7 @@ func StartProcess(req protocol.Request) protocol.Response {
 		Cmd:       req.Cmd,
 		Args:      args,
 		WorkDir:   req.WorkDir,
+		LogFile:   logPath,
 		StartTime: time.Now(),
 	}
 
@@ -129,7 +150,7 @@ func StopProcess(req protocol.Request) protocol.Response {
 		return protocol.Response{Status: "error", Message: fmt.Sprintf("停止失败: %v", err)}
 	}
 
-	// Remove from state file
+	// 从状态文件移除
 	processes, _ := loadProcesses()
 	var remaining []ProcessInfo
 	for _, p := range processes {
@@ -169,4 +190,25 @@ func RemoveProcess(req protocol.Request) protocol.Response {
 	}
 	saveProcesses(remaining)
 	return protocol.Response{Status: "ok", Message: "已从列表移除"}
+}
+
+// sanitizeFileName 替换文件名中的非法字符
+func sanitizeFileName(name string) string {
+	const illegalChars = `/:\*?"<>|`
+	for _, c := range illegalChars {
+		name = replaceChar(name, c, '_')
+	}
+	return name
+}
+
+func replaceChar(s string, old rune, new rune) string {
+	out := make([]rune, len(s))
+	for i, r := range s {
+		if r == old {
+			out[i] = new
+		} else {
+			out[i] = r
+		}
+	}
+	return string(out)
 }
