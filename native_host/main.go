@@ -45,6 +45,7 @@ func main() {
 	registry.Register("gitBatchStatus", gitmon.GitBatchStatus)
 	registry.Register("gitBatchPull", gitmon.GitBatchPull)
 	registry.Register("gitBatchPush", gitmon.GitBatchPush)
+	registry.Register("gitAutoCommitAndPull", gitmon.GitAutoCommitAndPull)
 
 	// 消息循环
 	stdin := os.Stdin

@@ -21,6 +21,7 @@ type Request struct {
 	Name      string   `json:"name,omitempty"`
 	Src       string   `json:"src,omitempty"`
 	DstParent string   `json:"dstParent,omitempty"`
+	Message   string   `json:"message,omitempty"`
 }
 
 type Response struct {

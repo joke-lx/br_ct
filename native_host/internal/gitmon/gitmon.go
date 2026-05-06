@@ -105,6 +105,50 @@ func GitBatchPush(req protocol.Request) protocol.Response {
 	return protocol.Response{Status: "ok", Data: results}
 }
 
+// GitAutoCommitAndPull 执行 git add . && git commit -m "msg" && git pull
+func GitAutoCommitAndPull(req protocol.Request) protocol.Response {
+	dir := req.Path
+	message := req.Message
+	if message == "" {
+		message = "extension pull"
+	}
+
+	result := GitOperationResult{Dir: dir}
+
+	// 1. git add .
+	addOut, err := runGit(dir, "add", ".")
+	if err != nil {
+		result.Error = fmt.Sprintf("git add 失败: %v\n%v", err, addOut)
+		return protocol.Response{Status: "ok", Data: result}
+	}
+
+	// 2. 检查是否有变更需要提交
+	statusOut, _ := runGit(dir, "status", "--porcelain")
+	if strings.TrimSpace(statusOut) == "" {
+		result.Output = "No changes to commit"
+		result.Success = true
+		return protocol.Response{Status: "ok", Data: result}
+	}
+
+	// 3. git commit
+	commitOut, err := runGit(dir, "commit", "-m", message)
+	if err != nil {
+		result.Error = fmt.Sprintf("git commit 失败: %v\n%v", err, commitOut)
+		return protocol.Response{Status: "ok", Data: result}
+	}
+	result.Output = commitOut + "\n"
+
+	// 4. git pull
+	pullOut, err := runGit(dir, "pull")
+	if err != nil {
+		result.Error = result.Output + fmt.Sprintf("git pull 失败: %v\n%v", err, pullOut)
+		return protocol.Response{Status: "ok", Data: result}
+	}
+	result.Output += pullOut
+	result.Success = true
+	return protocol.Response{Status: "ok", Data: result}
+}
+
 func gitStatusForDir(dir string) GitStatusInfo {
 	info := GitStatusInfo{Dir: dir}
 
