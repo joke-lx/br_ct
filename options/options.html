@@ -8,13 +8,19 @@
   </head>
   <body>
     <div class="app-container">
-      <aside class="sidebar">
+      <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
           <h1>Options</h1>
-          <button class="collapse-btn" id="sidebar-collapse-btn" title="收起侧边栏">
-            <span class="collapse-icon">◀</span>
-          </button>
+          <div class="header-buttons">
+            <button class="collapse-btn" id="sidebar-collapse-btn" title="收起侧边栏">
+              <span class="collapse-icon">◀</span>
+            </button>
+            <button class="focus-btn" id="focus-btn" title="专注模式">
+              <span class="focus-icon">◎</span>
+            </button>
+          </div>
         </div>
+
         <nav class="sidebar-nav">
           <div class="nav-item active" data-page="platform/index.html">
             <span class="nav-icon">PL</span>
@@ -64,5 +70,23 @@
     </div>
 
     <script src="options.js"></script>
+
+    <!-- 悬浮点导航 -->
+    <div class="dot-nav" id="dot-nav">
+      <div class="dot-nav-dots" id="dot-nav-dots">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+      <div class="dot-nav-items" id="dot-nav-items">
+        <!-- 导航项通过 JS 动态创建 -->
+      </div>
+    </div>
   </body>
 </html>
