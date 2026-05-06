@@ -354,7 +354,7 @@
     <div class="tab-panel active" id="panel-commands">
       <div class="toolbar">
         <h2 class="section-title">命令模板</h2>
-        <button class="btn btn-primary" id="addCmdBtn">+ 新增命令</button>
+        <button class="btn btn-primary" data-action="add-cmd">+ 新增命令</button>
       </div>
       <div id="cmdList"></div>
     </div>
@@ -363,7 +363,7 @@
     <div class="tab-panel" id="panel-processes">
       <div class="toolbar">
         <h2 class="section-title">运行中进程</h2>
-        <button class="btn btn-secondary" id="refreshProcessesBtn">刷新</button>
+        <button class="btn btn-secondary" data-action="refresh-processes">刷新</button>
       </div>
       <div id="processList"></div>
     </div>
@@ -372,13 +372,13 @@
     <div class="tab-panel" id="panel-git">
       <div class="toolbar">
         <h2 class="section-title">监控目录</h2>
-        <button class="btn btn-primary" id="addGitDirBtn">+ 添加目录</button>
+        <button class="btn btn-primary" data-action="add-git-dir">+ 添加目录</button>
       </div>
       <div class="batch-bar">
         <span class="section-title">批量操作</span>
-        <button class="btn btn-secondary" id="batchRefreshBtn">刷新状态</button>
-        <button class="btn btn-success" id="batchPullBtn">全部 Pull</button>
-        <button class="btn btn-primary" id="batchPushBtn">全部 Push</button>
+        <button class="btn btn-secondary" data-action="git-batch-refresh">刷新状态</button>
+        <button class="btn btn-success" data-action="git-batch-pull">全部 Pull</button>
+        <button class="btn btn-primary" data-action="git-batch-push">全部 Push</button>
       </div>
       <div id="gitList"></div>
     </div>
@@ -405,8 +405,8 @@
         <input type="text" id="cmdArgs" placeholder="例如：run dev" />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="cmdCancelBtn">取消</button>
-        <button class="btn btn-primary" id="cmdSaveBtn">保存</button>
+        <button class="btn btn-secondary" data-action="cmd-cancel">取消</button>
+        <button class="btn btn-primary" data-action="cmd-save">保存</button>
       </div>
     </div>
   </div>
@@ -424,8 +424,8 @@
         <input type="text" id="gitDirPath" placeholder="例如：D:\projects\myapp" />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="gitDirCancelBtn">取消</button>
-        <button class="btn btn-primary" id="gitDirSaveBtn">保存</button>
+        <button class="btn btn-secondary" data-action="gitdir-cancel">取消</button>
+        <button class="btn btn-primary" data-action="gitdir-save">保存</button>
       </div>
     </div>
   </div>

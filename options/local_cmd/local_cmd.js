@@ -1,41 +1,52 @@
 /**
  * 本地命令管理 - 命令模板 + 子进程管理 + Git 监控
+ * 通过 background native_relay 中转通信（单例 native host）
  */
 
-const NATIVE_HOST = 'com.brochat.prompts_editor';
 const STORAGE_KEYS = {
   commandTemplates: 'commandTemplates',
   gitMonitoredDirs: 'gitMonitoredDirs',
 };
 
+// ========== Native Host 通信（通过 background 中继）==========
+
+function sendNativeMessage(payload) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ action: 'nativeMessage', payload }, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      if (!response) {
+        reject(new Error('Native host 无响应'));
+        return;
+      }
+      if (response.status === 'error') {
+        reject(new Error(response.message || '操作失败'));
+        return;
+      }
+      resolve(response);
+    });
+  });
+}
+
+async function checkNativeHost() {
+  const dot = document.getElementById('nativeDot');
+  const status = document.getElementById('nativeStatus');
+  try {
+    await sendNativeMessage({ command: 'listProcesses' });
+    dot.className = 'status-dot running';
+    status.textContent = 'Native Host 已连接';
+  } catch (err) {
+    dot.className = 'status-dot stopped';
+    status.textContent = 'Native Host 未连接 - ' + err.message;
+  }
+}
+
 // ========== 工具函数 ==========
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
-
-function sendNativeMessage(message) {
-  return new Promise((resolve, reject) => {
-    try {
-      chrome.runtime.sendNativeMessage(NATIVE_HOST, message, (response) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
-        }
-        if (!response) {
-          reject(new Error('Native host 无响应'));
-          return;
-        }
-        if (response.status === 'error') {
-          reject(new Error(response.message || '操作失败'));
-          return;
-        }
-        resolve(response);
-      });
-    } catch (err) {
-      reject(err);
-    }
-  });
 }
 
 function loadStorage(key) {
@@ -58,43 +69,86 @@ function formatTime(dateStr) {
   return d.toLocaleString('zh-CN', { hour12: false });
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // ========== 初始化 ==========
 
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
+  setupDelegation();
   checkNativeHost();
-  initTabs();
-  initCommandTab();
-  initProcessTab();
-  initGitTab();
+  loadCommandList();
+  loadGitDirList();
 }
 
-async function checkNativeHost() {
-  const dot = document.getElementById('nativeDot');
-  const status = document.getElementById('nativeStatus');
-  try {
-    await sendNativeMessage({ command: 'listProcesses' });
-    dot.className = 'status-dot running';
-    status.textContent = 'Native Host 已连接';
-  } catch (err) {
-    dot.className = 'status-dot stopped';
-    status.textContent = 'Native Host 未连接 - ' + err.message;
-  }
-}
+// ========== 全局事件委托 ==========
 
-// ========== Tab 切换 ==========
-
-function initTabs() {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+function setupDelegation() {
+  document.addEventListener('click', (e) => {
+    // Tab 切换
+    const tabBtn = e.target.closest('.tab-btn');
+    if (tabBtn && tabBtn.dataset.tab) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      tabBtn.classList.add('active');
+      const panel = document.getElementById('panel-' + tabBtn.dataset.tab);
+      if (panel) panel.classList.add('active');
+      if (tabBtn.dataset.tab === 'processes') loadProcesses();
+      if (tabBtn.dataset.tab === 'git') loadGitStatus();
+      return;
+    }
 
-      if (btn.dataset.tab === 'processes') loadProcesses();
-      if (btn.dataset.tab === 'git') loadGitStatus();
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+    const pid = parseInt(btn.dataset.pid, 10);
+
+    switch (action) {
+      // 命令管理
+      case 'add-cmd': openCmdModal(); break;
+      case 'execute-cmd': executeCmd(id); break;
+      case 'edit-cmd': editCmd(id); break;
+      case 'delete-cmd': deleteCmd(id); break;
+
+      // 进程管理
+      case 'refresh-processes': loadProcesses(); break;
+      case 'stop-process': stopProcess(pid); break;
+      case 'remove-process': removeProcess(pid); break;
+
+      // Git
+      case 'add-git-dir': openGitDirModal(); break;
+      case 'git-refresh': gitRefreshDir(id); break;
+      case 'git-pull': gitPullDir(id); break;
+      case 'git-push': gitPushDir(id); break;
+      case 'git-delete': deleteGitDir(id); break;
+      case 'git-batch-refresh': loadGitStatus(); break;
+      case 'git-batch-pull': batchPull(); break;
+      case 'git-batch-push': batchPush(); break;
+
+      // 弹窗
+      case 'cmd-cancel': closeCmdModal(); break;
+      case 'cmd-save': saveCmd(); break;
+      case 'gitdir-cancel': closeGitDirModal(); break;
+      case 'gitdir-save': saveGitDir(); break;
+    }
+  });
+
+  // 弹窗背景点击关闭
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('show');
+      }
     });
   });
 }
@@ -102,16 +156,6 @@ function initTabs() {
 // ========== 命令管理 ==========
 
 let editingCmdId = null;
-
-function initCommandTab() {
-  document.getElementById('addCmdBtn').addEventListener('click', () => openCmdModal());
-  document.getElementById('cmdCancelBtn').addEventListener('click', closeCmdModal);
-  document.getElementById('cmdSaveBtn').addEventListener('click', saveCmd);
-  document.getElementById('cmdModal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) closeCmdModal();
-  });
-  loadCommandList();
-}
 
 async function loadCommandList() {
   const templates = await loadStorage(STORAGE_KEYS.commandTemplates);
@@ -121,7 +165,7 @@ async function loadCommandList() {
     container.innerHTML = `
       <div class="empty-state">
         <p>暂无命令模板</p>
-        <button class="btn btn-primary" onclick="openCmdModal()">添加第一个命令</button>
+        <button class="btn btn-primary" data-action="add-cmd">添加第一个命令</button>
       </div>`;
     return;
   }
@@ -131,9 +175,9 @@ async function loadCommandList() {
       <div class="cmd-card-header">
         <span class="cmd-card-name">${escapeHtml(t.name)}</span>
         <div class="cmd-card-actions">
-          <button class="btn btn-success" onclick="executeCmd('${t.id}')">启动</button>
-          <button class="btn btn-edit" onclick="editCmd('${t.id}')">编辑</button>
-          <button class="btn btn-danger" onclick="deleteCmd('${t.id}')">删除</button>
+          <button class="btn btn-success" data-action="execute-cmd" data-id="${t.id}">启动</button>
+          <button class="btn btn-edit" data-action="edit-cmd" data-id="${t.id}">编辑</button>
+          <button class="btn btn-danger" data-action="delete-cmd" data-id="${t.id}">删除</button>
         </div>
       </div>
       <dl class="cmd-card-detail">
@@ -222,10 +266,6 @@ async function executeCmd(id) {
 
 // ========== 子进程管理 ==========
 
-function initProcessTab() {
-  document.getElementById('refreshProcessesBtn').addEventListener('click', loadProcesses);
-}
-
 async function loadProcesses() {
   const container = document.getElementById('processList');
 
@@ -256,8 +296,8 @@ async function loadProcesses() {
         </span>
         <div style="display:flex; gap:8px;">
           ${p.running
-            ? `<button class="btn btn-danger" onclick="stopProcess(${p.pid})">停止</button>`
-            : `<button class="btn btn-secondary" onclick="removeProcess(${p.pid})">移除</button>`
+            ? `<button class="btn btn-danger" data-action="stop-process" data-pid="${p.pid}">停止</button>`
+            : `<button class="btn btn-secondary" data-action="remove-process" data-pid="${p.pid}">移除</button>`
           }
         </div>
       </div>
@@ -294,19 +334,6 @@ async function removeProcess(pid) {
 
 let gitStatusCache = [];
 
-function initGitTab() {
-  document.getElementById('addGitDirBtn').addEventListener('click', () => openGitDirModal());
-  document.getElementById('gitDirCancelBtn').addEventListener('click', closeGitDirModal);
-  document.getElementById('gitDirSaveBtn').addEventListener('click', saveGitDir);
-  document.getElementById('gitDirModal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) closeGitDirModal();
-  });
-  document.getElementById('batchRefreshBtn').addEventListener('click', loadGitStatus);
-  document.getElementById('batchPullBtn').addEventListener('click', batchPull);
-  document.getElementById('batchPushBtn').addEventListener('click', batchPush);
-  loadGitDirList();
-}
-
 async function loadGitDirList() {
   const dirs = await loadStorage(STORAGE_KEYS.gitMonitoredDirs);
   const container = document.getElementById('gitList');
@@ -315,7 +342,7 @@ async function loadGitDirList() {
     container.innerHTML = `
       <div class="empty-state">
         <p>暂无监控目录</p>
-        <button class="btn btn-primary" onclick="openGitDirModal()">添加第一个目录</button>
+        <button class="btn btn-primary" data-action="add-git-dir">添加第一个目录</button>
       </div>`;
     return;
   }
@@ -325,10 +352,10 @@ async function loadGitDirList() {
       <div class="git-card-header">
         <span class="git-card-dir">${escapeHtml(d.name)} <span style="color:var(--muted);font-weight:400;font-size:14px;">${escapeHtml(d.path)}</span></span>
         <div class="git-card-actions">
-          <button class="btn btn-secondary" onclick="gitRefreshDir('${d.id}')">刷新</button>
-          <button class="btn btn-success" onclick="gitPullDir('${d.id}')">Pull</button>
-          <button class="btn btn-primary" onclick="gitPushDir('${d.id}')">Push</button>
-          <button class="btn btn-danger" onclick="deleteGitDir('${d.id}')">移除</button>
+          <button class="btn btn-secondary" data-action="git-refresh" data-id="${d.id}">刷新</button>
+          <button class="btn btn-success" data-action="git-pull" data-id="${d.id}">Pull</button>
+          <button class="btn btn-primary" data-action="git-push" data-id="${d.id}">Push</button>
+          <button class="btn btn-danger" data-action="git-delete" data-id="${d.id}">移除</button>
         </div>
       </div>
       <div class="git-status-area" id="git-status-${d.id}">
@@ -533,15 +560,4 @@ async function batchPush() {
   } catch (err) {
     alert('批量 Push 失败: ' + err.message);
   }
-}
-
-// ========== 工具 ==========
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }

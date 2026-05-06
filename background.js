@@ -58,3 +58,8 @@ console.log('[Background] HtmlTextReader 模块初始化完成');
 // 初始化划词快捷提问配置
 import { initSelectionAskConfig } from './backgroudtask/selectionAskConfig.js';
 initSelectionAskConfig();
+
+// 初始化 Native Host 中继（单例连接，所有页面共享）
+import { setupNativeRelay } from './backgroudtask/native_relay/index.js';
+setupNativeRelay();
+console.log('[Background] NativeRelay 中继初始化完成');
