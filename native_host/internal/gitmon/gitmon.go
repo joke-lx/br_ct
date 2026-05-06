@@ -105,8 +105,8 @@ func GitBatchPush(req protocol.Request) protocol.Response {
 	return protocol.Response{Status: "ok", Data: results}
 }
 
-// GitAutoCommitAndPull 执行 git add . && git commit -m "msg" && git pull
-func GitAutoCommitAndPull(req protocol.Request) protocol.Response {
+// GitAutoCommitAndPush 执行 git add . && git commit -m "msg" && git push
+func GitAutoCommitAndPush(req protocol.Request) protocol.Response {
 	dir := req.Path
 	message := req.Message
 	if message == "" {
@@ -138,13 +138,13 @@ func GitAutoCommitAndPull(req protocol.Request) protocol.Response {
 	}
 	result.Output = commitOut + "\n"
 
-	// 4. git pull
-	pullOut, err := runGit(dir, "pull")
+	// 4. git push
+	pushOut, err := runGit(dir, "push")
 	if err != nil {
-		result.Error = result.Output + fmt.Sprintf("git pull 失败: %v\n%v", err, pullOut)
+		result.Error = result.Output + fmt.Sprintf("git push 失败: %v\n%v", err, pushOut)
 		return protocol.Response{Status: "ok", Data: result}
 	}
-	result.Output += pullOut
+	result.Output += pushOut
 	result.Success = true
 	return protocol.Response{Status: "ok", Data: result}
 }
