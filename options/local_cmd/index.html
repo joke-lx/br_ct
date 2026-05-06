@@ -399,6 +399,162 @@
       from { opacity: 0.8; }
       to   { opacity: 1; }
     }
+
+    /* Skill 管理面板 */
+    .skill-config-bar {
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 252, 247, 0.72);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .skill-config-bar .config-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .skill-config-bar .config-row label {
+      font-weight: 600;
+      font-size: 14px;
+      color: rgba(45, 36, 28, 0.84);
+      min-width: 100px;
+    }
+
+    .skill-config-bar .config-row input {
+      flex: 1;
+      min-width: 200px;
+      padding: 8px 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      font-size: 14px;
+      background: rgba(255, 255, 255, 0.92);
+      outline: none;
+    }
+
+    .skill-config-bar .config-row input:focus {
+      border-color: rgba(107, 74, 49, 0.34);
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Skill 卡片列表 */
+    #skillList {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .skill-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 252, 247, 0.72);
+      padding: 16px 18px;
+      transition: box-shadow 120ms ease, transform 120ms ease;
+    }
+
+    .skill-card:hover {
+      box-shadow: var(--shadow-soft);
+      transform: translateY(-1px);
+    }
+
+    .skill-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+      gap: 12px;
+    }
+
+    .skill-card-title {
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--ink);
+    }
+
+    .skill-card-tags {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .source-tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .source-tag.central {
+      background: rgba(107, 74, 49, 0.12);
+      color: #7a3025;
+    }
+
+    .source-tag.local {
+      background: rgba(106, 135, 88, 0.15);
+      color: #4c6740;
+    }
+
+    .source-tag.both {
+      background: rgba(107, 135, 160, 0.15);
+      color: #3a5f7a;
+    }
+
+    .source-tag.synced {
+      background: rgba(106, 135, 88, 0.15);
+      color: #4c6740;
+    }
+
+    .source-tag.conflict {
+      background: rgba(184, 138, 74, 0.15);
+      color: #8a6428;
+    }
+
+    .skill-card-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .skill-card-path {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      word-break: break-all;
+    }
+
+    .skill-card-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .skill-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .skill-empty p {
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
+
+    .skill-loading {
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+    }
   </style>
 </head>
 <body>
@@ -419,6 +575,7 @@
       <button class="tab-btn active" data-tab="commands">命令管理</button>
       <button class="tab-btn" data-tab="processes">运行中进程</button>
       <button class="tab-btn" data-tab="git">Git 监控</button>
+      <button class="tab-btn" data-tab="skills">Skill 管理</button>
     </nav>
 
     <!-- 命令管理 Tab -->
@@ -452,6 +609,36 @@
         <button class="btn btn-primary" data-action="git-batch-push">全部 Push</button>
       </div>
       <div id="gitList"></div>
+    </div>
+
+    <!-- Skill 管理 Tab -->
+    <div class="tab-panel" id="panel-skills">
+      <!-- 配置区 -->
+      <div class="skill-config-bar">
+        <div class="config-row">
+          <label>中心 Skill 仓库：</label>
+          <input type="text" id="skillCentralPath" placeholder="例如：D:\a_other\md\sl">
+          <button class="btn btn-secondary" data-action="skill-save-central">保存</button>
+        </div>
+        <div class="config-row">
+          <label>监控的 Git 项目：</label>
+          <span id="skillMonitoredCount" class="muted">0 个项目</span>
+          <button class="btn btn-secondary" data-action="skill-open-git-tab">前往 Git 监控</button>
+        </div>
+      </div>
+
+      <!-- 操作工具栏 -->
+      <div class="toolbar">
+        <h2 class="section-title">Skills</h2>
+        <div class="action-group">
+          <button class="btn btn-secondary" data-action="skill-refresh">刷新</button>
+          <button class="btn btn-success" data-action="skill-push-all">推送全部到中心</button>
+          <button class="btn btn-warning" data-action="skill-pull-all">从中心拉取全部</button>
+        </div>
+      </div>
+
+      <!-- Skill 列表 -->
+      <div id="skillList"></div>
     </div>
   </div>
 

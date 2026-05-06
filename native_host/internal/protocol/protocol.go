@@ -9,16 +9,18 @@ import (
 )
 
 type Request struct {
-	Command  string   `json:"command"`
-	Path     string   `json:"path,omitempty"`
-	Content  string   `json:"content,omitempty"`
-	FileName string   `json:"fileName,omitempty"`
-	WorkDir  string   `json:"workDir,omitempty"`
-	Cmd      string   `json:"cmd,omitempty"`
-	Args     []string `json:"args,omitempty"`
-	Pid      int      `json:"pid,omitempty"`
-	Dirs     []string `json:"dirs,omitempty"`
-	Name     string   `json:"name,omitempty"`
+	Command   string   `json:"command"`
+	Path      string   `json:"path,omitempty"`
+	Content   string   `json:"content,omitempty"`
+	FileName  string   `json:"fileName,omitempty"`
+	WorkDir   string   `json:"workDir,omitempty"`
+	Cmd       string   `json:"cmd,omitempty"`
+	Args      []string `json:"args,omitempty"`
+	Pid       int      `json:"pid,omitempty"`
+	Dirs      []string `json:"dirs,omitempty"`
+	Name      string   `json:"name,omitempty"`
+	Src       string   `json:"src,omitempty"`
+	DstParent string   `json:"dstParent,omitempty"`
 }
 
 type Response struct {

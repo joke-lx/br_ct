@@ -23,6 +23,8 @@ func main() {
 	registry.Register("readFile", fileops.ReadFile)
 	registry.Register("writeFile", fileops.WriteFile)
 	registry.Register("listDir", fileops.ListDir)
+	registry.Register("scanSkills", fileops.ScanSkills)
+	registry.Register("syncSkillDir", fileops.SyncSkillDir)
 
 	// 提示词
 	registry.Register("parsePrompts", prompts.ParsePromptsFile)
