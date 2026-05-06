@@ -188,7 +188,6 @@ function setupDelegation() {
       case 'git-batch-refresh': loadGitStatus(); break;
       case 'git-batch-pull': batchPull(); break;
       case 'git-batch-push': if (needConfirm(btn)) return; batchPush(); break;
-      case 'git-batch-add-commit-pull': batchAddCommitPush(); break;
 
       // Skills
       case 'skill-save-central': saveSkillCentralPath(); break;
@@ -418,15 +417,15 @@ async function loadGitDirList() {
       <div class="git-card-header">
         <span class="git-card-dir">${escapeHtml(d.name)} <span style="color:var(--muted);font-weight:400;font-size:14px;">${escapeHtml(d.path)}</span></span>
         <div class="git-card-actions">
-          <button class="btn btn-warning" data-action="git-add-commit-pull" data-id="${d.id}">Refresh</button>
-          <button class="btn btn-secondary" data-action="git-refresh" data-id="${d.id}">刷新</button>
+          <button class="btn btn-secondary" data-action="git-refresh" data-id="${d.id}">刷新状态</button>
+          <button class="btn btn-warning" data-action="git-add-commit-pull" data-id="${d.id}">推送云端</button>
           <button class="btn btn-success" data-action="git-pull" data-id="${d.id}">Pull</button>
           <button class="btn btn-primary" data-action="git-push" data-id="${d.id}">Push</button>
           <button class="btn btn-danger" data-action="git-delete" data-id="${d.id}">移除</button>
         </div>
       </div>
       <div class="git-status-area" id="git-status-${d.id}">
-        <span style="color:var(--muted);font-size:14px;">点击"刷新"查看状态</span>
+        <span style="color:var(--muted);font-size:14px;">点击"刷新状态"查看</span>
       </div>
     </div>
   `).join('');
@@ -601,7 +600,7 @@ async function gitAddCommitPush(id) {
     });
     const result = resp.data;
     toast(result.success
-      ? `Add+Commit+Push 成功\n${result.output}`
+      ? `推送云端成功\n${result.output}`
       : `失败\n${result.error || ''}\n${result.output}`,
           result.success ? 'success' : 'error');
     gitRefreshDir(id);
@@ -650,39 +649,6 @@ async function batchPush() {
   } catch (err) {
     toast('批量 Push 失败: ' + err.message, 'error');
   }
-}
-
-async function batchAddCommitPush() {
-  const dirs = await loadStorage(STORAGE_KEYS.gitMonitoredDirs);
-  if (dirs.length === 0) return;
-
-  const results = [];
-  for (const dir of dirs) {
-    try {
-      const resp = await sendNativeMessage({
-        command: 'gitAutoCommitAndPush',
-        path: dir.path,
-        message: 'extension pull',
-      });
-      results.push({
-        name: dir.name,
-        ...resp.data,
-      });
-    } catch (err) {
-      results.push({
-        name: dir.name,
-        success: false,
-        error: err.message,
-      });
-    }
-  }
-
-  const summary = results.map(r =>
-    `${r.name}: ${r.success ? '成功' : '失败 - ' + (r.error || '')}`
-  ).join('\n');
-  const allOk = results.every(r => r.success);
-  toast('Add+Commit+Push 结果:\n' + summary, allOk ? 'success' : 'error', 6000);
-  loadGitStatus();
 }
 
 // ========== Skills 管理 ==========
