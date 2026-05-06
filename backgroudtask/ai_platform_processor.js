@@ -6,6 +6,16 @@ import { getPlatformUrls } from '../config/platformConfig.js';
 // 存储 AI 平台的 URL 映射，并导出
 export const platformUrls = getPlatformUrls();
 
+function getPlatformScriptFiles(platform) {
+    const files = [`contentScripts/${platform}.js`];
+
+    if (platform === 'chatgpt') {
+        files.push('contentScripts/chatgptResponseListener.js');
+    }
+
+    return files;
+}
+
 // ==================== 原有的串行处理逻辑（保持不变） ====================
 
 /**
@@ -32,11 +42,11 @@ function completeTask(action) {
  * @param {object} action 当前任务对象
  */
 function executeScriptForPlatform(tabId, action) {
-    const scriptFile = `contentScripts/${action.platform}.js`;
+    const scriptFiles = getPlatformScriptFiles(action.platform);
 
     chrome.scripting.executeScript({
         target: { tabId: tabId },
-        files: [scriptFile]
+        files: scriptFiles
     }, () => {
         if (chrome.runtime.lastError) {
             console.error("AI 脚本注入失败:", chrome.runtime.lastError.message);
@@ -349,7 +359,7 @@ function waitForTabComplete(tabId, timeout = 8000) {
  */
 function injectAndExecuteScript(tabId, platform, message, timeout = 5000) {
     return new Promise((resolve, reject) => {
-        const scriptFile = `contentScripts/${platform}.js`;
+        const scriptFiles = getPlatformScriptFiles(platform);
         let timer;
 
         timer = setTimeout(() => {
@@ -359,7 +369,7 @@ function injectAndExecuteScript(tabId, platform, message, timeout = 5000) {
         // 1. 注入脚本文件
         chrome.scripting.executeScript({
             target: { tabId },
-            files: [scriptFile]
+            files: scriptFiles
         }, () => {
             if (chrome.runtime.lastError) {
                 clearTimeout(timer);
