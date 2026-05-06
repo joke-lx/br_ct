@@ -8,6 +8,7 @@
 const NATIVE_HOST = 'com.brochat.prompts_editor';
 let nativePort = null;
 let pendingRequests = [];
+let userDisconnected = false; // 用户手动断开后阻止自动重连
 
 function connect() {
   if (nativePort) return;
@@ -15,6 +16,7 @@ function connect() {
   try {
     nativePort = chrome.runtime.connectNative(NATIVE_HOST);
     console.log('[NativeRelay] 已连接');
+    userDisconnected = false;
 
     nativePort.onMessage.addListener((msg) => {
       if (pendingRequests.length > 0) {
@@ -31,6 +33,16 @@ function connect() {
         const { sendResponse } = pendingRequests.shift();
         sendResponse({ status: 'error', message: 'Native host 连接断开' });
       }
+      // 非用户手动断开时尝试自动重连（仅在 userDisconnected 为 false 时）
+      if (!userDisconnected) {
+        console.log('[NativeRelay] 尝试在 3 秒后自动重连...');
+        setTimeout(() => {
+          if (!nativePort && !userDisconnected) {
+            console.log('[NativeRelay] 执行自动重连');
+            connect();
+          }
+        }, 3000);
+      }
     });
   } catch (err) {
     console.error('[NativeRelay] 连接失败:', err);
@@ -40,8 +52,10 @@ function connect() {
 
 function disconnect() {
   if (nativePort) {
+    userDisconnected = true;
     nativePort.disconnect();
     nativePort = null;
+    console.log('[NativeRelay] 用户手动断开');
   }
 }
 
@@ -50,10 +64,25 @@ export function setupNativeRelay() {
   connect();
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'nativeConnect') {
+      userDisconnected = false;
+      connect();
+      sendResponse({ status: nativePort ? 'ok' : 'error' });
+      return false;
+    }
+    if (message.action === 'nativeDisconnect') {
+      disconnect();
+      sendResponse({ status: 'ok' });
+      return false;
+    }
     if (message.action !== 'nativeMessage') return false;
 
-    // 如果未连接则尝试连接
+    // 未连接时：用户手动断开则不允许自动重连
     if (!nativePort) {
+      if (userDisconnected) {
+        sendResponse({ status: 'error', message: 'Native host 已断开，请点击"启动"连接' });
+        return false;
+      }
       connect();
       if (!nativePort) {
         sendResponse({ status: 'error', message: 'Native host 不可用' });

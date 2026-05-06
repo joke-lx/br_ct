@@ -1,8 +1,8 @@
 /**
  * 提示词编辑器
+ * 通过 background native_relay 中转通信（单例 native host）
  */
 
-let port = null;
 let currentFile = null;
 let currentGroup = null;
 let promptsList = [];
@@ -11,90 +11,79 @@ let expandedIndex = -1;
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
-  initConnection();
   initEvents();
+  checkStatus();
 }
 
-function initConnection() {
-  try {
-    port = chrome.runtime.connectNative('com.brochat.prompts_editor');
-    port.onMessage.addListener(handleMessage);
-    port.onDisconnect.addListener(() => {
-      port = null;
-      updateStatus(false);
-    });
-    updateStatus(true);
-    loadFiles();
-  } catch (err) {
-    updateStatus(false);
-  }
+function checkStatus() {
+  sendNativeMessage({ command: 'getPromptsDir' })
+    .then(() => updateStatus(true))
+    .catch(() => updateStatus(false));
+  loadFiles();
 }
 
 function updateStatus(connected) {
-  document.getElementById('connectBtn').style.display = connected ? 'none' : 'inline-block';
-  document.getElementById('disconnectBtn').style.display = connected ? 'inline-block' : 'none';
+  const btn = document.getElementById('connectBtn');
+  const disconnectBtn = document.getElementById('disconnectBtn');
+  if (!btn || !disconnectBtn) return;
+  btn.style.display = connected ? 'none' : 'inline-block';
+  disconnectBtn.style.display = connected ? 'inline-block' : 'none';
   const el = document.getElementById('connectionStatus');
-  el.textContent = connected ? '已连接' : '未连接';
-  el.className = `status-badge ${connected ? 'connected' : 'disconnected'}`;
+  if (el) {
+    el.textContent = connected ? '已连接' : '未连接';
+    el.className = `status-badge ${connected ? 'connected' : 'disconnected'}`;
+  }
 }
 
-let pendingCommand = null;
-
-function handleMessage(msg) {
-  if (msg.status === 'error') {
-    toast(msg.message || '操作失败', 'error');
-    pendingCommand = null;
-    return;
-  }
-  if (Array.isArray(msg.data)) {
-    promptsList = msg.data;
-    expandedIndex = -1;
-    renderPrompts();
-  } else if (msg.command === 'listDir') {
-    renderFileList(msg.data || []);
-  } else if (msg.status === 'ok' && pendingCommand === 'savePrompts') {
-    toast(msg.message || '操作成功');
-  }
-  pendingCommand = null;
-}
-
-function send(cmd, params = {}) {
-  if (!port) {
-    toast('未连接', 'error');
-    return Promise.reject();
-  }
-  pendingCommand = cmd;
+function sendNativeMessage(payload) {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject('超时'), 10000);
-    const listener = (response) => {
-      clearTimeout(timeout);
-      port.onMessage.removeListener(listener);
+    chrome.runtime.sendMessage({ action: 'nativeMessage', payload }, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      if (!response) {
+        reject(new Error('Native host 无响应'));
+        return;
+      }
+      if (response.status === 'error') {
+        reject(new Error(response.message || '操作失败'));
+        return;
+      }
       resolve(response);
-    };
-    port.onMessage.addListener(listener);
-    port.postMessage({ command: cmd, ...params });
+    });
   });
 }
 
 function initEvents() {
-  document.getElementById('connectBtn').addEventListener('click', initConnection);
+  document.getElementById('connectBtn').addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'nativeConnect' });
+    updateStatus(true);
+  });
   document.getElementById('disconnectBtn').addEventListener('click', () => {
-    if (port) { port.disconnect(); port = null; }
+    chrome.runtime.sendMessage({ action: 'nativeDisconnect' });
     updateStatus(false);
   });
-  document.getElementById('refreshFiles').addEventListener('click', loadFiles);
-  document.getElementById('addBtn').addEventListener('click', showAddModal);
-  document.getElementById('cancelAdd').addEventListener('click', hideAddModal);
-  document.getElementById('confirmAdd').addEventListener('click', addPrompt);
-  document.getElementById('addModal').addEventListener('click', (e) => {
-    if (e.target.classList.contains('modal-overlay')) hideAddModal();
-  });
+  const refreshBtn = document.getElementById('refreshFiles');
+  if (refreshBtn) refreshBtn.addEventListener('click', loadFiles);
+  const addBtn = document.getElementById('addBtn');
+  if (addBtn) addBtn.addEventListener('click', showAddModal);
+  const cancelAdd = document.getElementById('cancelAdd');
+  if (cancelAdd) cancelAdd.addEventListener('click', hideAddModal);
+  const confirmAdd = document.getElementById('confirmAdd');
+  if (confirmAdd) confirmAdd.addEventListener('click', addPrompt);
+  const addModal = document.getElementById('addModal');
+  if (addModal) {
+    addModal.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) hideAddModal();
+    });
+  }
 }
 
 async function loadFiles() {
   try {
-    const dir = await send('getPromptsDir');
-    const list = await send('listDir', { path: dir.data });
+    const dir = await sendNativeMessage({ command: 'getPromptsDir' });
+    const list = await sendNativeMessage({ command: 'listDir', path: dir.data });
     renderFileList(list.data || []);
 
     if (!currentFile && list.data && list.data.length > 0) {
@@ -104,12 +93,13 @@ async function loadFiles() {
       selectFile(currentFile);
     }
   } catch (err) {
-    toast('加载失败', 'error');
+    toast('加载失败: ' + err.message, 'error');
   }
 }
 
 function renderFileList(files) {
   const el = document.getElementById('fileList');
+  if (!el) return;
   const jsFiles = files.filter(f => f.extension === 'js' && !f.isDir);
 
   if (!jsFiles.length) {
@@ -140,8 +130,8 @@ async function selectFile(fileName) {
   document.getElementById('editorContent').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const dir = await send('getPromptsDir');
-    const result = await send('parsePrompts', { path: `${dir.data}\\${fileName}` });
+    const dir = await sendNativeMessage({ command: 'getPromptsDir' });
+    const result = await sendNativeMessage({ command: 'parsePrompts', path: `${dir.data}\\${fileName}` });
     promptsList = result.data || [];
     expandedIndex = -1;
     renderPrompts();
@@ -189,7 +179,6 @@ function renderPrompts() {
     </div>
   `;
 
-  // 点击标题展开
   el.querySelectorAll('.prompt-item-header').forEach(header => {
     header.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
@@ -199,12 +188,10 @@ function renderPrompts() {
     });
   });
 
-  // 保存按钮
   el.querySelectorAll('[data-action="save"]').forEach(btn => {
     btn.addEventListener('click', () => savePrompt(parseInt(btn.dataset.index)));
   });
 
-  // 删除按钮
   el.querySelectorAll('[data-action="delete"]').forEach(btn => {
     btn.addEventListener('click', () => deletePrompt(parseInt(btn.dataset.index)));
   });
@@ -219,13 +206,9 @@ async function savePrompt(index) {
   const newTemplate = ta.value;
 
   if (!newLabel) { toast('标题不能为空', 'error'); return; }
-
-  // 检查是否与其他标题重复
   if (promptsList.some((p, i) => i !== index && p.label === newLabel)) {
     toast('标题已存在', 'error'); return;
   }
-
-  // 检查别名是否与其他条目重复
   if (newAlias && promptsList.some((p, i) => i !== index && p.alias === newAlias)) {
     toast('别名已存在', 'error'); return;
   }
@@ -235,32 +218,34 @@ async function savePrompt(index) {
   promptsList[index].template = newTemplate;
 
   try {
-    await send('savePrompts', {
-      path: `${(await send('getPromptsDir')).data}\\${currentFile}`,
+    const dir = await sendNativeMessage({ command: 'getPromptsDir' });
+    await sendNativeMessage({
+      command: 'savePrompts',
+      path: `${dir.data}\\${currentFile}`,
       content: generateContent()
     });
     toast('已保存');
   } catch (err) {
-    toast('保存失败', 'error');
+    toast('保存失败: ' + err.message, 'error');
   }
 }
 
 async function deletePrompt(index) {
-  if (!confirm(`确定删除 "${promptsList[index].label}" ?`)) return;
-
   const deleted = promptsList.splice(index, 1)[0];
   if (expandedIndex >= index && expandedIndex > 0) expandedIndex--;
 
   try {
-    await send('savePrompts', {
-      path: `${(await send('getPromptsDir')).data}\\${currentFile}`,
+    const dir = await sendNativeMessage({ command: 'getPromptsDir' });
+    await sendNativeMessage({
+      command: 'savePrompts',
+      path: `${dir.data}\\${currentFile}`,
       content: generateContent()
     });
     toast(`已删除: ${deleted.label}`);
     renderPrompts();
   } catch (err) {
     promptsList.splice(index, 0, deleted);
-    toast('删除失败', 'error');
+    toast('删除失败: ' + err.message, 'error');
   }
 }
 
@@ -288,20 +273,21 @@ async function addPrompt() {
   hideAddModal();
 
   try {
-    await send('savePrompts', {
-      path: `${(await send('getPromptsDir')).data}\\${currentFile}`,
+    const dir = await sendNativeMessage({ command: 'getPromptsDir' });
+    await sendNativeMessage({
+      command: 'savePrompts',
+      path: `${dir.data}\\${currentFile}`,
       content: generateContent()
     });
     toast('已添加');
     renderPrompts();
   } catch (err) {
     promptsList.pop();
-    toast('添加失败', 'error');
+    toast('添加失败: ' + err.message, 'error');
   }
 }
 
 function generateContent() {
-  // 使用 JSON.stringify 序列化，无手动转义
   const jsonStr = JSON.stringify(promptsList, null, 2);
   return `export default ${jsonStr};\n`;
 }
