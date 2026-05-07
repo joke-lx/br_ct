@@ -213,7 +213,7 @@ async function findOrCreatePlatformTab(platform, isFirst = false) {
   return chrome.tabs.create({ url: targetUrl, active: isFirst });
 }
 
-function waitForTabComplete(tabId, timeout = 8000) {
+function waitForTabComplete(tabId, timeout = 20000) {
   return new Promise((resolve, reject) => {
     let timer;
     const cleanup = () => {
