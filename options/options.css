@@ -245,24 +245,24 @@ select {
   margin-bottom: 4px;
   border: none;
   border-radius: 12px;
-  color: rgba(45, 36, 28, 0.92);
+  color: var(--ink);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   background: transparent;
-  transition: background 120ms ease, transform 120ms ease, box-shadow 200ms ease;
+  transition: background 160ms ease, transform 120ms ease;
   margin-right: 0;
 }
 
 .nav-item:hover {
-  transform: translateY(-1px);
+  color: var(--ink);
   background: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 4px 16px rgba(48, 32, 20, 0.1);
+  transform: translateY(-1px);
 }
 
 .nav-item.active {
+  color: var(--ink);
   background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 6px 20px rgba(48, 32, 20, 0.1);
 }
 
 .nav-icon {
@@ -272,16 +272,22 @@ select {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: rgba(95, 71, 49, 0.08);
-  color: rgba(45, 36, 28, 0.7);
-  font-size: 10px;
-  font-weight: 700;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
   letter-spacing: 0.06em;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.nav-item:hover .nav-icon {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .nav-item.active .nav-icon {
-  background: rgba(95, 71, 49, 0.16);
-  color: rgba(45, 36, 28, 0.9);
+  border-color: var(--accent);
 }
 
 .nav-item span:last-child {
