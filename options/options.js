@@ -79,6 +79,18 @@ function initializeOptions() {
 
   // 监听来自 iframe 的消息
   window.addEventListener('message', (event) => {
+    // focus-mode wheel navigation
+    if (event.data?.action === 'focusScrollNavigate') {
+      // only accept messages from current iframe
+      if (event.source !== frame.contentWindow) return;
+      if (!isFocusMode()) return;
+
+      const { direction } = event.data;
+      handleFocusScrollNavigate(direction);
+      return;
+    }
+
+    // countdown panel navigation
     if (event.data.action === 'navigateToHistory') {
       frame.src = 'countdown/history.html';
       updateNavActive('countdown/index.html');
@@ -88,7 +100,8 @@ function initializeOptions() {
     } else if (event.data.action === 'refreshTimers') {
       const currentSrc = frame.src;
       if (currentSrc.includes('countdown/index.html')) {
-        frame.contentWindow.postMessage({ action: 'refresh' }, '*');
+        const targetOrigin = getFrameTargetOrigin();
+        frame.contentWindow.postMessage({ action: 'refresh' }, targetOrigin);
       }
     }
   });
@@ -160,6 +173,74 @@ function initNavRing() {
 function isFocusMode() {
   const appContainer = document.querySelector('.app-container');
   return appContainer.classList.contains('focus-mode');
+}
+
+/**
+ * 获取当前 iframe 的 targetOrigin（禁止使用 '*'）
+ */
+function getFrameTargetOrigin() {
+  const frame = document.getElementById('content-frame');
+  try {
+    if (frame?.src) {
+      return new URL(frame.src).origin;
+    }
+  } catch {
+    // ignore
+  }
+  return window.location.origin;
+}
+
+/**
+ * 获取指定 page 在 NAV_ITEMS 中的索引
+ */
+function getNavIndexByPage(page) {
+  return NAV_ITEMS.findIndex(item => item.page === page);
+}
+
+/**
+ * 根据方向（up/down）循环获取目标页面
+ */
+function getCyclicPageByDirection(direction) {
+  const currentPage = getCurrentPage();
+  const total = NAV_ITEMS.length;
+  if (!total) return null;
+
+  let currentIndex = getNavIndexByPage(currentPage);
+  if (currentIndex === -1) currentIndex = 0;
+
+  const delta = direction === 'up' ? -1 : 1;
+  const nextIndex = (currentIndex + delta + total) % total;
+  return NAV_ITEMS[nextIndex].page;
+}
+
+/**
+ * 专注模式滚轮边缘导航：页面切换 + 进入目标页后滚动到边缘
+ */
+function handleFocusScrollNavigate(direction) {
+  const frame = document.getElementById('content-frame');
+  const targetPage = getCyclicPageByDirection(direction);
+  if (!targetPage) return;
+
+  const edge = direction === 'up' ? 'bottom' : 'top';
+
+  // onload 只触发一次，避免覆盖其他逻辑
+  const prevOnload = frame.onload;
+  frame.onload = () => {
+    frame.onload = prevOnload || null;
+
+    const targetOrigin = getFrameTargetOrigin();
+    frame.contentWindow.postMessage({ action: 'scrollToEdge', edge }, targetOrigin);
+
+    if (typeof prevOnload === 'function') {
+      try {
+        prevOnload();
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  navigateToPage(targetPage);
 }
 
 /**
