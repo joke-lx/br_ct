@@ -101,6 +101,18 @@ export function initFocusScrollAgent() {
     return;
   }
 
+  /** @type {string|null} */
+  let parentOrigin = null;
+  try {
+    // In an iframe, document.referrer should be the parent page URL.
+    // Derive expected origin to avoid targetOrigin='*'.
+    if (document.referrer) {
+      parentOrigin = new URL(document.referrer).origin;
+    }
+  } catch {
+    parentOrigin = null;
+  }
+
   let acc = 0;
   let lastTs = 0;
 
@@ -116,8 +128,13 @@ export function initFocusScrollAgent() {
   }
 
   function postNavigate(direction) {
+    if (!parentOrigin) return;
+
     try {
-      window.parent?.postMessage({ action: 'focusScrollNavigate', direction }, '*');
+      window.parent?.postMessage(
+        { action: 'focusScrollNavigate', direction },
+        parentOrigin
+      );
     } catch {
       // ignore
     }
@@ -127,7 +144,12 @@ export function initFocusScrollAgent() {
     // Only active in focus mode.
     if (!inFocusMode()) return;
 
+    if (!parentOrigin) return;
     if (!e || !e.data || e.data.action !== 'scrollToEdge') return;
+
+    // Only accept messages from our direct parent and expected origin.
+    if (e.source !== window.parent) return;
+    if (e.origin !== parentOrigin) return;
 
     const edge = e.data.edge;
     const root = document.scrollingElement || document.documentElement;
@@ -144,6 +166,8 @@ export function initFocusScrollAgent() {
     'wheel',
     (e) => {
       if (!inFocusMode()) return;
+
+      if (e.defaultPrevented) return;
 
       // Ignore non-vertical wheel.
       if (!e || typeof e.deltaY !== 'number' || e.deltaY === 0) return;
