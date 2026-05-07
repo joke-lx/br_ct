@@ -200,6 +200,7 @@ function setupDelegation() {
       case 'skill-push-central-to-project': skillPushToProject(btn.dataset.name); break;
       case 'skill-pull': skillPullFromCentral(btn.dataset.name); break;
       case 'skill-delete-project': deleteSkillProject(btn.dataset.id); break;
+      case 'skill-delete-skill': deleteSkillFromProject(btn.dataset.name, btn.dataset.projectId); break;
 
       // 弹窗
       case 'cmd-cancel': closeCmdModal(); break;
@@ -701,6 +702,28 @@ async function deleteSkillProject(id) {
   loadSkills();
 }
 
+async function deleteSkillFromProject(skillName, projectId) {
+  const projects = await loadStorage(STORAGE_KEYS.skillMonitoredProjects);
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
+
+  try {
+    const resp = await sendNativeMessage({
+      command: 'deleteSkill',
+      path: project.path,
+      name: skillName,
+    });
+    if (resp.data && resp.data.success) {
+      toast(`已移除 Skill: ${skillName}`);
+      loadSkills();
+    } else {
+      toast(`移除失败: ${resp.data?.error || '未知错误'}`, 'error');
+    }
+  } catch (err) {
+    toast('移除失败: ' + err.message, 'error');
+  }
+}
+
 async function importProjectFromGit() {
   const gitDirs = await loadStorage(STORAGE_KEYS.gitMonitoredDirs);
   if (gitDirs.length === 0) { toast('请先在 Git 监控中添加项目', 'warning'); return; }
@@ -832,7 +855,7 @@ function renderProjectSkillList(skills, project, centralSkills) {
         <div class="skill-card-path">${escapeHtml(s.skillDir)}</div>
         <div class="skill-card-actions">
           ${!synced ? `<button class="btn btn-success" data-action="skill-push" data-name="${escapeHtml(s.name)}">← 推送到中心</button>` : ''}
-          <button class="btn btn-secondary" data-action="skill-delete-project" data-id="${project.id}">移除项目</button>
+          <button class="btn btn-secondary" data-action="skill-delete-skill" data-name="${escapeHtml(s.name)}" data-project-id="${project.id}">移除 Skill</button>
         </div>
       </div>
     `;

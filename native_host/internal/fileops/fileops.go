@@ -175,22 +175,76 @@ func parseFrontmatter(content string) (name, description string) {
 	}
 
 	frontmatter := matches[1]
+	lines := strings.Split(frontmatter, "\n")
 
 	// 提取 name
-	nameRe := regexp.MustCompile(`(?m)^name:\s*(.+)$`)
-	nameMatch := nameRe.FindStringSubmatch(frontmatter)
-	if len(nameMatch) > 1 {
-		name = strings.TrimSpace(nameMatch[1])
+	nameRe := regexp.MustCompile(`^name:\s*(.+)$`)
+	for _, line := range lines {
+		if m := nameRe.FindStringSubmatch(line); len(m) > 1 {
+			name = strings.TrimSpace(m[1])
+			break
+		}
 	}
 
-	// 提取 description
-	descRe := regexp.MustCompile(`(?m)^description:\s*(.+)$`)
-	descMatch := descRe.FindStringSubmatch(frontmatter)
-	if len(descMatch) > 1 {
-		description = strings.TrimSpace(descMatch[1])
-	}
+	// 提取 description（支持 | 块标量和单行两种格式）
+	description = parseDescription(lines)
 
 	return name, description
+}
+
+// parseDescription 从 frontmatter 行中提取 description，支持 | 块标量
+func parseDescription(lines []string) string {
+	descRe := regexp.MustCompile(`^description:\s*(.*)$`)
+
+	for i, line := range lines {
+		m := descRe.FindStringSubmatch(line)
+		if len(m) < 2 {
+			continue
+		}
+		value := strings.TrimSpace(m[1])
+
+		// 单行值：description: some text
+		if value != "|" && value != ">" && value != "" {
+			return value
+		}
+
+		// 块标量 description: | 或 description: >
+		// 收集后续缩进行
+		var blockLines []string
+		for j := i + 1; j < len(lines); j++ {
+			l := lines[j]
+			// 块内容必须缩进（至少一个空格或 tab）
+			if len(l) == 0 {
+				blockLines = append(blockLines, "")
+				continue
+			}
+			// 非缩进行 = 块结束
+			if l[0] != ' ' && l[0] != '\t' {
+				break
+			}
+			// 去掉一级缩进
+			blockLines = append(blockLines, stripIndent(l))
+		}
+
+		if len(blockLines) > 0 {
+			return strings.TrimSpace(strings.Join(blockLines, "\n"))
+		}
+
+		return value
+	}
+
+	return ""
+}
+
+// stripIndent 去掉一级缩进（2 空格或 1 tab）
+func stripIndent(line string) string {
+	if strings.HasPrefix(line, "  ") {
+		return line[2:]
+	}
+	if strings.HasPrefix(line, "\t") {
+		return line[1:]
+	}
+	return strings.TrimLeft(line, " \t")
 }
 
 // SyncSkillDir 同步单个 skill 到目标目录，含冲突处理
@@ -391,4 +445,27 @@ func GetSkillMeta(req protocol.Request) protocol.Response {
 	}
 	data, _ := json.Marshal(meta)
 	return protocol.Response{Status: "ok", Data: string(data)}
+}
+
+// DeleteSkill 删除项目中的指定 skill 目录
+func DeleteSkill(req protocol.Request) protocol.Response {
+	if req.Path == "" || req.Name == "" {
+		return protocol.Response{Status: "error", Message: "path 和 name 不能为空"}
+	}
+
+	// 在 .claude/skills/{name} 路径下查找
+	skillDir := filepath.Join(req.Path, ".claude", "skills", req.Name)
+	if _, err := os.Stat(skillDir); err != nil {
+		// 也尝试 skills/{name}
+		skillDir = filepath.Join(req.Path, "skills", req.Name)
+		if _, err := os.Stat(skillDir); err != nil {
+			return protocol.Response{Status: "error", Message: "Skill 目录不存在: " + req.Name}
+		}
+	}
+
+	if err := os.RemoveAll(skillDir); err != nil {
+		return protocol.Response{Status: "error", Message: "删除失败: " + err.Error()}
+	}
+
+	return protocol.Response{Status: "ok", Data: map[string]bool{"success": true}}
 }
