@@ -33,6 +33,13 @@ type GitOperationResult struct {
 func runGit(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	out, err := cmd.Output()
+	return strings.TrimSpace(string(out)), err
+}
+
+func runGitCombined(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	return strings.TrimSpace(string(out)), err
 }
@@ -46,7 +53,7 @@ func GitStatus(req protocol.Request) protocol.Response {
 }
 
 func GitPull(req protocol.Request) protocol.Response {
-	out, err := runGit(req.Path, "pull")
+	out, err := runGitCombined(req.Path, "pull")
 	result := GitOperationResult{Dir: req.Path, Output: out}
 	if err != nil {
 		result.Error = err.Error()
@@ -57,7 +64,7 @@ func GitPull(req protocol.Request) protocol.Response {
 }
 
 func GitPush(req protocol.Request) protocol.Response {
-	out, err := runGit(req.Path, "push")
+	out, err := runGitCombined(req.Path, "push")
 	result := GitOperationResult{Dir: req.Path, Output: out}
 	if err != nil {
 		result.Error = err.Error()
@@ -78,7 +85,7 @@ func GitBatchStatus(req protocol.Request) protocol.Response {
 func GitBatchPull(req protocol.Request) protocol.Response {
 	var results []GitOperationResult
 	for _, dir := range req.Dirs {
-		out, err := runGit(dir, "pull")
+		out, err := runGitCombined(dir, "pull")
 		result := GitOperationResult{Dir: dir, Output: out}
 		if err != nil {
 			result.Error = err.Error()
@@ -93,7 +100,7 @@ func GitBatchPull(req protocol.Request) protocol.Response {
 func GitBatchPush(req protocol.Request) protocol.Response {
 	var results []GitOperationResult
 	for _, dir := range req.Dirs {
-		out, err := runGit(dir, "push")
+		out, err := runGitCombined(dir, "push")
 		result := GitOperationResult{Dir: dir, Output: out}
 		if err != nil {
 			result.Error = err.Error()
@@ -116,7 +123,7 @@ func GitAutoCommitAndPush(req protocol.Request) protocol.Response {
 	result := GitOperationResult{Dir: dir}
 
 	// 1. git add .
-	addOut, err := runGit(dir, "add", ".")
+	addOut, err := runGitCombined(dir, "add", ".")
 	if err != nil {
 		result.Error = fmt.Sprintf("git add 失败: %v\n%v", err, addOut)
 		return protocol.Response{Status: "ok", Data: result}
@@ -131,7 +138,7 @@ func GitAutoCommitAndPush(req protocol.Request) protocol.Response {
 	}
 
 	// 3. git commit
-	commitOut, err := runGit(dir, "commit", "-m", message)
+	commitOut, err := runGitCombined(dir, "commit", "-m", message)
 	if err != nil {
 		result.Error = fmt.Sprintf("git commit 失败: %v\n%v", err, commitOut)
 		return protocol.Response{Status: "ok", Data: result}
@@ -139,7 +146,7 @@ func GitAutoCommitAndPush(req protocol.Request) protocol.Response {
 	result.Output = commitOut + "\n"
 
 	// 4. git push
-	pushOut, err := runGit(dir, "push")
+	pushOut, err := runGitCombined(dir, "push")
 	if err != nil {
 		result.Error = result.Output + fmt.Sprintf("git push 失败: %v\n%v", err, pushOut)
 		return protocol.Response{Status: "ok", Data: result}
