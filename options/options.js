@@ -48,19 +48,19 @@ function initializeOptions() {
   // 恢复上次选中的 tab
   chrome.storage.local.get([STORAGE_KEYS.selectedTab], (result) => {
     const savedTab = result[STORAGE_KEYS.selectedTab];
-    if (savedTab) {
-      const targetNav = document.querySelector(`[data-page="${savedTab}"]`);
-      if (targetNav) {
-        navItems.forEach(nav => nav.classList.remove('active'));
-        targetNav.classList.add('active');
-        frame.src = savedTab;
-        return;
-      }
+    if (savedTab && document.querySelector(`[data-page="${savedTab}"]`)) {
+      frame.src = savedTab;
+      updateNavActive(savedTab);
+      return;
     }
+
     // 默认加载第一个 tab
     if (navItems.length > 0) {
-      navItems[0].classList.add('active');
-      frame.src = navItems[0].getAttribute('data-page');
+      const defaultPage = navItems[0].getAttribute('data-page');
+      if (defaultPage) {
+        frame.src = defaultPage;
+        updateNavActive(defaultPage);
+      }
     }
   });
 
