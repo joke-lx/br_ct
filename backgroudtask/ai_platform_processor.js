@@ -155,10 +155,21 @@ export async function processTaskQueueConcurrent(queue, options = {}) {
   const { maxConcurrent = 3, batchDelay = 300 } = options;
   const results = [];
 
+  // 记录当前活跃 Tab，判断是否需要跳转
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const selectedPlatforms = queue.map(t => t.platform);
+  const activeTabMatches = activeTab && selectedPlatforms.some(p => {
+    const url = platformUrls[p];
+    return url && activeTab.url && activeTab.url.includes(url);
+  });
+
   for (let i = 0; i < queue.length; i += maxConcurrent) {
     const batch = queue.slice(i, i + maxConcurrent);
     const batchResults = await Promise.allSettled(
-      batch.map((task, index) => processSingleTask(task, i === 0 && index === 0))
+      batch.map((task, index) => processSingleTask(task, {
+        isFirst: i === 0 && index === 0,
+        shouldJump: !activeTabMatches, // 活跃页不在已选平台范围内才跳转
+      }))
     );
     results.push(...batchResults);
 
@@ -170,11 +181,12 @@ export async function processTaskQueueConcurrent(queue, options = {}) {
   return results;
 }
 
-async function processSingleTask(task, isFirst = false) {
+async function processSingleTask(task, opts = {}) {
+  const { isFirst = false, shouldJump = true } = opts;
   const { platform, message } = task;
 
-  // 查找或创建 Tab（复用已注入的 Tab）
-  const tab = await findOrCreatePlatformTab(platform, isFirst);
+  // 查找或创建 Tab
+  const tab = await findOrCreatePlatformTab(platform, isFirst, shouldJump);
 
   // 等待加载完成
   await waitForTabComplete(tab.id);
@@ -189,7 +201,7 @@ async function processSingleTask(task, isFirst = false) {
  * 查找或创建平台 Tab
  * 优先复用已注入的 Tab，其次查找已有 Tab，最后创建新 Tab
  */
-async function findOrCreatePlatformTab(platform, isFirst = false) {
+async function findOrCreatePlatformTab(platform, isFirst = false, shouldJump = true) {
   const targetUrl = platformUrls[platform];
   if (!targetUrl) throw new Error(`未知平台: ${platform}`);
 
@@ -198,6 +210,7 @@ async function findOrCreatePlatformTab(platform, isFirst = false) {
   if (injectedTabId !== null) {
     try {
       const tab = await chrome.tabs.get(injectedTabId);
+      if (shouldJump) await chrome.tabs.update(tab.id, { active: true });
       return tab;
     } catch (e) {
       // Tab 已失效，removeTab 会在 onRemoved 里清理
@@ -207,7 +220,10 @@ async function findOrCreatePlatformTab(platform, isFirst = false) {
   // 2. 查找已存在的匹配 Tab
   const tabs = await chrome.tabs.query({});
   const existing = tabs.find(tab => tab.url && tab.url.includes(targetUrl));
-  if (existing) return existing;
+  if (existing) {
+    if (shouldJump) await chrome.tabs.update(existing.id, { active: true });
+    return existing;
+  }
 
   // 3. 创建新 Tab（第一个任务激活让用户看到跳转）
   return chrome.tabs.create({ url: targetUrl, active: isFirst });
