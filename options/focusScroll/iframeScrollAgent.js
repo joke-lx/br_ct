@@ -86,3 +86,96 @@ export function getScrollableAncestor(target, stopEl) {
 
   return null;
 }
+
+const EDGE_DELTA_THRESHOLD = 120;
+const EDGE_DELTA_DECAY_MS = 350;
+
+/**
+ * Init focus-mode wheel-edge navigation agent for iframe subpages.
+ *
+ * Does not auto-run; callers must invoke this from each iframe page.
+ */
+export function initFocusScrollAgent() {
+  // Guard: this agent requires browser globals.
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  let acc = 0;
+  let lastTs = 0;
+
+  function inFocusMode() {
+    try {
+      const parentDoc = window.parent && window.parent.document;
+      if (!parentDoc) return false;
+      const app = parentDoc.querySelector('.app-container');
+      return !!app && app.classList.contains('focus-mode');
+    } catch {
+      return false;
+    }
+  }
+
+  function postNavigate(direction) {
+    try {
+      window.parent?.postMessage({ action: 'focusScrollNavigate', direction }, '*');
+    } catch {
+      // ignore
+    }
+  }
+
+  window.addEventListener('message', (e) => {
+    // Only active in focus mode.
+    if (!inFocusMode()) return;
+
+    if (!e || !e.data || e.data.action !== 'scrollToEdge') return;
+
+    const edge = e.data.edge;
+    const root = document.scrollingElement || document.documentElement;
+    if (!root) return;
+
+    if (edge === 'top') {
+      root.scrollTop = 0;
+    } else if (edge === 'bottom') {
+      root.scrollTop = root.scrollHeight;
+    }
+  });
+
+  window.addEventListener(
+    'wheel',
+    (e) => {
+      if (!inFocusMode()) return;
+
+      // Ignore non-vertical wheel.
+      if (!e || typeof e.deltaY !== 'number' || e.deltaY === 0) return;
+
+      const direction = e.deltaY > 0 ? 'down' : 'up';
+      const root = document.scrollingElement || document.documentElement;
+      if (!root) return;
+
+      // Give precedence to inner scrollables.
+      const inner = getScrollableAncestor(e.target, root);
+      if (inner && canScrollInDirection(inner, direction)) {
+        acc = 0;
+        return;
+      }
+
+      // Only accumulate when the page root is already at the edge.
+      if (!isAtPageEdge(root, direction)) {
+        acc = 0;
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastTs > EDGE_DELTA_DECAY_MS) acc = 0;
+      lastTs = now;
+
+      acc += Math.abs(e.deltaY);
+
+      if (acc >= EDGE_DELTA_THRESHOLD) {
+        acc = 0;
+        postNavigate(direction === 'down' ? 'next' : 'prev');
+      }
+    },
+    { passive: true }
+  );
+}
