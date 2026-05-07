@@ -13,3 +13,6 @@ manifest_id.txt
 generate_key.js
 .claude/repo
 *.exe~
+
+# Claude Code worktrees (harness-managed)
+.CLAUDE/worktrees/
