@@ -6,6 +6,53 @@
   <title>本地命令管理</title>
   <link rel="stylesheet" href="../options.css" />
   <style>
+      .btn{
+          min-height: 0;
+      }
+      .btn-add-cmd {
+          margin-top: 50px;
+          background: rgba(255, 255, 255, 0.03);
+          width: 300px;
+          height: 150px;
+          border: 2px dashed rgba(107, 74, 49, 0.5);
+          box-shadow: none;
+          color: #1e1e1e;
+          font-size: 20px;
+          cursor: pointer;
+          transition: border-color 0.3s ease,
+          border-style 0s ease 0.3s,
+          background-color 0.3s ease;
+      }
+
+      .btn-add-cmd:hover {
+          border-style: solid;
+          border-color: rgba(107, 74, 49, 0.8);
+          background: rgba(107, 74, 49, 0.08);
+      }
+      .btn-pull {
+          border-radius: 8px;
+          /* 关键：一个 gradient 同时含「棕色」和「透明/浅色」两段 */
+          background-image: linear-gradient(
+                  to right,
+                  rgba(107, 74, 49, 0.3) 0%,
+                  rgba(107, 74, 49, 0.3) 50%,
+                  transparent 50%,
+                  transparent 100%
+          );
+          background-size: 200% 100%;
+          background-position: 100% 0;   /* 初始：露出右半边（浅色） */
+          background-color: transparent;
+
+          color: #6b4a31;
+          border: 1px solid rgba(107, 74, 49, 0.5);
+          transition: background-position 0.4s ease, color 0.4s ease;
+          cursor: pointer;
+      }
+
+      .btn-pull:hover {
+          background-position: 0 0;      /* hover：滑到左半边（棕色） */
+          color: #fff;                   /* 可选：文字也跟着变 */
+      }
     .local-cmd-container {
       max-width: 1400px;
       margin: 0 auto;
@@ -52,6 +99,7 @@
     .tab-panel.active {
       display: block;
     }
+
 
     /* 命令模板卡片 */
     .cmd-card {
@@ -472,6 +520,8 @@
       justify-content: space-between;
       gap: 10px;
       flex-shrink: 0;
+        box-sizing: border-box;
+        height: 50px;
     }
 
     .skill-panel-header .panel-title {
@@ -610,7 +660,7 @@
   </style>
 </head>
 <body>
-  <div class="local-cmd-container">
+  <div class="local-cmd-container page-container">
     <div class="native-status-bar">
       <span class="status-dot" id="nativeDot"></span>
       <span id="nativeStatus">检测中...</span>

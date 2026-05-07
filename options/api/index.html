@@ -12,6 +12,11 @@
       .form-group {
         margin-bottom: 20px;
       }
+      .url-title{
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+      }
 
       .form-label {
         display: block;
@@ -76,13 +81,13 @@
       }
 
       .test-result.success {
-        background: #d1fae5;
+        background: rgba(210, 250, 229, 0.4);
         color: #065f46;
         border: 1px solid #6ee7b7;
       }
 
       .test-result.error {
-        background: #fee2e2;
+        background: rgba(255, 227, 227, 0.4);
         color: #991b1b;
         border: 1px solid #fca5a5;
       }
@@ -94,11 +99,12 @@
       }
 
       .btn-test {
-        background: #10b981;
+        background: transparent;
+        color: rgb(17, 186, 130);
       }
 
       .btn-test:hover {
-        background: #059669;
+        color: rgb(5, 150, 104);
       }
       .api-form,
       .button-row {
@@ -137,10 +143,16 @@
         <div class="api-form">
           <!-- API Base URL -->
           <div class="form-group">
-            <label class="form-label">
-              API Base URL
-              <span id="baseurl-status" class="api-status not-configured">未配置</span>
-            </label>
+              <div class="url-title">
+                  <label class="form-label">
+                      API Base URL
+                      <span id="baseurl-status" class="api-status not-configured">未配置</span>
+                  </label>
+                  <div class="button-row" >
+                      <button class="btn btn-test" id="test-btn">测试连接</button>
+                  </div>
+              </div>
+
             <input
               type="text"
               id="baseurl-input"
@@ -190,9 +202,7 @@
             <button class="btn btn-secondary" id="reset-btn">重置为默认</button>
           </div>
 
-          <div class="button-row" style="margin-top: 12px;">
-            <button class="btn btn-test" id="test-btn">测试连接</button>
-          </div>
+
 
           <div id="status-message" class="status-message"></div>
         </div>
