@@ -168,7 +168,7 @@ function renderCentralSkillList(skills, projectSkills) {
         <div class="skill-card-desc">${escapeHtml(s.description || '(无描述)')}</div>
         <div class="skill-card-path">${escapeHtml(s.skillDir)}</div>
         <div class="skill-card-actions">
-          ${!projectSkill ? `<button class="btn btn-success" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">→ 推送到项目</button>` : ''}
+          ${!projectSkill ? `<button class="btn btn-success btn-pull" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">→ 推送到项目</button>` : ''}
           ${projectSkill && !synced ? `<button class="btn btn-warning" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">↻ 同步到项目</button>` : ''}
         </div>
       </div>
