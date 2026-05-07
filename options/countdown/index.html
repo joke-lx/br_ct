@@ -120,6 +120,10 @@
         </div>
     </div>
 
-    <script src="countdown.js"></script>
+    <script type="module">
+      import { initFocusScrollAgent } from '../focusScroll/iframeScrollAgent.js';
+      import './countdown.js';
+      initFocusScrollAgent();
+    </script>
 </body>
 </html>

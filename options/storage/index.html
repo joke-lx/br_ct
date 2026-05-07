@@ -434,6 +434,10 @@
       </section>
     </div>
 
-    <script src="storage.js"></script>
+    <script type="module">
+      import { initFocusScrollAgent } from '../focusScroll/iframeScrollAgent.js';
+      import './storage.js';
+      initFocusScrollAgent();
+    </script>
   </body>
 </html>

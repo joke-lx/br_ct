@@ -92,6 +92,10 @@
     </div>
 
     <script src="../../runjs/translation/lib/marked.min.js"></script>
-    <script src="main.js"></script>
+    <script type="module">
+      import { initFocusScrollAgent } from '../focusScroll/iframeScrollAgent.js';
+      import './main.js';
+      initFocusScrollAgent();
+    </script>
 </body>
 </html>
