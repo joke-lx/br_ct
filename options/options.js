@@ -228,9 +228,16 @@ function getCyclicPageByDirection(direction) {
   let currentIndex = getNavIndexByPage(currentPage);
   if (currentIndex === -1) currentIndex = 0;
 
-  const delta = direction === 'up' ? -1 : 1;
+  const delta = direction === 'prev' ? -1 : 1;
   const nextIndex = (currentIndex + delta + total) % total;
   return NAV_ITEMS[nextIndex].page;
+}
+
+/**
+ * 将导航方向映射为滚动吸附边界。
+ */
+function getScrollEdgeByDirection(direction) {
+  return direction === 'prev' ? 'bottom' : 'top';
 }
 
 /**
@@ -241,7 +248,7 @@ function handleFocusScrollNavigate(direction) {
   const targetPage = getCyclicPageByDirection(direction);
   if (!targetPage) return;
 
-  const edge = direction === 'up' ? 'bottom' : 'top';
+  const edge = getScrollEdgeByDirection(direction);
 
   // 使用一次性 load 监听，避免覆盖其他逻辑
   const onLoad = () => {
