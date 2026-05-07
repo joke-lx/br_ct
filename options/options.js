@@ -77,31 +77,51 @@ function initializeOptions() {
     });
   });
 
+  /**
+   * 计算当前 iframe 的 origin。
+   * - 用于校验 message 来源（event.origin）
+   * - 用于 postMessage 的 targetOrigin（禁止使用 '*')
+   */
+  function getFrameOriginSafe() {
+    try {
+      if (!frame?.src) return null;
+      return new URL(frame.src).origin;
+    } catch {
+      return null;
+    }
+  }
+
   // 监听来自 iframe 的消息
   window.addEventListener('message', (event) => {
-    // focus-mode wheel navigation
-    if (event.data?.action === 'focusScrollNavigate') {
-      // only accept messages from current iframe
-      if (event.source !== frame.contentWindow) return;
-      if (!isFocusMode()) return;
+    // normalize data
+    const data = event.data;
+    if (!data || typeof data !== 'object') return;
 
-      const { direction } = event.data;
+    // only handle messages from current iframe + expected origin
+    const frameOrigin = getFrameOriginSafe();
+    if (!frameOrigin) return;
+    if (event.source !== frame.contentWindow) return;
+    if (event.origin !== frameOrigin) return;
+
+    // focus-mode wheel navigation
+    if (data.action === 'focusScrollNavigate') {
+      if (!isFocusMode()) return;
+      const { direction } = data;
       handleFocusScrollNavigate(direction);
       return;
     }
 
     // countdown panel navigation
-    if (event.data.action === 'navigateToHistory') {
+    if (data.action === 'navigateToHistory') {
       frame.src = 'countdown/history.html';
       updateNavActive('countdown/index.html');
-    } else if (event.data.action === 'navigateToTimers') {
+    } else if (data.action === 'navigateToTimers') {
       frame.src = 'countdown/index.html';
       updateNavActive('countdown/index.html');
-    } else if (event.data.action === 'refreshTimers') {
+    } else if (data.action === 'refreshTimers') {
       const currentSrc = frame.src;
       if (currentSrc.includes('countdown/index.html')) {
-        const targetOrigin = getFrameTargetOrigin();
-        frame.contentWindow.postMessage({ action: 'refresh' }, targetOrigin);
+        frame.contentWindow.postMessage({ action: 'refresh' }, frameOrigin);
       }
     }
   });
@@ -187,7 +207,7 @@ function getFrameTargetOrigin() {
   } catch {
     // ignore
   }
-  return window.location.origin;
+  return null;
 }
 
 /**
@@ -223,22 +243,14 @@ function handleFocusScrollNavigate(direction) {
 
   const edge = direction === 'up' ? 'bottom' : 'top';
 
-  // onload 只触发一次，避免覆盖其他逻辑
-  const prevOnload = frame.onload;
-  frame.onload = () => {
-    frame.onload = prevOnload || null;
-
-    const targetOrigin = getFrameTargetOrigin();
-    frame.contentWindow.postMessage({ action: 'scrollToEdge', edge }, targetOrigin);
-
-    if (typeof prevOnload === 'function') {
-      try {
-        prevOnload();
-      } catch {
-        // ignore
-      }
-    }
+  // 使用一次性 load 监听，避免覆盖其他逻辑
+  const onLoad = () => {
+    const frameOrigin = getFrameTargetOrigin();
+    // 如果无法解析 origin，则忽略
+    if (!frameOrigin) return;
+    frame.contentWindow.postMessage({ action: 'scrollToEdge', edge }, frameOrigin);
   };
+  frame.addEventListener('load', onLoad, { once: true });
 
   navigateToPage(targetPage);
 }
