@@ -618,41 +618,23 @@
 
     <!-- Tab 导航 -->
     <nav class="tab-nav">
-      <button class="tab-btn active" data-tab="commands">命令管理</button>
-      <button class="tab-btn" data-tab="processes">运行中进程</button>
-      <button class="tab-btn" data-tab="git">Git 监控</button>
+      <button class="tab-btn active" data-tab="git">Git 监控</button>
       <button class="tab-btn" data-tab="skills">Skill 管理</button>
+      <button class="tab-btn" data-tab="commands">命令管理</button>
+      <button class="tab-btn" data-tab="processes">运行中进程</button>
     </nav>
 
-    <!-- 命令管理 Tab -->
-    <div class="tab-panel active" id="panel-commands">
-      <div class="toolbar">
-        <h2 class="section-title">命令模板</h2>
-        <button class="btn btn-primary" data-action="add-cmd">+ 新增命令</button>
-      </div>
-      <div id="cmdList"></div>
-    </div>
-
-    <!-- 运行中进程 Tab -->
-    <div class="tab-panel" id="panel-processes">
-      <div class="toolbar">
-        <h2 class="section-title">运行中进程</h2>
-        <button class="btn btn-secondary" data-action="refresh-processes">刷新</button>
-      </div>
-      <div id="processList"></div>
-    </div>
-
     <!-- Git 监控 Tab -->
-    <div class="tab-panel" id="panel-git">
+    <div class="tab-panel active" id="panel-git">
       <div class="toolbar">
         <h2 class="section-title">监控目录</h2>
         <button class="btn btn-primary" data-action="add-git-dir">+ 添加目录</button>
       </div>
       <div class="batch-bar">
         <span class="section-title">批量操作</span>
-        <button class="btn btn-secondary" data-action="git-batch-refresh">刷新状态</button>
+        <button class="btn btn-warning" data-action="git-batch-push">全部 Push</button>
         <button class="btn btn-success" data-action="git-batch-pull">全部 Pull</button>
-        <button class="btn btn-primary" data-action="git-batch-push">全部 Push</button>
+        <button class="btn btn-secondary" data-action="git-batch-refresh">刷新状态</button>
       </div>
       <div id="gitList"></div>
     </div>
@@ -696,6 +678,24 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 命令管理 Tab -->
+    <div class="tab-panel" id="panel-commands">
+      <div class="toolbar">
+        <h2 class="section-title">命令模板</h2>
+        <button class="btn btn-primary" data-action="add-cmd">+ 新增命令</button>
+      </div>
+      <div id="cmdList"></div>
+    </div>
+
+    <!-- 运行中进程 Tab -->
+    <div class="tab-panel" id="panel-processes">
+      <div class="toolbar">
+        <h2 class="section-title">运行中进程</h2>
+        <button class="btn btn-secondary" data-action="refresh-processes">刷新</button>
+      </div>
+      <div id="processList"></div>
     </div>
   </div>
 

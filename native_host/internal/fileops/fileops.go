@@ -229,19 +229,13 @@ func SyncSkillDir(req protocol.Request) protocol.Response {
 		Conflicts: []ConflictInfo{},
 	}
 
-	// 计算目标目录的最终名称（处理冲突）
+	// 计算目标目录的最终名称（冲突时直接覆盖）
 	finalDst := dst
 	if dstExists && srcMd5 != dstMd5 {
-		// 冲突：重命名原目标
-		finalDst = findAvailableName(dstParent, skillName)
-		// 重命名
-		if err := os.Rename(dst, finalDst); err != nil {
-			return protocol.Response{Status: "error", Message: "重命名冲突目录失败: " + err.Error()}
+		// 冲突：直接删除目标，用源覆盖
+		if err := os.RemoveAll(dst); err != nil {
+			return protocol.Response{Status: "error", Message: "删除旧版本失败: " + err.Error()}
 		}
-		result.Conflicts = append(result.Conflicts, ConflictInfo{
-			RenamedTo: filepath.Base(finalDst),
-			Original:  skillName,
-		})
 	}
 
 	// 如果目标已存在且 MD5 相同，跳过
@@ -257,30 +251,6 @@ func SyncSkillDir(req protocol.Request) protocol.Response {
 
 	result.Copied = append(result.Copied, skillName)
 	return protocol.Response{Status: "ok", Data: result}
-}
-
-// findAvailableName 查找可用的目录名，处理冲突（-v2, -v3...）
-func findAvailableName(parent, baseName string) string {
-	for i := 2; ; i++ {
-		newName := baseName + "-v" + itoa(i)
-		newPath := filepath.Join(parent, newName)
-		if _, err := os.Stat(newPath); os.IsNotExist(err) {
-			return newPath
-		}
-	}
-}
-
-// itoa 简单的 int 到 string 转换
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var digits []byte
-	for n > 0 {
-		digits = append([]byte{byte('0' + n%10)}, digits...)
-		n /= 10
-	}
-	return string(digits)
 }
 
 // CopyDirRecursive 递归复制目录
