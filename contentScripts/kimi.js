@@ -174,15 +174,16 @@ function isElementVisible(element) {
 
 async function simulateContenteditableInput(element, text) {
   if (!element || !text) return false;
-  logInfo(`使用 beforeinput 模式输入，长度: ${text.length}`);
+  logInfo(`Lexical beforeinput 模式输入，长度: ${text.length}`);
 
   element.focus();
   await delay(50);
 
-  // 全选并替换
+  // 全选现有内容
   document.execCommand('selectAll', false, null);
   await delay(30);
 
+  // 只发 beforeinput 让 Lexical 插入，input 只通知不附带 data
   const beforeInputEvent = new InputEvent('beforeinput', {
     bubbles: true,
     cancelable: true,
@@ -191,16 +192,9 @@ async function simulateContenteditableInput(element, text) {
   });
   element.dispatchEvent(beforeInputEvent);
 
-  const success = document.execCommand('insertText', false, text);
-  if (!success) {
-    element.textContent = text;
-  }
+  element.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true }));
 
-  element.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: text }));
-  element.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
-  document.dispatchEvent(new Event('selectionchange', { bubbles: true }));
-
-  logInfo("beforeinput 模式输入完成");
+  logInfo("Lexical beforeinput 模式输入完成");
   return true;
 }
 
@@ -331,15 +325,13 @@ async function sendChatMessage(message) {
       await delay(PLATFORM_CONFIG.activateDelay);
     }
 
-    // 设置输入值
+    // 设置输入值（setInputValue 已包含 contenteditable 的完整事件流程，无需再 triggerInputEvents）
     const inputResult = await setInputValue(inputElement, message);
     if (!inputResult) {
       logError("设置输入值失败");
       return false;
     }
 
-    // 触发输入事件
-    triggerInputEvents(inputElement);
     await delay(PLATFORM_CONFIG.inputDelay);
 
     // 查找发送按钮
@@ -393,11 +385,10 @@ async function waitForButtonEnabled(buttonElement, inputElement, message) {
 
   for (let i = 0; i < maxRetries; i++) {
     logWarning(`等待按钮启用... (${i + 1}/${maxRetries})`);
+    // 只触发 input 事件，不重新插入文本（模拟编辑器内容未变但触发了事件）
     inputElement.dispatchEvent(new InputEvent('input', {
       bubbles: true,
       cancelable: true,
-      inputType: 'insertText',
-      data: message,
     }));
     await delay(retryInterval);
     if (checkButtonEnabled()) {
