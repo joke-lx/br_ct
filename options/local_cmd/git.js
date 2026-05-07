@@ -32,10 +32,13 @@ async function loadGitDirList() {
         </div>
       </div>
       <div class="git-status-area" id="git-status-${d.id}">
-        <span style="color:var(--muted);font-size:14px;">点击"刷新状态"查看</span>
+        <span style="color:var(--muted);font-size:14px;">加载中...</span>
       </div>
     </div>
   `).join('');
+
+  // 自动刷新状态
+  loadGitStatus();
 }
 
 function openGitDirModal() {
