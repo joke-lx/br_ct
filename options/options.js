@@ -13,6 +13,7 @@ const switcherState = {
   open: false,
   selectedIndex: 0,
   lastFocusedElement: null,
+  closeTimer: null,
 };
 
 let currentFrameEl = null;
@@ -614,7 +615,7 @@ function renderSwitcherGrid(grid) {
     card.setAttribute('aria-label', item.name);
 
     // 为每个卡片添加 staggered delay，实现逐个出现的动画
-    card.style.transitionDelay = `${index * 35}ms`;
+    card.style.transitionDelay = `${index * 50}ms`;
 
     // 顶部标题栏
     const topbar = document.createElement('div');
@@ -690,7 +691,7 @@ function closeSwitcher() {
     if (!switcherState.open) {
       overlay.setAttribute('hidden', '');
     }
-  }, 300);
+  }, 450);
 
   // 恢复焦点
   if (switcherState.lastFocusedElement) {
@@ -814,4 +815,71 @@ function togglePinTab() {
 }
 
 // 页面加载时初始化
+function openSwitcher() {
+  const overlay = document.getElementById('switcher-overlay');
+  if (!overlay) return;
+
+  if (switcherState.closeTimer) {
+    clearTimeout(switcherState.closeTimer);
+    switcherState.closeTimer = null;
+  }
+
+  switcherState.lastFocusedElement = document.activeElement;
+
+  const currentPage = getCurrentPage();
+  const currentIndex = NAV_ITEMS.findIndex(item => item.page === currentPage);
+  if (currentIndex >= 0) {
+    switcherState.selectedIndex = currentIndex;
+  }
+
+  updateSelectedCard();
+  overlay.removeAttribute('hidden');
+  overlay.classList.remove('is-closing');
+  switcherState.open = true;
+
+  const grid = document.getElementById('switcher-grid');
+  requestAnimationFrame(() => {
+    overlay.classList.add('is-open');
+    grid?.focus();
+  });
+}
+
+function closeSwitcher() {
+  const overlay = document.getElementById('switcher-overlay');
+  if (!overlay || overlay.hidden || overlay.classList.contains('is-closing')) return;
+
+  overlay.classList.remove('is-open');
+  overlay.classList.add('is-closing');
+  switcherState.open = false;
+
+  const finishClose = () => {
+    if (switcherState.closeTimer) {
+      clearTimeout(switcherState.closeTimer);
+      switcherState.closeTimer = null;
+    }
+
+    if (!switcherState.open) {
+      overlay.classList.remove('is-closing');
+      overlay.setAttribute('hidden', '');
+    }
+  };
+
+  const panel = overlay.querySelector('.switcher-panel');
+  const handleTransitionEnd = (event) => {
+    if (event.target !== panel || event.propertyName !== 'opacity') return;
+    panel.removeEventListener('transitionend', handleTransitionEnd);
+    finishClose();
+  };
+
+  panel?.addEventListener('transitionend', handleTransitionEnd);
+  switcherState.closeTimer = setTimeout(() => {
+    panel?.removeEventListener('transitionend', handleTransitionEnd);
+    finishClose();
+  }, 360);
+
+  if (switcherState.lastFocusedElement) {
+    switcherState.lastFocusedElement.focus();
+  }
+}
+
 document.addEventListener('DOMContentLoaded', initializeOptions);
