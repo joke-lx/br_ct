@@ -200,9 +200,15 @@ export function initFocusScrollAgent() {
   window.addEventListener(
     'wheel',
     (e) => {
-      if (!inFocusMode()) return;
+      const focus = inFocusMode();
+      if (!focus) return;
 
-      if (e.defaultPrevented) return;
+      if (e.defaultPrevented) {
+        log('wheel ignored: defaultPrevented', {
+          target: e.target && e.target.tagName,
+        });
+        return;
+      }
 
       // Ignore non-vertical wheel.
       if (!e || typeof e.deltaY !== 'number' || e.deltaY === 0) return;
@@ -216,6 +222,14 @@ export function initFocusScrollAgent() {
         scrollHeight: root.scrollHeight,
         clientHeight: root.clientHeight,
       };
+
+      log('wheel inspect', {
+        direction,
+        deltaY: e.deltaY,
+        targetTag: e.target && e.target.tagName,
+        targetClass: e.target && e.target.className,
+        root: before,
+      });
 
       // Give precedence to inner scrollables.
       const inner = getScrollableAncestor(e.target, root);
@@ -235,45 +249,45 @@ export function initFocusScrollAgent() {
         return;
       }
 
-      // Only accumulate when the page root is already at the edge.
-      if (!isAtPageEdge(root, direction)) {
-        if (acc !== 0) {
-          log('wheel reset: root not at edge', {
+      // If we're at the root edge, accumulate and maybe navigate.
+      if (isAtPageEdge(root, direction)) {
+        const now = Date.now();
+        if (now - lastTs > EDGE_DELTA_DECAY_MS && acc !== 0) {
+          log('wheel accumulator decay reset', {
             direction,
-            deltaY: e.deltaY,
-            before,
+            elapsed: now - lastTs,
             accBeforeReset: acc,
           });
+          acc = 0;
         }
-        acc = 0;
+        lastTs = now;
+
+        acc += Math.abs(e.deltaY);
+
+        log('wheel edge accumulate', {
+          direction,
+          deltaY: e.deltaY,
+          acc,
+          threshold: EDGE_DELTA_THRESHOLD,
+          before,
+        });
+
+        if (acc >= EDGE_DELTA_THRESHOLD) {
+          acc = 0;
+          log('wheel edge threshold reached', { direction, before });
+          postNavigate(direction === 'down' ? 'next' : 'prev');
+        }
         return;
       }
 
-      const now = Date.now();
-      if (now - lastTs > EDGE_DELTA_DECAY_MS && acc !== 0) {
-        log('wheel accumulator decay reset', {
+      // Not at edge yet: let the browser keep scrolling the root.
+      if (acc !== 0) {
+        log('wheel reset: root not at edge', {
           direction,
-          elapsed: now - lastTs,
+          deltaY: e.deltaY,
+          before,
           accBeforeReset: acc,
         });
-        acc = 0;
-      }
-      lastTs = now;
-
-      acc += Math.abs(e.deltaY);
-
-      log('wheel edge accumulate', {
-        direction,
-        deltaY: e.deltaY,
-        acc,
-        threshold: EDGE_DELTA_THRESHOLD,
-        before,
-      });
-
-      if (acc >= EDGE_DELTA_THRESHOLD) {
-        acc = 0;
-        log('wheel edge threshold reached', { direction, before });
-        postNavigate(direction === 'down' ? 'next' : 'prev');
       }
     },
     { passive: true }
