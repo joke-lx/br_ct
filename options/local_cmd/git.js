@@ -28,7 +28,7 @@ async function loadGitDirList() {
             <span class="git-card-dir git-path">${escapeHtml(d.path)}</span>
           </div>
           <div class="git-status-area" id="git-status-${d.id}">
-            <span style="color:var(--muted);font-size:13px;">加载中...</span>
+            <span style="color:var(--muted);font-size:14px;">加载中...</span>
           </div>
         </div>
         <div class="git-card-actions">
@@ -114,9 +114,9 @@ function renderGitStatus(dirs, statuses) {
 
     const filesHtml = (label, files, color) => {
       if (!files || files.length === 0) return '';
-      return `<div style="margin-top:4px;">
-        <span style="font-size:11px;font-weight:600;color:${color};">${label} (${files.length})</span>
-        <div style="margin-top:2px;font-size:11px;color:var(--muted);max-height:60px;overflow:auto;">
+      return `<div style="margin-top:6px;">
+        <span style="font-size:12px;font-weight:600;color:${color};">${label} (${files.length})</span>
+        <div style="margin-top:2px;font-size:12px;color:var(--muted);max-height:80px;overflow:auto;">
           ${files.map(f => `<div>${escapeHtml(f)}</div>`).join('')}
         </div>
       </div>`;
@@ -131,10 +131,10 @@ function renderGitStatus(dirs, statuses) {
       : '';
 
     area.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <span style="font-weight:600;font-size:13px;">${escapeHtml(s.branch || 'unknown')}</span>
-        <span class="status-badge ${s.clean ? 'running' : 'stopped'}" style="padding:2px 8px;font-size:11px;">
-          <span class="status-dot" style="width:6px;height:6px;${s.clean ? 'background:#6a8758;' : 'background:#9a4f40;'}"></span>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span style="font-weight:600;font-size:14px;">${escapeHtml(s.branch || 'unknown')}</span>
+        <span class="status-badge ${s.clean ? 'running' : 'stopped'}" style="padding:2px 10px;font-size:12px;">
+          <span class="status-dot" style="width:7px;height:7px;${s.clean ? 'background:#6a8758;' : 'background:#9a4f40;'}"></span>
           ${s.clean ? '干净' : '有变更'}
         </span>
         <span class="git-stat-item ${s.ahead > 0 ? 'dirty' : 'clean'}">待推送 <b>${s.ahead}</b></span>
@@ -143,7 +143,7 @@ function renderGitStatus(dirs, statuses) {
         <span class="git-stat-item ${s.untrackCount > 0 ? 'dirty' : 'clean'}">未跟踪 <b>${s.untrackCount}</b></span>
         ${toggleBtn}
       </div>
-      <div class="git-details" id="git-details-${d.id}" style="margin-top:8px;">
+      <div class="git-details" id="git-details-${d.id}" style="margin-top:10px;">
         ${detailsHtml}
       </div>
     `;
