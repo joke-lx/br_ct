@@ -50,6 +50,13 @@ async function deleteSkillProject(id) {
   loadSkills();
 }
 
+async function removeSkillProject() {
+  const select = document.getElementById('skillProjectSelect');
+  const selectedId = select.value;
+  if (!selectedId) return;
+  await deleteSkillProject(selectedId);
+}
+
 async function deleteSkillFromProject(skillName, projectId) {
   const projects = await loadStorage(STORAGE_KEYS.skillMonitoredProjects);
   const project = projects.find(p => p.id === projectId);
@@ -95,16 +102,29 @@ async function importProjectFromGit() {
 
 async function refreshProjectSelect() {
   const select = document.getElementById('skillProjectSelect');
+  const removeBtn = document.getElementById('skillProjectRemoveBtn');
   const projects = await loadStorage(STORAGE_KEYS.skillMonitoredProjects);
   const selected = await loadStorage(STORAGE_KEYS.skillSelectedProject);
 
   select.innerHTML = '<option value="">-- 选择项目 --</option>' +
     projects.map(p => `<option value="${p.id}" ${p.id === selected ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('');
 
+  // 更新移除按钮显示状态
+  updateRemoveBtnVisibility();
+
   select.onchange = async () => {
     await saveStorage(STORAGE_KEYS.skillSelectedProject, select.value);
+    updateRemoveBtnVisibility();
     loadSkills();
   };
+}
+
+function updateRemoveBtnVisibility() {
+  const select = document.getElementById('skillProjectSelect');
+  const removeBtn = document.getElementById('skillProjectRemoveBtn');
+  if (select && removeBtn) {
+    removeBtn.style.display = select.value ? 'flex' : 'none';
+  }
 }
 
 async function loadSkills() {

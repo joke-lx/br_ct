@@ -62,6 +62,7 @@ function setupDelegation() {
       // Skills (skill.js)
       case 'skill-save-central': saveSkillCentralPath(); break;
       case 'skill-add-project': openSkillProjectModal(); break;
+      case 'skill-remove-project': if (needConfirm(btn)) return; removeSkillProject(); break;
       case 'skill-import-from-git': importProjectFromGit(); break;
       case 'skill-project-cancel': closeSkillProjectModal(); break;
       case 'skill-project-save': saveSkillProject(); break;
