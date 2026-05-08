@@ -29,30 +29,21 @@
           border-color: rgba(107, 74, 49, 0.8);
           background: rgba(107, 74, 49, 0.08);
       }
-      .btn-pull {
-          border-radius: 8px;
-          /* 关键：一个 gradient 同时含「棕色」和「透明/浅色」两段 */
-          background-image: linear-gradient(
-                  to right,
-                  rgba(107, 74, 49, 0.3) 0%,
-                  rgba(107, 74, 49, 0.3) 50%,
-                  transparent 50%,
-                  transparent 100%
-          );
-          background-size: 200% 100%;
-          background-position: 100% 0;   /* 初始：露出右半边（浅色） */
-          background-color: transparent;
-          box-shadow: none;
-          color: #6b4a31;
-          border: 1px solid rgba(107, 74, 49, 0.5);
-          transition: background-position 0.4s ease, color 0.4s ease;
-          cursor: pointer;
-      }
+     .btn-pull {
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: none;
+    color: #6b4a31;
+    border: 1px solid rgba(107, 74, 49, 0.5);
+    cursor: pointer;
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+}
 
-      .btn-pull:hover {
-          background-position: 0 0;      /* hover：滑到左半边（棕色） */
-          color: #fff;                   /* 可选：文字也跟着变 */
-      }
+.btn-pull:hover {
+    background-color: rgba(107, 74, 49, 0.37);
+    color: #fff;
+    border-color: rgba(107, 74, 49, 0.85);
+}
     .local-cmd-container {
       max-width: 1400px;
       margin: 0 auto;
