@@ -338,7 +338,20 @@ function handleFocusScrollNavigate(direction) {
   const incomingLoad = () => {
     incomingFrame.removeEventListener('load', incomingLoad);
 
-    // 2) 下一帧 loaded 后开始动画
+    // Pre-scroll while the iframe is still offscreen to avoid visible top->bottom flash on prev.
+    const incomingOrigin = getFrameTargetOrigin(incomingFrame);
+    if (incomingOrigin) {
+      try {
+        incomingFrame.contentWindow.postMessage(
+          { action: 'scrollToEdge', edge },
+          incomingOrigin
+        );
+      } catch {
+        // ignore
+      }
+    }
+
+    // 2) 下一帧 loaded 后开始动画（给 scrollToEdge 一帧时间生效）
     requestAnimationFrame(() => {
       requestAnimationFrame(async () => {
         setFrameTransform(currentFrame, -fromY);

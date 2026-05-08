@@ -90,6 +90,7 @@ export function getScrollableAncestor(target, stopEl) {
 
 const EDGE_DELTA_THRESHOLD = 120;
 const EDGE_DELTA_DECAY_MS = 350;
+const WHEEL_JITTER_THRESHOLD = 16;
 
 /**
  * Init focus-mode wheel-edge navigation agent for iframe subpages.
@@ -132,6 +133,10 @@ export function initFocusScrollAgent() {
 
   let acc = 0;
   let lastTs = 0;
+
+  /** @type {'up'|'down'|null} */
+  let lockedDirection = null;
+  let lockedTs = 0;
 
   function inFocusMode() {
     try {
@@ -224,6 +229,45 @@ export function initFocusScrollAgent() {
         clientHeight: root.clientHeight,
       };
 
+      const now = Date.now();
+      const oppositeDirection = lockedDirection && lockedDirection !== direction;
+      const jitterDelta = Math.abs(e.deltaY);
+
+      if (lockedDirection && now - lockedTs <= EDGE_DELTA_DECAY_MS && oppositeDirection) {
+        if (jitterDelta < WHEEL_JITTER_THRESHOLD) {
+          log('wheel jitter ignored', {
+            direction,
+            lockedDirection,
+            deltaY: e.deltaY,
+            jitterThreshold: WHEEL_JITTER_THRESHOLD,
+          });
+          return;
+        }
+
+        log('wheel direction lock reset by strong reverse', {
+          direction,
+          lockedDirection,
+          deltaY: e.deltaY,
+          jitterThreshold: WHEEL_JITTER_THRESHOLD,
+        });
+        lockedDirection = null;
+        acc = 0;
+      }
+
+      if (!lockedDirection) {
+        lockedDirection = direction;
+        lockedTs = now;
+      }
+
+      if (lockedDirection !== direction) {
+        log('wheel direction ignored by lock', {
+          direction,
+          lockedDirection,
+          deltaY: e.deltaY,
+        });
+        return;
+      }
+
       log('wheel inspect', {
         direction,
         deltaY: e.deltaY,
@@ -284,6 +328,7 @@ export function initFocusScrollAgent() {
             accBeforeReset: acc,
           });
           acc = 0;
+          lockedDirection = null;
         }
         lastTs = now;
 
@@ -299,6 +344,7 @@ export function initFocusScrollAgent() {
 
         if (acc >= EDGE_DELTA_THRESHOLD) {
           acc = 0;
+          lockedDirection = null;
           log('wheel edge threshold reached', { direction, before });
           postNavigate(direction === 'down' ? 'next' : 'prev');
         }
@@ -313,6 +359,8 @@ export function initFocusScrollAgent() {
           before,
           accBeforeReset: acc,
         });
+        acc = 0;
+        lockedDirection = null;
       }
     },
     { passive: true }
