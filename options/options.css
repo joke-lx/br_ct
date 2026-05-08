@@ -446,6 +446,55 @@ select {
   border-top: none;
   color: rgba(45, 36, 28, 0.5);
   font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sidebar-footer p {
+  margin: 0;
+}
+
+.quad-toggle-btn {
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+    border: none;
+  background:transparent;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 4px;
+  cursor: pointer;
+  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, opacity 180ms ease;
+}
+
+.quad-toggle-btn:hover {
+    border-radius: 8px;
+  background: rgba(255, 252, 252, 0.72);
+}
+
+.quad-toggle-btn:active {
+  transform: scale(0.96);
+}
+
+.quad-toggle-btn[aria-pressed="false"] {
+  opacity: 0.58;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.quad-toggle-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(93, 67, 43, 0.58);
+  justify-self: center;
+  align-self: center;
+}
+
+.app-container.sidebar-collapsed .quad-toggle-btn {
+  margin-inline: auto;
 }
 
 #content-frame {
@@ -1055,6 +1104,14 @@ select:focus {
 .quad-launcher:hover .quad-tooltip {
   opacity: 1;
   visibility: visible;
+}
+
+.quad-launcher.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(10px) scale(0.92);
+  transition: opacity 180ms ease, visibility 180ms ease, transform 180ms ease;
 }
 
 .switcher-overlay[hidden] {

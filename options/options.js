@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   selectedTab: 'optionsSelectedTab',
   sidebarCollapsed: 'optionsSidebarCollapsed',
   focusMode: 'optionsFocusMode',
+  quadLauncherVisible: 'optionsQuadLauncherVisible',
 };
 
 const switcherState = {
@@ -56,6 +57,7 @@ function initializeOptions() {
   const navItems = document.querySelectorAll('.nav-item');
   const collapseBtn = document.getElementById('sidebar-collapse-btn');
   const focusBtn = document.getElementById('focus-btn');
+  const quadToggleBtn = document.getElementById('quad-toggle-btn');
 
   // 恢复侧边栏状态
   chrome.storage.local.get([STORAGE_KEYS.sidebarCollapsed], (result) => {
@@ -72,6 +74,11 @@ function initializeOptions() {
   });
 
   // 恢复上次选中的 tab
+  chrome.storage.local.get([STORAGE_KEYS.quadLauncherVisible], (result) => {
+    const isVisible = result[STORAGE_KEYS.quadLauncherVisible] !== false;
+    setQuadLauncherVisible(isVisible);
+  });
+
   chrome.storage.local.get([STORAGE_KEYS.selectedTab], (result) => {
     const savedTab = result[STORAGE_KEYS.selectedTab];
     if (savedTab && document.querySelector(`[data-page="${savedTab}"]`)) {
@@ -194,6 +201,12 @@ function initializeOptions() {
 
   // 初始化 Win+Tab 风格切换器
   initSwitcher();
+  quadToggleBtn?.addEventListener('click', () => {
+    const launcher = document.getElementById('quad-launcher');
+    const willShow = launcher?.classList.contains('is-hidden');
+    setQuadLauncherVisible(Boolean(willShow));
+    chrome.storage.local.set({ [STORAGE_KEYS.quadLauncherVisible]: Boolean(willShow) });
+  });
 }
 
 /**
@@ -880,6 +893,19 @@ function closeSwitcher() {
   if (switcherState.lastFocusedElement) {
     switcherState.lastFocusedElement.focus();
   }
+}
+
+function setQuadLauncherVisible(isVisible) {
+  const launcher = document.getElementById('quad-launcher');
+  const toggleBtn = document.getElementById('quad-toggle-btn');
+  if (!launcher || !toggleBtn) return;
+
+  launcher.classList.toggle('is-hidden', !isVisible);
+  toggleBtn.setAttribute('aria-pressed', isVisible ? 'true' : 'false');
+
+  const label = isVisible ? '隐藏快捷切换按钮' : '显示快捷切换按钮';
+  toggleBtn.title = label;
+  toggleBtn.setAttribute('aria-label', label);
 }
 
 document.addEventListener('DOMContentLoaded', initializeOptions);
