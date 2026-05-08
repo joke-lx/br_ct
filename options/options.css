@@ -982,6 +982,11 @@ select:focus {
   transition: all 200ms ease;
 }
 
+.dot-nav-dots .dot.active {
+  background: var(--accent);
+  transform: scale(1.35);
+}
+
 .dot-nav-dots:hover .dot {
   background: rgba(93, 67, 43, 0.6);
 }

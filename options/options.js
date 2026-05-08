@@ -84,8 +84,12 @@ function initializeOptions() {
    */
   function getFrameOriginSafe() {
     try {
-      if (!frame?.src) return null;
-      return new URL(frame.src).origin;
+      const frame = document.getElementById('content-frame');
+      const src = frame?.src;
+      if (!src) return null;
+
+      const url = new URL(src, window.location.href);
+      return url.origin;
     } catch {
       return null;
     }
@@ -210,9 +214,9 @@ function isFocusMode() {
 function getFrameTargetOrigin() {
   const frame = document.getElementById('content-frame');
   try {
-    if (frame?.src) {
-      return new URL(frame.src).origin;
-    }
+    const src = frame?.src;
+    if (!src) return null;
+    return new URL(src, window.location.href).origin;
   } catch {
     // ignore
   }
@@ -291,7 +295,9 @@ function updateNavRingActive() {
   const container = document.getElementById('dot-nav');
   const exitItem = document.getElementById('dot-nav-exit');
   const items = document.querySelectorAll('.dot-nav-item');
+  const dots = document.querySelectorAll('.dot-nav-dots .dot');
   const currentPage = getCurrentPage();
+  const currentIndex = getNavIndexByPage(currentPage);
 
   // 专注模式下显示退出按钮
   if (isFocusMode()) {
@@ -307,6 +313,12 @@ function updateNavRingActive() {
       item.classList.add('active');
     }
   });
+
+  // 更新右侧圆点状态
+  dots.forEach(dot => dot.classList.remove('active'));
+  if (currentIndex >= 0 && currentIndex < dots.length) {
+    dots[currentIndex].classList.add('active');
+  }
 }
 
 /**
