@@ -4,16 +4,18 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1f797681-6e21-42bc-94cd-d5f4827fa43b" name="更改" comment="样式微调">
+    <list default="true" id="1f797681-6e21-42bc-94cd-d5f4827fa43b" name="更改" comment="微调">
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/_2025_12_24_12_00____.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/___2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/在变基之前未提交的更改_[更改]2/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/在进行合并之前于_2025_12_24_12_00_取消提交了更改_[更改]/shelved.patch" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/superpowers/plans/2026-05-06-chatgpt-copy-html-capture-plan.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/superpowers/plans/2026-05-06-chatgpt-sidebar-thread.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/superpowers/specs/2026-05-06-chatgpt-copy-auto-capture-design.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/superpowers/specs/2026-05-06-chatgpt-copy-html-capture-design.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/options/local_cmd/command.js" beforeDir="false" afterPath="$PROJECT_DIR$/options/local_cmd/command.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/options/local_cmd/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/options/local_cmd/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/options/local_cmd/skill.js" beforeDir="false" afterPath="$PROJECT_DIR$/options/local_cmd/skill.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/options/options.css" beforeDir="false" afterPath="$PROJECT_DIR$/options/options.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backgroudtask/ai_platform_processor.js" beforeDir="false" afterPath="$PROJECT_DIR$/backgroudtask/ai_platform_processor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/popup/main/prompts/groups/xxxx_trans.js" beforeDir="false" afterPath="$PROJECT_DIR$/popup/main/prompts/groups/xxxx_trans.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sidebar/main/main.html" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/main.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sidebar/main/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/main.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sidebar/main/mainUtils.js" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/mainUtils.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sidebar/main/sidebar.css" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/sidebar.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,7 +29,6 @@
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
-    <option name="RESET_MODE" value="HARD" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
@@ -167,15 +168,7 @@
       <option name="project" value="LOCAL" />
       <updated>1776529036357</updated>
     </task>
-    <task id="LOCAL-00009" summary="样式微调">
-      <option name="closed" value="true" />
-      <created>1778146962534</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1778146962534</updated>
-    </task>
-    <option name="localTasksCounter" value="10" />
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -209,7 +202,6 @@
     <MESSAGE value="修改下拉列表" />
     <MESSAGE value="1.优化跳转逻辑" />
     <MESSAGE value="微调" />
-    <MESSAGE value="样式微调" />
-    <option name="LAST_COMMIT_MESSAGE" value="样式微调" />
+    <option name="LAST_COMMIT_MESSAGE" value="微调" />
   </component>
 </project>
