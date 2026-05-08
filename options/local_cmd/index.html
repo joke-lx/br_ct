@@ -6,6 +6,44 @@
   <title>本地命令管理</title>
   <link rel="stylesheet" href="../options.css" />
   <style>
+      .btn{
+          min-height: 0;
+      }
+      .btn-add-cmd {
+          margin-top: 50px;
+          background: rgba(255, 255, 255, 0.03);
+          width: 300px;
+          height: 150px;
+          border: 2px dashed rgba(107, 74, 49, 0.5);
+          box-shadow: none;
+          color: #1e1e1e;
+          font-size: 20px;
+          cursor: pointer;
+          transition: border-color 0.3s ease,
+          border-style 0s ease 0.3s,
+          background-color 0.3s ease;
+      }
+
+      .btn-add-cmd:hover {
+          border-style: solid;
+          border-color: rgba(107, 74, 49, 0.8);
+          background: rgba(107, 74, 49, 0.08);
+      }
+/*     .btn-pull {*/
+/*    border-radius: 8px;*/
+/*    background: transparent;*/
+/*    box-shadow: none;*/
+/*    color: #6b4a31;*/
+/*    border: 1px solid rgba(107, 74, 49, 0.5);*/
+/*    cursor: pointer;*/
+/*    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;*/
+/*}*/
+
+/*.btn-pull:hover {*/
+/*    background-color: rgba(107, 74, 49, 0.37);*/
+/*    color: #fff;*/
+/*    border-color: rgba(107, 74, 49, 0.85);*/
+/*}*/
     .local-cmd-container {
       max-width: 1400px;
       margin: 0 auto;
@@ -52,6 +90,7 @@
     .tab-panel.active {
       display: block;
     }
+
 
     /* 命令模板卡片 */
     .cmd-card {
@@ -490,6 +529,8 @@
       justify-content: space-between;
       gap: 10px;
       flex-shrink: 0;
+        box-sizing: border-box;
+        height: 50px;
     }
 
     .skill-panel-header .panel-title {
@@ -681,7 +722,7 @@
   </style>
 </head>
 <body>
-  <div class="local-cmd-container">
+  <div class="local-cmd-container page-container">
     <div class="native-status-bar">
       <span class="status-dot" id="nativeDot"></span>
       <span id="nativeStatus">检测中...</span>
@@ -847,5 +888,6 @@
   <script src="git.js"></script>
   <script src="skill.js"></script>
   <script src="local_cmd.js"></script>
+  <script type="module" src="../focusScroll/init.js"></script>
 </body>
 </html>

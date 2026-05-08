@@ -12,7 +12,7 @@ async function loadCommandList() {
     container.innerHTML = `
       <div class="empty-state">
         <p>暂无命令模板</p>
-        <button class="btn btn-primary" data-action="add-cmd">添加第一个命令</button>
+        <button class="btn btn-primary btn-add-cmd" data-action="add-cmd">添加第一个命令</button>
       </div>`;
     return;
   }

@@ -188,7 +188,7 @@ function renderCentralSkillList(skills, projectSkills) {
         <div class="skill-card-desc">${escapeHtml(s.description || '(无描述)')}</div>
         <div class="skill-card-path">${escapeHtml(s.skillDir)}</div>
         <div class="skill-card-actions">
-          ${!projectSkill ? `<button class="btn btn-success" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">→ 推送到项目</button>` : ''}
+          ${!projectSkill ? `<button class="btn btn-success btn-pull" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">→ 推送到项目</button>` : ''}
           ${projectSkill && !synced ? `<button class="btn btn-warning" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">↻ 同步到项目</button>` : ''}
         </div>
       </div>
@@ -220,7 +220,7 @@ function renderProjectSkillList(skills, project, centralSkills) {
         <div class="skill-card-path">${escapeHtml(s.skillDir)}</div>
         <div class="skill-card-actions">
           ${central && !synced ? `<button class="btn btn-warning" data-action="skill-push" data-name="${escapeHtml(s.name)}">↻ 同步到中心</button>` : ''}
-          ${!synced && !central ? `<button class="btn btn-success" data-action="skill-push" data-name="${escapeHtml(s.name)}">← 推送到中心</button>` : ''}
+          ${!synced && !central ? `<button class="btn btn-success btn-pull" data-action="skill-push" data-name="${escapeHtml(s.name)}">← 推送到中心</button>` : ''}
           <button class="btn btn-secondary" data-action="skill-delete-skill" data-name="${escapeHtml(s.name)}" data-project-id="${project.id}">移除 Skill</button>
         </div>
       </div>

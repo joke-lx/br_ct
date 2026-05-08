@@ -4,9 +4,18 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1f797681-6e21-42bc-94cd-d5f4827fa43b" name="更改" comment="修改下拉列表">
+    <list default="true" id="1f797681-6e21-42bc-94cd-d5f4827fa43b" name="更改" comment="微调">
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/_2025_12_24_12_00____.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/___2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/在变基之前未提交的更改_[更改]2/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/在进行合并之前于_2025_12_24_12_00_取消提交了更改_[更改]/shelved.patch" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backgroudtask/ai_platform_processor.js" beforeDir="false" afterPath="$PROJECT_DIR$/backgroudtask/ai_platform_processor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/popup/main/prompts/groups/xxxx_trans.js" beforeDir="false" afterPath="$PROJECT_DIR$/popup/main/prompts/groups/xxxx_trans.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sidebar/main/main.html" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/main.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sidebar/main/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/main.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sidebar/main/mainUtils.js" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/mainUtils.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sidebar/main/sidebar.css" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/sidebar.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -14,6 +23,11 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="joke" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="ProjectColorInfo">{
@@ -32,7 +46,8 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;feature/effect&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
     &quot;last_opened_file_path&quot;: &quot;C:/Users/joke/.ccswitch/worktrees/bro_chat/effect&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
@@ -67,6 +82,27 @@
       <workItem from="1766496204782" duration="1459000" />
       <workItem from="1766498017037" duration="613000" />
       <workItem from="1766546776143" duration="1804000" />
+      <workItem from="1773928041063" duration="41000" />
+      <workItem from="1774684222694" duration="1580000" />
+      <workItem from="1776524202482" duration="2842000" />
+      <workItem from="1776583715396" duration="4000" />
+      <workItem from="1776839654940" duration="2198000" />
+      <workItem from="1776843278036" duration="1441000" />
+      <workItem from="1777034051180" duration="505000" />
+      <workItem from="1777034842062" duration="1651000" />
+      <workItem from="1777097827066" duration="3000" />
+      <workItem from="1777183466303" duration="1491000" />
+      <workItem from="1777283092417" duration="9000" />
+      <workItem from="1777283120110" duration="1000" />
+      <workItem from="1777283318650" duration="64000" />
+      <workItem from="1777287115014" duration="4000" />
+      <workItem from="1777900892949" duration="1777000" />
+      <workItem from="1777903165528" duration="1870000" />
+      <workItem from="1777972233194" duration="7000" />
+      <workItem from="1778055425210" duration="186000" />
+      <workItem from="1778063473438" duration="1101000" />
+      <workItem from="1778066716856" duration="5135000" />
+      <workItem from="1778073630457" duration="398000" />
     </task>
     <task id="LOCAL-00001" summary="微调样式">
       <option name="closed" value="true" />
@@ -108,7 +144,31 @@
       <option name="project" value="LOCAL" />
       <updated>1766546782030</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="1.优化跳转逻辑">
+      <option name="closed" value="true" />
+      <created>1766548890157</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1766548890157</updated>
+    </task>
+    <task id="LOCAL-00007" summary="1.优化跳转逻辑">
+      <option name="closed" value="true" />
+      <created>1766548895221</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1766548895221</updated>
+    </task>
+    <task id="LOCAL-00008" summary="微调">
+      <option name="closed" value="true" />
+      <created>1776529036357</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1776529036357</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -119,7 +179,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="main" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -128,6 +200,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="微调样式" />
     <MESSAGE value="修改下拉列表" />
-    <option name="LAST_COMMIT_MESSAGE" value="修改下拉列表" />
+    <MESSAGE value="1.优化跳转逻辑" />
+    <MESSAGE value="微调" />
+    <option name="LAST_COMMIT_MESSAGE" value="微调" />
   </component>
 </project>

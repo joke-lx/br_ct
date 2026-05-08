@@ -63,15 +63,49 @@
         </nav>
         <div class="sidebar-footer">
           <p> options</p>
+          <button
+            class="quad-toggle-btn"
+            id="quad-toggle-btn"
+            type="button"
+            title="显示或隐藏快捷切换按钮"
+            aria-label="显示或隐藏快捷切换按钮"
+            aria-pressed="true">
+            <span class="quad-toggle-dot"></span>
+            <span class="quad-toggle-dot"></span>
+            <span class="quad-toggle-dot"></span>
+            <span class="quad-toggle-dot"></span>
+          </button>
         </div>
       </aside>
 
       <main class="main-content">
-        <iframe id="content-frame" src="platform/index.html" title="Options Content"></iframe>
+        <iframe id="content-frame" class="options-frame current-frame" src="platform/index.html" title="Options Content"></iframe>
+        <iframe id="incoming-frame" class="options-frame incoming-frame" title="Options Incoming" aria-hidden="true"></iframe>
       </main>
     </div>
 
     <script src="options.js"></script>
+
+    <!-- Quad-dot launcher (bottom center) -->
+    <button class="quad-launcher" id="quad-launcher" type="button" aria-label="切换菜单 (Ctrl+Alt+E)">
+      <span class="quad-dot"></span>
+      <span class="quad-dot"></span>
+      <span class="quad-dot"></span>
+      <span class="quad-dot"></span>
+      <span class="quad-tooltip">Ctrl+Alt+E</span>
+    </button>
+
+    <!-- Win+Tab style switcher overlay -->
+    <div class="switcher-overlay" id="switcher-overlay" hidden>
+      <div class="switcher-backdrop" data-switcher-close></div>
+      <div class="switcher-panel" role="dialog" aria-modal="true" aria-label="菜单切换">
+        <div class="switcher-header">
+          <div class="switcher-title">切换菜单</div>
+          <div class="switcher-hint">Esc 关闭 · Enter 进入 · 方向键切换</div>
+        </div>
+        <div class="switcher-grid" id="switcher-grid" tabindex="-1"></div>
+      </div>
+    </div>
 
     <!-- 悬浮点导航 -->
     <div class="dot-nav" id="dot-nav">
