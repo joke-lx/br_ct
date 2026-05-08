@@ -40,9 +40,10 @@ export function isAtPageEdge(pageEl, direction) {
   const clientHeight = Number(pageEl.clientHeight || 0);
 
   const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
+  const EPS = 1; // tolerate fractional scrollTop / rounding
 
-  if (direction === 'down') return scrollTop >= maxScrollTop;
-  if (direction === 'up') return scrollTop <= 0;
+  if (direction === 'down') return scrollTop >= maxScrollTop - EPS;
+  if (direction === 'up') return scrollTop <= EPS;
   return false;
 }
 
@@ -249,8 +250,16 @@ export function initFocusScrollAgent() {
         return;
       }
 
+      const atEdge = isAtPageEdge(root, direction);
+      log('wheel edge check', {
+        direction,
+        atEdge,
+        scrollTop: before.scrollTop,
+        maxScrollTop: Math.max(0, before.scrollHeight - before.clientHeight),
+      });
+
       // If we're at the root edge, accumulate and maybe navigate.
-      if (isAtPageEdge(root, direction)) {
+      if (atEdge) {
         const now = Date.now();
         if (now - lastTs > EDGE_DELTA_DECAY_MS && acc !== 0) {
           log('wheel accumulator decay reset', {
