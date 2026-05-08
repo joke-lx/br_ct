@@ -101,17 +101,33 @@ export function initFocusScrollAgent() {
     return;
   }
 
+  const log = (...args) => console.log('[Options FocusScroll]', ...args);
+
   /** @type {string|null} */
   let parentOrigin = null;
   try {
-    // In an iframe, document.referrer should be the parent page URL.
-    // Derive expected origin to avoid targetOrigin='*'.
+    // Preferred: derive from referrer (parent page URL).
     if (document.referrer) {
       parentOrigin = new URL(document.referrer).origin;
     }
   } catch {
     parentOrigin = null;
   }
+
+  // In extension iframes, referrer may be empty. Parent lives on the same extension origin.
+  if (!parentOrigin) {
+    try {
+      parentOrigin = new URL(window.location.href).origin;
+    } catch {
+      parentOrigin = null;
+    }
+  }
+
+  log('init', {
+    href: window.location.href,
+    referrer: document.referrer,
+    parentOrigin,
+  });
 
   let acc = 0;
   let lastTs = 0;
@@ -128,15 +144,20 @@ export function initFocusScrollAgent() {
   }
 
   function postNavigate(direction) {
-    if (!parentOrigin) return;
+    if (!parentOrigin) {
+      log('skip postNavigate: missing parentOrigin', direction);
+      return;
+    }
+
+    log('postNavigate', { direction, parentOrigin });
 
     try {
       window.parent?.postMessage(
         { action: 'focusScrollNavigate', direction },
         parentOrigin
       );
-    } catch {
-      // ignore
+    } catch (error) {
+      log('postNavigate failed', error);
     }
   }
 
@@ -155,11 +176,25 @@ export function initFocusScrollAgent() {
     const root = document.scrollingElement || document.documentElement;
     if (!root) return;
 
+    log('scrollToEdge', {
+      edge,
+      before: {
+        scrollTop: root.scrollTop,
+        scrollHeight: root.scrollHeight,
+        clientHeight: root.clientHeight,
+      },
+    });
+
     if (edge === 'top') {
       root.scrollTop = 0;
     } else if (edge === 'bottom') {
       root.scrollTop = root.scrollHeight;
     }
+
+    log('scrollToEdge applied', {
+      edge,
+      after: { scrollTop: root.scrollTop },
+    });
   });
 
   window.addEventListener(
@@ -176,30 +211,72 @@ export function initFocusScrollAgent() {
       const root = document.scrollingElement || document.documentElement;
       if (!root) return;
 
+      const before = {
+        scrollTop: root.scrollTop,
+        scrollHeight: root.scrollHeight,
+        clientHeight: root.clientHeight,
+      };
+
       // Give precedence to inner scrollables.
       const inner = getScrollableAncestor(e.target, root);
       if (inner && canScrollInDirection(inner, direction)) {
         acc = 0;
+        log('wheel inner-scrollable consumes', {
+          direction,
+          deltaY: e.deltaY,
+          inner: {
+            tag: inner.tagName,
+            className: inner.className,
+            scrollTop: inner.scrollTop,
+            scrollHeight: inner.scrollHeight,
+            clientHeight: inner.clientHeight,
+          },
+        });
         return;
       }
 
       // Only accumulate when the page root is already at the edge.
       if (!isAtPageEdge(root, direction)) {
+        if (acc !== 0) {
+          log('wheel reset: root not at edge', {
+            direction,
+            deltaY: e.deltaY,
+            before,
+            accBeforeReset: acc,
+          });
+        }
         acc = 0;
         return;
       }
 
       const now = Date.now();
-      if (now - lastTs > EDGE_DELTA_DECAY_MS) acc = 0;
+      if (now - lastTs > EDGE_DELTA_DECAY_MS && acc !== 0) {
+        log('wheel accumulator decay reset', {
+          direction,
+          elapsed: now - lastTs,
+          accBeforeReset: acc,
+        });
+        acc = 0;
+      }
       lastTs = now;
 
       acc += Math.abs(e.deltaY);
 
+      log('wheel edge accumulate', {
+        direction,
+        deltaY: e.deltaY,
+        acc,
+        threshold: EDGE_DELTA_THRESHOLD,
+        before,
+      });
+
       if (acc >= EDGE_DELTA_THRESHOLD) {
         acc = 0;
+        log('wheel edge threshold reached', { direction, before });
         postNavigate(direction === 'down' ? 'next' : 'prev');
       }
     },
     { passive: true }
   );
 }
+

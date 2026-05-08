@@ -91,6 +91,8 @@ function initializeOptions() {
     }
   }
 
+  const log = (...args) => console.log('[Options FocusScroll Parent]', ...args);
+
   // 监听来自 iframe 的消息
   window.addEventListener('message', (event) => {
     // normalize data
@@ -105,6 +107,13 @@ function initializeOptions() {
 
     // focus-mode wheel navigation
     if (data.action === 'focusScrollNavigate') {
+      log('recv focusScrollNavigate', {
+        direction: data.direction,
+        isFocusMode: isFocusMode(),
+        frameSrc: frame.src,
+        origin: event.origin,
+      });
+
       if (!isFocusMode()) return;
       const { direction } = data;
       handleFocusScrollNavigate(direction);
@@ -246,13 +255,26 @@ function getScrollEdgeByDirection(direction) {
 function handleFocusScrollNavigate(direction) {
   const frame = document.getElementById('content-frame');
   const targetPage = getCyclicPageByDirection(direction);
-  if (!targetPage) return;
+  if (!targetPage) {
+    console.log('[Options FocusScroll Parent] no target page for direction', direction);
+    return;
+  }
 
   const edge = getScrollEdgeByDirection(direction);
+  console.log('[Options FocusScroll Parent] navigate', {
+    direction,
+    targetPage,
+    edge,
+    currentPage: getCurrentPage(),
+  });
 
   // 使用一次性 load 监听，避免覆盖其他逻辑
   const onLoad = () => {
     const frameOrigin = getFrameTargetOrigin();
+    console.log('[Options FocusScroll Parent] target loaded', {
+      targetPage,
+      frameOrigin,
+    });
     // 如果无法解析 origin，则忽略
     if (!frameOrigin) return;
     frame.contentWindow.postMessage({ action: 'scrollToEdge', edge }, frameOrigin);
