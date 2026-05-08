@@ -170,57 +170,75 @@
       border: 1px solid var(--line);
       border-radius: var(--radius-md);
       background: rgba(255, 252, 247, 0.72);
-      padding: 18px 20px;
-      margin-bottom: 14px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
     }
 
     .git-card-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
+      gap: 12px;
     }
 
     .git-card-dir {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--ink);
     }
 
+    .git-card-dir .git-path {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--muted);
+      margin-left: 6px;
+    }
+
     .git-card-actions {
       display: flex;
-      gap: 8px;
+      gap: 6px;
     }
 
-    .git-status-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 12px;
-      margin-top: 10px;
-    }
-
-    .git-stat {
-      text-align: center;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-sm);
-      background: rgba(255, 255, 255, 0.5);
-    }
-
-    .git-stat-value {
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .git-stat-label {
+    .git-card-actions .btn {
+      padding: 4px 10px;
       font-size: 13px;
-      color: var(--muted);
-      margin-top: 4px;
+      min-height: auto;
     }
 
     .git-stat-value.clean { color: #6a8758; }
     .git-stat-value.dirty { color: #9a4f40; }
+
+    /* Git 统计项 */
+    .git-stat-item {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.4);
+    }
+    .git-stat-item b { font-weight: 600; color: var(--ink); }
+    .git-stat-item.dirty {
+      border-color: rgba(154, 79, 64, 0.5);
+      background: rgba(154, 79, 64, 0.08);
+      color: var(--ink);
+    }
+    .git-stat-item.dirty b { color: #9a4f40; }
+
+    /* Git 详情按钮 */
+    .git-toggle-btn {
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .git-toggle-btn:hover { background: rgba(107, 74, 49, 0.08); color: var(--ink); }
 
     /* 弹窗 */
     .modal-overlay {

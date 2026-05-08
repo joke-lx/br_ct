@@ -22,17 +22,22 @@ async function loadGitDirList() {
   container.innerHTML = dirs.map(d => `
     <div class="git-card" id="git-card-${d.id}">
       <div class="git-card-header">
-        <span class="git-card-dir">${escapeHtml(d.name)} <span style="color:var(--muted);font-weight:400;font-size:14px;">${escapeHtml(d.path)}</span></span>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span class="git-card-dir">${escapeHtml(d.name)}</span>
+            <span class="git-card-dir git-path">${escapeHtml(d.path)}</span>
+          </div>
+          <div class="git-status-area" id="git-status-${d.id}">
+            <span style="color:var(--muted);font-size:13px;">加载中...</span>
+          </div>
+        </div>
         <div class="git-card-actions">
-          <button class="btn btn-secondary" data-action="git-refresh" data-id="${d.id}">刷新状态</button>
-          <button class="btn btn-warning" data-action="git-add-commit-pull" data-id="${d.id}">推送云端</button>
+          <button class="btn btn-secondary" data-action="git-refresh" data-id="${d.id}">刷新</button>
+          <button class="btn btn-warning" data-action="git-add-commit-pull" data-id="${d.id}">推送</button>
           <button class="btn btn-success" data-action="git-pull" data-id="${d.id}">Pull</button>
           <button class="btn btn-primary" data-action="git-push" data-id="${d.id}">Push</button>
           <button class="btn btn-danger" data-action="git-delete" data-id="${d.id}">移除</button>
         </div>
-      </div>
-      <div class="git-status-area" id="git-status-${d.id}">
-        <span style="color:var(--muted);font-size:14px;">加载中...</span>
       </div>
     </div>
   `).join('');
@@ -98,50 +103,63 @@ function renderGitStatus(dirs, statuses) {
 
     const s = statuses[i];
     if (!s || s.error) {
-      area.innerHTML = `<span style="color:var(--danger);font-size:14px;">${escapeHtml(s?.error || '未知错误')}</span>`;
+      area.innerHTML = `<span style="color:var(--danger);font-size:12px;">${escapeHtml(s?.error || '未知错误')}</span>`;
       return;
     }
 
+    const hasChanges = s.ahead > 0 || s.behind > 0 || s.modCount > 0 || s.untrackCount > 0 ||
+                       (s.staged && s.staged.length > 0) ||
+                       (s.modified && s.modified.length > 0) ||
+                       (s.untracked && s.untracked.length > 0);
+
     const filesHtml = (label, files, color) => {
       if (!files || files.length === 0) return '';
-      return `<div style="margin-top:8px;">
-        <span style="font-size:12px;font-weight:600;color:${color};">${label} (${files.length})</span>
-        <div style="margin-top:4px;font-size:12px;color:var(--muted);max-height:100px;overflow:auto;">
+      return `<div style="margin-top:4px;">
+        <span style="font-size:11px;font-weight:600;color:${color};">${label} (${files.length})</span>
+        <div style="margin-top:2px;font-size:11px;color:var(--muted);max-height:60px;overflow:auto;">
           ${files.map(f => `<div>${escapeHtml(f)}</div>`).join('')}
         </div>
       </div>`;
     };
 
+    const detailsHtml = filesHtml('已暂存', s.staged, '#6a8758')
+       + filesHtml('已修改', s.modified, '#9a4f40')
+       + filesHtml('未跟踪', s.untracked, '#7a6858');
+
+    const toggleBtn = hasChanges
+      ? `<button class="git-toggle-btn" data-id="${d.id}">收起 ▲</button>`
+      : '';
+
     area.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <span style="font-weight:600;">${escapeHtml(s.branch || 'unknown')}</span>
-        <span class="status-badge ${s.clean ? 'running' : 'stopped'}">
-          <span class="status-dot ${s.clean ? 'running' : 'stopped'}"></span>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span style="font-weight:600;font-size:13px;">${escapeHtml(s.branch || 'unknown')}</span>
+        <span class="status-badge ${s.clean ? 'running' : 'stopped'}" style="padding:2px 8px;font-size:11px;">
+          <span class="status-dot" style="width:6px;height:6px;${s.clean ? 'background:#6a8758;' : 'background:#9a4f40;'}"></span>
           ${s.clean ? '干净' : '有变更'}
         </span>
+        <span class="git-stat-item ${s.ahead > 0 ? 'dirty' : 'clean'}">待推送 <b>${s.ahead}</b></span>
+        <span class="git-stat-item ${s.behind > 0 ? 'dirty' : 'clean'}">待拉取 <b>${s.behind}</b></span>
+        <span class="git-stat-item ${s.modCount > 0 ? 'dirty' : 'clean'}">已修改 <b>${s.modCount}</b></span>
+        <span class="git-stat-item ${s.untrackCount > 0 ? 'dirty' : 'clean'}">未跟踪 <b>${s.untrackCount}</b></span>
+        ${toggleBtn}
       </div>
-      <div class="git-status-grid">
-        <div class="git-stat">
-          <div class="git-stat-value ${s.ahead > 0 ? 'dirty' : 'clean'}">${s.ahead}</div>
-          <div class="git-stat-label">待推送</div>
-        </div>
-        <div class="git-stat">
-          <div class="git-stat-value ${s.behind > 0 ? 'dirty' : 'clean'}">${s.behind}</div>
-          <div class="git-stat-label">待拉取</div>
-        </div>
-        <div class="git-stat">
-          <div class="git-stat-value ${s.modCount > 0 ? 'dirty' : 'clean'}">${s.modCount}</div>
-          <div class="git-stat-label">已修改</div>
-        </div>
-        <div class="git-stat">
-          <div class="git-stat-value ${s.untrackCount > 0 ? 'dirty' : 'clean'}">${s.untrackCount}</div>
-          <div class="git-stat-label">未跟踪</div>
-        </div>
+      <div class="git-details" id="git-details-${d.id}" style="margin-top:8px;">
+        ${detailsHtml}
       </div>
-      ${filesHtml('已暂存', s.staged, '#6a8758')
-       + filesHtml('已修改', s.modified, '#9a4f40')
-       + filesHtml('未跟踪', s.untracked, '#7a6858')}
     `;
+
+    // 绑定展开/收缩事件
+    const toggleBtnEl = area.querySelector('.git-toggle-btn');
+    if (toggleBtnEl) {
+      toggleBtnEl.addEventListener('click', () => {
+        const details = document.getElementById('git-details-' + d.id);
+        if (details) {
+          const isExpanded = details.style.display !== 'none';
+          details.style.display = isExpanded ? 'none' : 'block';
+          toggleBtnEl.textContent = isExpanded ? '详情 ▼' : '收起 ▲';
+        }
+      });
+    }
   });
 }
 
