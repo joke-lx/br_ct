@@ -16,3 +16,4 @@ generate_key.js
 
 # Claude Code worktrees (harness-managed)
 .CLAUDE/worktrees/
+.idea/
