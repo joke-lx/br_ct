@@ -9,6 +9,12 @@ const STORAGE_KEYS = {
   focusMode: 'optionsFocusMode',
 };
 
+const switcherState = {
+  open: false,
+  selectedIndex: 0,
+  lastFocusedElement: null,
+};
+
 let currentFrameEl = null;
 let incomingFrameEl = null;
 let isFrameTransitioning = false;
@@ -174,6 +180,9 @@ function initializeOptions() {
 
   // 初始化悬浮圆环导航
   initNavRing();
+
+  // 初始化 Win+Tab 风格切换器
+  initSwitcher();
 }
 
 /**
@@ -536,6 +545,235 @@ function ensureFramesForDirectNav(targetPage) {
   incomingFrame.setAttribute('aria-hidden', 'true');
   incomingFrame.style.pointerEvents = 'none';
   setFrameTransform(incomingFrame, 0);
+}
+
+/**
+ * 初始化 Win+Tab 风格菜单切换器
+ */
+function initSwitcher() {
+  const launcher = document.getElementById('quad-launcher');
+  const overlay = document.getElementById('switcher-overlay');
+  const grid = document.getElementById('switcher-grid');
+
+  if (!launcher || !overlay || !grid) return;
+
+  // 初始化网格卡片
+  renderSwitcherGrid(grid);
+
+  // 打开切换器
+  launcher.addEventListener('click', () => {
+    openSwitcher();
+  });
+
+  // 关闭切换器（点击遮罩）
+  overlay.addEventListener('click', (e) => {
+    if (e.target.hasAttribute('data-switcher-close')) {
+      closeSwitcher();
+    }
+  });
+
+  // 键盘导航
+  document.addEventListener('keydown', handleSwitcherKeydown);
+
+  // 快捷键 Ctrl+Alt+E 打开切换器
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.altKey && (e.key === 'E' || e.key === 'e')) {
+      e.preventDefault();
+      if (switcherState.open) {
+        closeSwitcher();
+      } else {
+        openSwitcher();
+      }
+    }
+  });
+}
+
+/**
+ * 渲染切换器网格
+ */
+function renderSwitcherGrid(grid) {
+  grid.innerHTML = '';
+
+  NAV_ITEMS.forEach((item, index) => {
+    const card = document.createElement('div');
+    card.className = 'switcher-card';
+    card.dataset.page = item.page;
+    card.dataset.index = index;
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', item.name);
+
+    // 顶部标题栏
+    const topbar = document.createElement('div');
+    topbar.className = 'switcher-card-topbar';
+    topbar.innerHTML = `
+      <span class="switcher-card-icon">${item.icon}</span>
+      <span class="switcher-card-title">${item.name}</span>
+    `;
+
+    // iframe 容器
+    const thumb = document.createElement('div');
+    thumb.className = 'switcher-card-thumb';
+
+    const iframe = document.createElement('iframe');
+    iframe.className = 'switcher-card-iframe';
+    iframe.src = item.page;
+    iframe.title = item.name;
+    iframe.setAttribute('loading', 'lazy');
+    iframe.setAttribute('scrolling', 'no');
+
+    thumb.appendChild(iframe);
+
+    card.appendChild(topbar);
+    card.appendChild(thumb);
+    grid.appendChild(card);
+
+    // 点击事件
+    card.addEventListener('click', () => {
+      switchToPage(item.page);
+    });
+  });
+}
+
+/**
+ * 打开切换器
+ */
+function openSwitcher() {
+  const overlay = document.getElementById('switcher-overlay');
+  if (!overlay) return;
+
+  // 保存当前焦点元素
+  switcherState.lastFocusedElement = document.activeElement;
+
+  // 设置当前选中为当前页面
+  const currentPage = getCurrentPage();
+  const currentIndex = NAV_ITEMS.findIndex(item => item.page === currentPage);
+  if (currentIndex >= 0) {
+    switcherState.selectedIndex = currentIndex;
+  }
+
+  updateSelectedCard();
+  overlay.removeAttribute('hidden');
+  overlay.classList.add('is-open');
+  switcherState.open = true;
+
+  // 焦点到网格
+  const grid = document.getElementById('switcher-grid');
+  grid?.focus();
+}
+
+/**
+ * 关闭切换器
+ */
+function closeSwitcher() {
+  const overlay = document.getElementById('switcher-overlay');
+  if (!overlay) return;
+
+  overlay.classList.remove('is-open');
+  overlay.setAttribute('hidden', '');
+  switcherState.open = false;
+
+  // 恢复焦点
+  if (switcherState.lastFocusedElement) {
+    switcherState.lastFocusedElement.focus();
+  }
+}
+
+/**
+ * 处理切换器键盘导航
+ */
+function handleSwitcherKeydown(e) {
+  if (!switcherState.open) return;
+
+  const overlay = document.getElementById('switcher-overlay');
+  if (!overlay || overlay.hidden) return;
+
+  switch (e.key) {
+    case 'Escape':
+      e.preventDefault();
+      closeSwitcher();
+      break;
+
+    case 'Enter': {
+      e.preventDefault();
+      const selectedItem = NAV_ITEMS[switcherState.selectedIndex];
+      if (selectedItem) {
+        switchToPage(selectedItem.page);
+      }
+      break;
+    }
+
+    case 'ArrowLeft':
+      e.preventDefault();
+      moveSelection(-1, 0);
+      break;
+
+    case 'ArrowRight':
+      e.preventDefault();
+      moveSelection(1, 0);
+      break;
+
+    case 'ArrowUp':
+      e.preventDefault();
+      moveSelection(0, -1);
+      break;
+
+    case 'ArrowDown':
+      e.preventDefault();
+      moveSelection(0, 1);
+      break;
+  }
+}
+
+/**
+ * 移动选中
+ */
+function moveSelection(deltaCol, deltaRow) {
+  const cols = 3;
+  const rows = 3;
+  const total = NAV_ITEMS.length;
+
+  const currentRow = Math.floor(switcherState.selectedIndex / cols);
+  const currentCol = switcherState.selectedIndex % cols;
+
+  let newRow = currentRow + deltaRow;
+  let newCol = currentCol + deltaCol;
+
+  // 循环绕行
+  if (newRow < 0) newRow = rows - 1;
+  if (newRow >= rows) newRow = 0;
+  if (newCol < 0) newCol = cols - 1;
+  if (newCol >= cols) newCol = 0;
+
+  let newIndex = newRow * cols + newCol;
+  if (newIndex >= total) newIndex = total - 1;
+
+  switcherState.selectedIndex = newIndex;
+  updateSelectedCard();
+}
+
+/**
+ * 更新选中卡片样式
+ */
+function updateSelectedCard() {
+  const cards = document.querySelectorAll('.switcher-card');
+  cards.forEach((card, index) => {
+    if (index === switcherState.selectedIndex) {
+      card.classList.add('is-selected');
+      card.setAttribute('aria-selected', 'true');
+    } else {
+      card.classList.remove('is-selected');
+      card.removeAttribute('aria-selected');
+    }
+  });
+}
+
+/**
+ * 切换到指定页面
+ */
+function switchToPage(page) {
+  closeSwitcher();
+  navigateToPage(page);
 }
 
 // 页面加载时初始化
