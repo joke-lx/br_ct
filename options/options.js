@@ -9,6 +9,30 @@ const STORAGE_KEYS = {
   focusMode: 'optionsFocusMode',
 };
 
+const switcherState = {
+  open: false,
+  selectedIndex: 0,
+  lastFocusedElement: null,
+  closeTimer: null,
+};
+
+let currentFrameEl = null;
+let incomingFrameEl = null;
+let isFrameTransitioning = false;
+
+function getCurrentFrame() {
+  return currentFrameEl || document.getElementById('content-frame');
+}
+
+function getIncomingFrame() {
+  return incomingFrameEl || document.getElementById('incoming-frame');
+}
+
+function syncCurrentFrameGlobals() {
+  currentFrameEl = document.getElementById('content-frame');
+  incomingFrameEl = document.getElementById('incoming-frame');
+}
+
 // 导航项配置
 const NAV_ITEMS = [
   { icon: 'PL', name: '平台显示', page: 'platform/index.html' },
@@ -26,7 +50,9 @@ const NAV_ITEMS = [
  * 初始化选项页面
  */
 function initializeOptions() {
-  const frame = document.getElementById('content-frame');
+  syncCurrentFrameGlobals();
+
+  const frame = getCurrentFrame();
   const navItems = document.querySelectorAll('.nav-item');
   const collapseBtn = document.getElementById('sidebar-collapse-btn');
   const focusBtn = document.getElementById('focus-btn');
@@ -48,47 +74,95 @@ function initializeOptions() {
   // 恢复上次选中的 tab
   chrome.storage.local.get([STORAGE_KEYS.selectedTab], (result) => {
     const savedTab = result[STORAGE_KEYS.selectedTab];
-    if (savedTab) {
-      const targetNav = document.querySelector(`[data-page="${savedTab}"]`);
-      if (targetNav) {
-        navItems.forEach(nav => nav.classList.remove('active'));
-        targetNav.classList.add('active');
-        frame.src = savedTab;
-        return;
-      }
+    if (savedTab && document.querySelector(`[data-page="${savedTab}"]`)) {
+      frame.src = savedTab;
+      updateNavActive(savedTab);
+      return;
     }
+
     // 默认加载第一个 tab
     if (navItems.length > 0) {
-      navItems[0].classList.add('active');
-      frame.src = navItems[0].getAttribute('data-page');
+      const defaultPage = navItems[0].getAttribute('data-page');
+      if (defaultPage) {
+        frame.src = defaultPage;
+        updateNavActive(defaultPage);
+      }
     }
   });
 
   // 监听导航点击事件
-  navItems.forEach(item => {
+  navItems.forEach((item) => {
     item.addEventListener('click', () => {
       const page = item.getAttribute('data-page');
-      if (page) {
-        frame.src = page;
-        navItems.forEach(nav => nav.classList.remove('active'));
-        item.classList.add('active');
-        chrome.storage.local.set({ [STORAGE_KEYS.selectedTab]: page });
-      }
+      if (!page) return;
+      navigateToPage(page);
     });
   });
 
+  /**
+   * 计算当前 iframe 的 origin。
+   * - 用于校验 message 来源（event.origin）
+   * - 用于 postMessage 的 targetOrigin（禁止使用 '*')
+   */
+  function getFrameOriginSafe() {
+    try {
+      const frame = getCurrentFrame();
+      const src = frame?.src;
+      if (!src) return null;
+
+      const url = new URL(src, window.location.href);
+      return url.origin;
+    } catch {
+      return null;
+    }
+  }
+
+  const log = (...args) => console.log('[Options FocusScroll Parent]', ...args);
+
   // 监听来自 iframe 的消息
   window.addEventListener('message', (event) => {
-    if (event.data.action === 'navigateToHistory') {
-      frame.src = 'countdown/history.html';
+    const activeFrame = getCurrentFrame();
+
+    // normalize data
+    const data = event.data;
+    if (!data || typeof data !== 'object') return;
+
+    // only handle messages from current iframe + expected origin
+    const frameOrigin = getFrameOriginSafe();
+    if (!frameOrigin) return;
+    if (event.source !== activeFrame?.contentWindow) return;
+    if (event.origin !== frameOrigin) return;
+
+    // During 2-iframe transition, ignore all iframe messages.
+    if (isFrameTransitioning) return;
+
+    // focus-mode wheel navigation
+    if (data.action === 'focusScrollNavigate') {
+      log('recv focusScrollNavigate', {
+        direction: data.direction,
+        isFocusMode: isFocusMode(),
+        frameSrc: activeFrame?.src,
+        origin: event.origin,
+        transitioning: isFrameTransitioning,
+      });
+
+      if (!isFocusMode()) return;
+      const { direction } = data;
+      handleFocusScrollNavigate(direction);
+      return;
+    }
+
+    // countdown panel navigation
+    if (data.action === 'navigateToHistory') {
+      navigateToPage('countdown/history.html');
       updateNavActive('countdown/index.html');
-    } else if (event.data.action === 'navigateToTimers') {
-      frame.src = 'countdown/index.html';
+    } else if (data.action === 'navigateToTimers') {
+      navigateToPage('countdown/index.html');
       updateNavActive('countdown/index.html');
-    } else if (event.data.action === 'refreshTimers') {
-      const currentSrc = frame.src;
+    } else if (data.action === 'refreshTimers') {
+      const currentSrc = activeFrame?.src || '';
       if (currentSrc.includes('countdown/index.html')) {
-        frame.contentWindow.postMessage({ action: 'refresh' }, '*');
+        activeFrame.contentWindow.postMessage({ action: 'refresh' }, frameOrigin);
       }
     }
   });
@@ -117,6 +191,9 @@ function initializeOptions() {
 
   // 初始化悬浮圆环导航
   initNavRing();
+
+  // 初始化 Win+Tab 风格切换器
+  initSwitcher();
 }
 
 /**
@@ -173,13 +250,195 @@ function isFocusMode() {
 }
 
 /**
+ * 获取当前 iframe 的 targetOrigin（禁止使用 '*'）
+ */
+function getFrameTargetOrigin(frameEl) {
+  const frame = frameEl || getCurrentFrame();
+  try {
+    const src = frame?.src;
+    if (!src) return null;
+    return new URL(src, window.location.href).origin;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+/**
+ * 获取指定 page 在 NAV_ITEMS 中的索引
+ */
+function getNavIndexByPage(page) {
+  return NAV_ITEMS.findIndex(item => item.page === page);
+}
+
+/**
+ * 根据方向（up/down）循环获取目标页面
+ */
+function getCyclicPageByDirection(direction) {
+  const currentPage = getCurrentPage();
+  const total = NAV_ITEMS.length;
+  if (!total) return null;
+
+  let currentIndex = getNavIndexByPage(currentPage);
+  if (currentIndex === -1) currentIndex = 0;
+
+  const delta = direction === 'prev' ? -1 : 1;
+  const nextIndex = (currentIndex + delta + total) % total;
+  return NAV_ITEMS[nextIndex].page;
+}
+
+/**
+ * 将导航方向映射为滚动吸附边界。
+ */
+function getScrollEdgeByDirection(direction) {
+  return direction === 'prev' ? 'bottom' : 'top';
+}
+
+/**
+ * 专注模式滚轮边缘导航：页面切换 + 进入目标页后滚动到边缘
+ */
+function waitTransitionOnce(el) {
+  return new Promise((resolve) => {
+    const onEnd = (e) => {
+      if (e && e.target !== el) return;
+      el.removeEventListener('transitionend', onEnd);
+      resolve();
+    };
+    el.addEventListener('transitionend', onEnd);
+  });
+}
+
+function setFrameTransform(frameEl, translateY) {
+  frameEl.style.transform = `translate3d(0, ${translateY}px, 0)`;
+}
+
+function handleFocusScrollNavigate(direction) {
+  if (isFrameTransitioning) return;
+
+  const currentFrame = getCurrentFrame();
+  const incomingFrame = getIncomingFrame();
+
+  const targetPage = getCyclicPageByDirection(direction);
+  if (!targetPage) {
+    console.log('[Options FocusScroll Parent] no target page for direction', direction);
+    return;
+  }
+
+  const edge = getScrollEdgeByDirection(direction);
+  const viewportH = Math.max(
+    1,
+    document.querySelector('.main-content')?.clientHeight || window.innerHeight
+  );
+  const fromY = direction === 'next' ? viewportH : -viewportH;
+
+  console.log('[Options FocusScroll Parent] navigate (animated)', {
+    direction,
+    targetPage,
+    edge,
+    currentPage: getCurrentPage(),
+  });
+
+  // 非专注模式：保持原先直接切换
+  if (!isFocusMode()) {
+    navigateToPage(targetPage);
+    return;
+  }
+
+  isFrameTransitioning = true;
+
+  // 1) 预置 incoming
+  incomingFrame.setAttribute('aria-hidden', 'false');
+  incomingFrame.style.pointerEvents = 'none';
+  incomingFrame.src = targetPage;
+
+  // 先放到屏幕外
+  setFrameTransform(incomingFrame, fromY);
+  setFrameTransform(currentFrame, 0);
+
+  const incomingLoad = () => {
+    incomingFrame.removeEventListener('load', incomingLoad);
+
+    // Pre-scroll while the iframe is still offscreen to avoid visible top->bottom flash on prev.
+    const incomingOrigin = getFrameTargetOrigin(incomingFrame);
+    if (incomingOrigin) {
+      try {
+        incomingFrame.contentWindow.postMessage(
+          { action: 'scrollToEdge', edge },
+          incomingOrigin
+        );
+      } catch {
+        // ignore
+      }
+    }
+
+    // 2) 下一帧 loaded 后开始动画（给 scrollToEdge 一帧时间生效）
+    requestAnimationFrame(() => {
+      requestAnimationFrame(async () => {
+        setFrameTransform(currentFrame, -fromY);
+        setFrameTransform(incomingFrame, 0);
+
+        // Smoothness: ensure at least ~420ms so the eye catches the movement.
+        await Promise.race([
+          waitTransitionOnce(incomingFrame),
+          new Promise((r) => setTimeout(r, 700)),
+        ]);
+
+        // 3) 动画结束：交换角色
+        const oldCurrent = currentFrameEl;
+        currentFrameEl = incomingFrame;
+        incomingFrameEl = oldCurrent;
+
+        currentFrameEl.classList.remove('incoming-frame');
+        currentFrameEl.classList.add('current-frame');
+        currentFrameEl.style.pointerEvents = 'auto';
+
+        incomingFrameEl.classList.remove('current-frame');
+        incomingFrameEl.classList.add('incoming-frame');
+        incomingFrameEl.setAttribute('aria-hidden', 'true');
+        incomingFrameEl.style.pointerEvents = 'none';
+
+        // Keep the outgoing page offscreen so it never covers the new current frame.
+        // It will be moved again on the next transition.
+
+        // 4) 进入目标页后滚动到边缘
+        const frameOrigin = getFrameTargetOrigin(currentFrameEl);
+        console.log('[Options FocusScroll Parent] target loaded (animated)', {
+          targetPage,
+          frameOrigin,
+        });
+        if (frameOrigin) {
+          currentFrameEl.contentWindow.postMessage(
+            { action: 'scrollToEdge', edge },
+            frameOrigin
+          );
+        }
+
+        // keep id stable for other code paths
+        if (currentFrameEl.id !== 'content-frame') currentFrameEl.id = 'content-frame';
+        if (incomingFrameEl.id !== 'incoming-frame') incomingFrameEl.id = 'incoming-frame';
+
+        // 5) 更新 UI 状态
+        chrome.storage.local.set({ [STORAGE_KEYS.selectedTab]: targetPage });
+        updateNavRingActive();
+
+        isFrameTransitioning = false;
+      });
+    });
+  };
+
+  incomingFrame.addEventListener('load', incomingLoad);
+}
+
+/**
  * 更新点导航的显示状态
  */
 function updateNavRingActive() {
   const container = document.getElementById('dot-nav');
   const exitItem = document.getElementById('dot-nav-exit');
   const items = document.querySelectorAll('.dot-nav-item');
+  const dots = document.querySelectorAll('.dot-nav-dots .dot');
   const currentPage = getCurrentPage();
+  const currentIndex = getNavIndexByPage(currentPage);
 
   // 专注模式下显示退出按钮
   if (isFocusMode()) {
@@ -195,6 +454,12 @@ function updateNavRingActive() {
       item.classList.add('active');
     }
   });
+
+  // 更新右侧圆点状态
+  dots.forEach(dot => dot.classList.remove('active'));
+  if (currentIndex >= 0 && currentIndex < dots.length) {
+    dots[currentIndex].classList.add('active');
+  }
 }
 
 /**
@@ -216,8 +481,8 @@ function toggleFocusMode() {
  * 获取当前页面路径
  */
 function getCurrentPage() {
-  const frame = document.getElementById('content-frame');
-  if (!frame.src) return NAV_ITEMS[0].page;
+  const frame = getCurrentFrame();
+  if (!frame?.src) return NAV_ITEMS[0].page;
 
   try {
     const url = new URL(frame.src);
@@ -236,7 +501,9 @@ function getCurrentPage() {
  * 导航到指定页面
  */
 function navigateToPage(page) {
-  const frame = document.getElementById('content-frame');
+  ensureFramesForDirectNav(page);
+
+  const frame = getCurrentFrame();
   const sidebarNavItems = document.querySelectorAll('.sidebar-nav .nav-item');
 
   // 更新 iframe
@@ -271,6 +538,264 @@ function updateNavActive(page) {
   updateNavRingActive();
 }
 
+function ensureFramesForDirectNav(targetPage) {
+  const currentFrame = getCurrentFrame();
+  const incomingFrame = getIncomingFrame();
+  if (!currentFrame || !incomingFrame) return;
+
+  // If we already swapped frames, the "content-frame" id might not be on current.
+  // Keep ids stable so other code (and CSS) remain predictable.
+  if (currentFrame.id !== 'content-frame') {
+    currentFrame.id = 'content-frame';
+  }
+  if (incomingFrame.id !== 'incoming-frame') {
+    incomingFrame.id = 'incoming-frame';
+  }
+
+  // Always keep incoming hidden for direct nav.
+  incomingFrame.setAttribute('aria-hidden', 'true');
+  incomingFrame.style.pointerEvents = 'none';
+  setFrameTransform(incomingFrame, 0);
+}
+
+/**
+ * 初始化 Win+Tab 风格菜单切换器
+ */
+function initSwitcher() {
+  const launcher = document.getElementById('quad-launcher');
+  const overlay = document.getElementById('switcher-overlay');
+  const grid = document.getElementById('switcher-grid');
+
+  if (!launcher || !overlay || !grid) return;
+
+  // 初始化网格卡片
+  renderSwitcherGrid(grid);
+
+  // 打开切换器
+  launcher.addEventListener('click', () => {
+    openSwitcher();
+  });
+
+  // 关闭切换器（点击遮罩）
+  overlay.addEventListener('click', (e) => {
+    if (e.target.hasAttribute('data-switcher-close')) {
+      closeSwitcher();
+    }
+  });
+
+  // 键盘导航
+  document.addEventListener('keydown', handleSwitcherKeydown);
+
+  // 快捷键 Ctrl+Alt+E 打开切换器
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.altKey && (e.key === 'E' || e.key === 'e')) {
+      e.preventDefault();
+      if (switcherState.open) {
+        closeSwitcher();
+      } else {
+        openSwitcher();
+      }
+    }
+  });
+}
+
+/**
+ * 渲染切换器网格
+ */
+function renderSwitcherGrid(grid) {
+  grid.innerHTML = '';
+
+  NAV_ITEMS.forEach((item, index) => {
+    const card = document.createElement('div');
+    card.className = 'switcher-card';
+    card.dataset.page = item.page;
+    card.dataset.index = index;
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', item.name);
+
+    // 为每个卡片添加 staggered delay，实现逐个出现的动画
+    card.style.transitionDelay = `${index * 50}ms`;
+
+    // 顶部标题栏
+    const topbar = document.createElement('div');
+    topbar.className = 'switcher-card-topbar';
+    topbar.innerHTML = `
+      <span class="switcher-card-icon">${item.icon}</span>
+      <span class="switcher-card-title">${item.name}</span>
+    `;
+
+    // iframe 容器
+    const thumb = document.createElement('div');
+    thumb.className = 'switcher-card-thumb';
+
+    const iframe = document.createElement('iframe');
+    iframe.className = 'switcher-card-iframe';
+    iframe.src = item.page;
+    iframe.title = item.name;
+    iframe.setAttribute('loading', 'lazy');
+    iframe.setAttribute('scrolling', 'no');
+
+    thumb.appendChild(iframe);
+
+    card.appendChild(topbar);
+    card.appendChild(thumb);
+    grid.appendChild(card);
+
+    // 点击事件
+    card.addEventListener('click', () => {
+      switchToPage(item.page);
+    });
+  });
+}
+
+/**
+ * 打开切换器
+ */
+function openSwitcher() {
+  const overlay = document.getElementById('switcher-overlay');
+  if (!overlay) return;
+
+  // 保存当前焦点元素
+  switcherState.lastFocusedElement = document.activeElement;
+
+  // 设置当前选中为当前页面
+  const currentPage = getCurrentPage();
+  const currentIndex = NAV_ITEMS.findIndex(item => item.page === currentPage);
+  if (currentIndex >= 0) {
+    switcherState.selectedIndex = currentIndex;
+  }
+
+  updateSelectedCard();
+  overlay.removeAttribute('hidden');
+  overlay.classList.add('is-open');
+  switcherState.open = true;
+
+  // 焦点到网格
+  const grid = document.getElementById('switcher-grid');
+  grid?.focus();
+}
+
+/**
+ * 关闭切换器
+ */
+function closeSwitcher() {
+  const overlay = document.getElementById('switcher-overlay');
+  if (!overlay) return;
+
+  overlay.classList.remove('is-open');
+  switcherState.open = false;
+
+  // 等待关闭动画完成后再隐藏
+  setTimeout(() => {
+    if (!switcherState.open) {
+      overlay.setAttribute('hidden', '');
+    }
+  }, 450);
+
+  // 恢复焦点
+  if (switcherState.lastFocusedElement) {
+    switcherState.lastFocusedElement.focus();
+  }
+}
+
+/**
+ * 处理切换器键盘导航
+ */
+function handleSwitcherKeydown(e) {
+  if (!switcherState.open) return;
+
+  const overlay = document.getElementById('switcher-overlay');
+  if (!overlay || overlay.hidden) return;
+
+  switch (e.key) {
+    case 'Escape':
+      e.preventDefault();
+      closeSwitcher();
+      break;
+
+    case 'Enter': {
+      e.preventDefault();
+      const selectedItem = NAV_ITEMS[switcherState.selectedIndex];
+      if (selectedItem) {
+        switchToPage(selectedItem.page);
+      }
+      break;
+    }
+
+    case 'ArrowLeft':
+      e.preventDefault();
+      moveSelection(-1, 0);
+      break;
+
+    case 'ArrowRight':
+      e.preventDefault();
+      moveSelection(1, 0);
+      break;
+
+    case 'ArrowUp':
+      e.preventDefault();
+      moveSelection(0, -1);
+      break;
+
+    case 'ArrowDown':
+      e.preventDefault();
+      moveSelection(0, 1);
+      break;
+  }
+}
+
+/**
+ * 移动选中
+ */
+function moveSelection(deltaCol, deltaRow) {
+  const cols = 3;
+  const rows = 3;
+  const total = NAV_ITEMS.length;
+
+  const currentRow = Math.floor(switcherState.selectedIndex / cols);
+  const currentCol = switcherState.selectedIndex % cols;
+
+  let newRow = currentRow + deltaRow;
+  let newCol = currentCol + deltaCol;
+
+  // 循环绕行
+  if (newRow < 0) newRow = rows - 1;
+  if (newRow >= rows) newRow = 0;
+  if (newCol < 0) newCol = cols - 1;
+  if (newCol >= cols) newCol = 0;
+
+  let newIndex = newRow * cols + newCol;
+  if (newIndex >= total) newIndex = total - 1;
+
+  switcherState.selectedIndex = newIndex;
+  updateSelectedCard();
+}
+
+/**
+ * 更新选中卡片样式
+ */
+function updateSelectedCard() {
+  const cards = document.querySelectorAll('.switcher-card');
+  cards.forEach((card, index) => {
+    if (index === switcherState.selectedIndex) {
+      card.classList.add('is-selected');
+      card.setAttribute('aria-selected', 'true');
+    } else {
+      card.classList.remove('is-selected');
+      card.removeAttribute('aria-selected');
+    }
+  });
+}
+
+/**
+ * 切换到指定页面
+ */
+function switchToPage(page) {
+  closeSwitcher();
+  navigateToPage(page);
+}
+
 /**
  * 切换固定标签页
  */
@@ -290,4 +815,71 @@ function togglePinTab() {
 }
 
 // 页面加载时初始化
+function openSwitcher() {
+  const overlay = document.getElementById('switcher-overlay');
+  if (!overlay) return;
+
+  if (switcherState.closeTimer) {
+    clearTimeout(switcherState.closeTimer);
+    switcherState.closeTimer = null;
+  }
+
+  switcherState.lastFocusedElement = document.activeElement;
+
+  const currentPage = getCurrentPage();
+  const currentIndex = NAV_ITEMS.findIndex(item => item.page === currentPage);
+  if (currentIndex >= 0) {
+    switcherState.selectedIndex = currentIndex;
+  }
+
+  updateSelectedCard();
+  overlay.removeAttribute('hidden');
+  overlay.classList.remove('is-closing');
+  switcherState.open = true;
+
+  const grid = document.getElementById('switcher-grid');
+  requestAnimationFrame(() => {
+    overlay.classList.add('is-open');
+    grid?.focus();
+  });
+}
+
+function closeSwitcher() {
+  const overlay = document.getElementById('switcher-overlay');
+  if (!overlay || overlay.hidden || overlay.classList.contains('is-closing')) return;
+
+  overlay.classList.remove('is-open');
+  overlay.classList.add('is-closing');
+  switcherState.open = false;
+
+  const finishClose = () => {
+    if (switcherState.closeTimer) {
+      clearTimeout(switcherState.closeTimer);
+      switcherState.closeTimer = null;
+    }
+
+    if (!switcherState.open) {
+      overlay.classList.remove('is-closing');
+      overlay.setAttribute('hidden', '');
+    }
+  };
+
+  const panel = overlay.querySelector('.switcher-panel');
+  const handleTransitionEnd = (event) => {
+    if (event.target !== panel || event.propertyName !== 'opacity') return;
+    panel.removeEventListener('transitionend', handleTransitionEnd);
+    finishClose();
+  };
+
+  panel?.addEventListener('transitionend', handleTransitionEnd);
+  switcherState.closeTimer = setTimeout(() => {
+    panel?.removeEventListener('transitionend', handleTransitionEnd);
+    finishClose();
+  }, 360);
+
+  if (switcherState.lastFocusedElement) {
+    switcherState.lastFocusedElement.focus();
+  }
+}
+
 document.addEventListener('DOMContentLoaded', initializeOptions);
