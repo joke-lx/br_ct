@@ -5,27 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>倒计时面板</title>
     <link rel="stylesheet" href="countdown.css">
-    <script src="./vendor/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
     <div class="countdown-container">
         <!-- 头部 -->
         <header class="countdown-header">
             <div class="header-left">
-                <h1 class="countdown-title">
-                    <span class="countdown-title-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="50" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M8 2h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                          <path d="M12 8v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          <circle cx="12" cy="13" r="7" stroke="currentColor" stroke-width="2"/>
-                          <path d="M7 6 4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                          <path d="M17 6 19.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                          <path d="M8.5 20.5 7 22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                          <path d="M15.5 20.5 17 22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </span>
-                    倒计时面板
-                </h1>
+                <h1>⏱️ 倒计时面板</h1>
                 <span class="count-stat" id="countStat">0 / 8</span>
             </div>
             <div class="header-right">
@@ -120,7 +107,6 @@
         </div>
     </div>
 
-    <script type="module" src="../focusScroll/init.js"></script>
-    <script src="./countdown.js"></script>
+    <script src="countdown.js"></script>
 </body>
 </html>

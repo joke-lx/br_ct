@@ -106,10 +106,9 @@ body {
 .section-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
     margin-bottom: 16px;
-    margin-right: 5px;
 }
 
 .section-header h2 {
@@ -148,7 +147,7 @@ body {
     padding: 14px 16px;
     border: 1px solid rgba(138, 105, 74, 0.18);
     border-radius: 18px;
-    background: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.74);
     font: inherit;
     font-size: 16px;
     line-height: 1.7;
@@ -160,8 +159,6 @@ body {
     outline: none;
     border-color: #99673f;
     box-shadow: 0 0 0 4px rgba(153, 103, 63, 0.08);
-    transition: all ease .3s;
-    background: rgba(255, 255, 255, 0.7);
 }
 
 .prompt-actions {
@@ -239,7 +236,7 @@ body {
 }
 
 .control-panel {
-    margin-top: 2px;
+    margin-top: 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -281,18 +278,16 @@ body {
 }
 
 .btn {
-    min-height: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 5px 15px;
-    border-radius: 2px;
+    padding: 10px 16px;
+    border-radius: 999px;
     border: 1px solid transparent;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
-    line-height: 1;
 }
 
 .btn:hover:not(:disabled) {
@@ -308,9 +303,6 @@ body {
     padding: 8px 14px;
     font-size: 12px;
 }
-.btn-delete-prompt{
-    margin-top: 8px;
-}
 
 .btn-primary {
     color: #fffaf4;
@@ -320,10 +312,6 @@ body {
 
 .btn-primary:hover:not(:disabled) {
     background: linear-gradient(135deg, #8d603b, #63452f);
-}
-.btn-begin{
-    padding: 15px 15px;
-    border-radius: 5px;
 }
 
 .btn-secondary {
@@ -571,7 +559,7 @@ body {
 .results-container::-webkit-scrollbar,
 .history-list::-webkit-scrollbar,
 .result-content::-webkit-scrollbar {
-    width: 4px;
+    width: 8px;
 }
 
 .prompt-list::-webkit-scrollbar-track,

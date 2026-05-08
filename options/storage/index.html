@@ -197,13 +197,12 @@
         transform: translateX(20px);
       }
 
-      select.setting-select,
-      input.setting-select {
+      .setting-select {
         padding: 6px 10px;
         border: 1px solid #ddd;
         border-radius: 6px;
         font-size: 13px;
-        background: rgba(255, 255, 255, 0.1);
+        background: white;
         cursor: pointer;
         min-width: 100px;
       }
@@ -214,32 +213,14 @@
         box-shadow: 0 0 0 3px rgba(153, 103, 63, 0.08);
       }
 
-      .storage-setting-select {
-        padding: 6px 10px;
-        border: 1px solid rgba(221, 221, 221, 0.6);
-        border-radius: 6px;
-        font-size: 13px;
-        cursor: pointer;
-        min-width: 100px;
-        background: rgba(255, 255, 255, 0.2);
-      }
-
-      .storage-setting-select:focus {
-        outline: none;
-        border-color: #99673f;
-        box-shadow: 0 0 0 3px rgba(153, 103, 63, 0.08);
-        background: rgba(255, 255, 255, 0.25);
-      }
-
       .delete-key-btn {
-          min-height: 0;
         padding: 2px 8px;
         font-size: 11px;
         margin-left: 8px;
         background: rgba(154, 79, 64, 0.14);
         color: #7a3025;
         border: none;
-        border-radius: 2px;
+        border-radius: 999px;
         cursor: pointer;
         opacity: 0.7;
         transition: opacity 0.2s;
@@ -279,7 +260,7 @@
         font-size: 11px;
         background: rgba(93, 67, 43, 0.1);
         padding: 2px 8px;
-        border-radius: 5px;
+        border-radius: 10px;
         color: #7a6858;
       }
 
@@ -291,7 +272,7 @@
         display: flex;
         align-items: center;
         padding: 6px 10px;
-        background: rgba(255, 255, 255, 0.73);
+        background: #f8f9fa;
         border-radius: 8px;
         cursor: pointer;
         font-size: 13px;
@@ -379,7 +360,7 @@
             <div class="setting-title">备份间隔</div>
           </div>
           <div class="setting-control">
-            <select class="setting-select storage-setting-select" id="backup-interval-select">
+            <select class="setting-select" id="backup-interval-select">
               <option value="1">每小时</option>
               <option value="6">每 6 小时</option>
               <option value="12">每 12 小时</option>
@@ -395,7 +376,7 @@
             <div class="setting-title">最大备份数量</div>
           </div>
           <div class="setting-control">
-            <select class="setting-select storage-setting-select" id="max-backups-select">
+            <select class="setting-select" id="max-backups-select">
               <option value="3">3 个</option>
               <option value="5">5 个</option>
               <option value="7" selected>7 个</option>
@@ -434,7 +415,6 @@
       </section>
     </div>
 
-    <script type="module" src="../focusScroll/init.js"></script>
-    <script src="./storage.js"></script>
+    <script src="storage.js"></script>
   </body>
 </html>

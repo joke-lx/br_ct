@@ -1,0 +1,233 @@
+Index: .idea/shelf/在进行更新之前于_2025_12_23_20_14_取消提交了更改_[更改]/shelved.patch
+===================================================================
+diff --git a/.idea/shelf/在进行更新之前于_2025_12_23_20_14_取消提交了更改_[更改]/shelved.patch b/.idea/shelf/在进行更新之前于_2025_12_23_20_14_取消提交了更改_[更改]/shelved.patch
+deleted file mode 100644
+--- a/.idea/shelf/在进行更新之前于_2025_12_23_20_14_取消提交了更改_[更改]/shelved.patch	(revision 28eec3b73b1214ec9aea0b63e44f48e5e2f21557)
++++ /dev/null	(revision 28eec3b73b1214ec9aea0b63e44f48e5e2f21557)
+@@ -1,226 +0,0 @@
+-Index: popup/popup/popupUtils.js
+-IDEA additional info:
+-Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+-<+>import { populateOptimizer } from \"../promots/promptsUI.js\";\r\n\r\n// popupUtils.js\r\nconst HISTORY_KEY = \"messageHistory\";\r\nconst OPTIMIZER_KEY = \"selectedOptimizer\";\r\nconst PLATFORM_VISIBILITY_KEY = \"platformVisibilitySettings\";\r\nconst MAX_HISTORY = 5;\r\n\r\n// DOM 元素缓存\r\nlet elements = {};\r\n\r\n// 保存相关变量\r\nlet saveTimeout;\r\nlet lastSavedContent = \"\";\r\nlet isSaving = false;\r\n\r\n/**\r\n * 复制文本到剪切板\r\n */\r\nasync function copyToClipboard(text) {\r\n  try {\r\n    await navigator.clipboard.writeText(text);\r\n    return true;\r\n  } catch (err) {\r\n    // 如果现代API失败，使用传统的execCommand方法作为备选\r\n    try {\r\n      const textArea = document.createElement(\"textarea\");\r\n      textArea.value = text;\r\n      textArea.style.position = \"fixed\";\r\n      textArea.style.left = \"-999999px\";\r\n      textArea.style.top = \"-999999px\";\r\n      document.body.appendChild(textArea);\r\n      textArea.focus();\r\n      textArea.select();\r\n      const successful = document.execCommand(\"copy\");\r\n      document.body.removeChild(textArea);\r\n      return successful;\r\n    } catch (fallbackErr) {\r\n      console.error(\"复制到剪切板失败:\", fallbackErr);\r\n      return false;\r\n    }\r\n  }\r\n}\r\n\r\n/**\r\n * 显示临时提示信息\r\n */\r\nfunction showTempMessage(message, duration = 2000) {\r\n  // 创建提示元素\r\n  let messageEl = document.getElementById(\"temp-message\");\r\n  if (!messageEl) {\r\n    messageEl = document.createElement(\"div\");\r\n    messageEl.id = \"temp-message\";\r\n    messageEl.style.cssText = `\r\n      position: fixed;\r\n      top: 50%;\r\n      left: 50%;\r\n      transform: translate(-50%, -50%);\r\n      background: rgba(0, 0, 0, 0.8);\r\n      color: white;\r\n      padding: 12px 20px;\r\n      border-radius: 6px;\r\n      z-index: 10000;\r\n      font-size: 14px;\r\n      pointer-events: none;\r\n      transition: opacity 0.3s;\r\n    `;\r\n    document.body.appendChild(messageEl);\r\n  }\r\n\r\n  messageEl.textContent = message;\r\n  messageEl.style.opacity = \"1\";\r\n  messageEl.style.display = \"block\";\r\n\r\n  // 自动隐藏\r\n  setTimeout(() => {\r\n    messageEl.style.opacity = \"0\";\r\n    setTimeout(() => {\r\n      messageEl.style.display = \"none\";\r\n    }, 300);\r\n  }, duration);\r\n}\r\n\r\n/**\r\n * 初始化弹窗，获取并缓存 DOM 元素\r\n */\r\nfunction initializePopup() {\r\n  elements = {\r\n    platformCheckboxes: document.querySelectorAll(\r\n      '.platform-icon-option input[type=\"checkbox\"]'\r\n    ),\r\n    messageInput: document.getElementById(\"message-input\"),\r\n    sendButton: document.getElementById(\"send-button\"),\r\n    closeTabsButton: document.getElementById(\"close-tabs-button\"),\r\n    selectAllButton: document.getElementById(\"select-all\"),\r\n    historySelect: document.getElementById(\"history-select\"),\r\n    promptOptimizerSelect: document.getElementById(\"prompt-optimizer-select\"),\r\n  };\r\n\r\n  // 自动聚焦输入框\r\n  if (elements.messageInput) {\r\n    setTimeout(() => {\r\n      elements.messageInput.focus();\r\n      const len = elements.messageInput.value.length;\r\n      elements.messageInput.setSelectionRange(len, len);\r\n    }, 100);\r\n  }\r\n\r\n  // 初始化优化器下拉框\r\n  populateOptimizer(elements.promptOptimizerSelect);\r\n\r\n  // 加载并应用平台可见性设置\r\n  loadPlatformVisibilitySettings();\r\n}\r\n\r\n/**\r\n * 保存消息内容到本地存储（使用 local 存储解决配额问题）\r\n */\r\nasync function saveMessageContent(content) {\r\n  // 避免重复保存相同内容\r\n  if (content === lastSavedContent) {\r\n    return;\r\n  }\r\n\r\n  // 如果正在保存，等待完成\r\n  if (isSaving) {\r\n    return new Promise((resolve) => {\r\n      const checkSaving = setInterval(() => {\r\n        if (!isSaving) {\r\n          clearInterval(checkSaving);\r\n          saveMessageContent(content).then(resolve);\r\n        }\r\n      }, 50);\r\n    });\r\n  }\r\n\r\n  isSaving = true;\r\n\r\n  try {\r\n    // 使用 chrome.storage.local 替代 chrome.storage.sync\r\n    await chrome.storage.local.set({ lastMessage: content });\r\n    lastSavedContent = content;\r\n    console.log(\"消息内容已保存到本地存储，长度:\", content.length);\r\n  } catch (error) {\r\n    console.error(\"保存消息内容失败:\", error);\r\n  } finally {\r\n    isSaving = false;\r\n  }\r\n}\r\n\r\n/**\r\n * 加载存储的数据（使用 local 存储）\r\n */\r\nfunction loadStoredData() {\r\n  // 使用 chrome.storage.local 替代 chrome.storage.sync\r\n  chrome.storage.local.get(\r\n    [\r\n      \"lastMessage\",\r\n      \"platformStates\",\r\n      HISTORY_KEY,\r\n      OPTIMIZER_KEY,\r\n      \"lastPromptTemplate\",\r\n    ],\r\n    (result) => {\r\n      // 恢复最后输入的消息\r\n      if (result.lastMessage) {\r\n        elements.messageInput.value = result.lastMessage;\r\n        lastSavedContent = result.lastMessage;\r\n        console.log(\"已恢复历史输入内容，长度:\", result.lastMessage.length);\r\n      }\r\n\r\n      // 恢复平台选择状态\r\n      if (result.platformStates) {\r\n        restorePlatformStates(result.platformStates);\r\n      }\r\n\r\n      // 恢复历史记录\r\n      if (result[HISTORY_KEY]) {\r\n        populateHistory(elements.historySelect, result[HISTORY_KEY]);\r\n      }\r\n\r\n      // 恢复优化器选择\r\n      if (result[OPTIMIZER_KEY]) {\r\n        elements.promptOptimizerSelect.value = result[OPTIMIZER_KEY];\r\n      }\r\n\r\n      // 恢复提示词选择\r\n      if (result.lastPromptTemplate) {\r\n        const template = PROMPT_TEMPLATES[result.lastPromptTemplate];\r\n        if (template) {\r\n          const selectedValue =\r\n            elements.promptOptimizerSelect.querySelector(\".selected-value\");\r\n          selectedValue.textContent = template.label;\r\n          selectedValue.dataset.value = result.lastPromptTemplate;\r\n          selectedValue.dataset.template = template.template;\r\n        }\r\n      }\r\n    }\r\n  );\r\n}\r\n\r\n/**\r\n * 恢复平台选择状态\r\n */\r\nfunction restorePlatformStates(platformStates) {\r\n  elements.platformCheckboxes.forEach((cb) => {\r\n    const iconWrapper = cb\r\n      .closest(\".platform-icon-option\")\r\n      .querySelector(\".icon-wrapper\");\r\n\r\n    if (platformStates.hasOwnProperty(cb.dataset.platform)) {\r\n      cb.checked = platformStates[cb.dataset.platform];\r\n      if (iconWrapper) {\r\n        iconWrapper.classList.toggle(\"checked\", cb.checked);\r\n      }\r\n    }\r\n  });\r\n  updateSelectAllText();\r\n}\r\n\r\n/**\r\n * 设置所有事件监听器\r\n */\r\nfunction setupEventListeners() {\r\n  // 监听来自options页面的平台可见性更新消息\r\n  chrome.runtime.onMessage.addListener((request) => {\r\n    if (request.action === 'platformVisibilityUpdated') {\r\n      applyPlatformVisibilitySettings(request.settings);\r\n      showTempMessage('平台显示设置已更新');\r\n    }\r\n  });\r\n\r\n  // 原有的事件监听器\r\n  // 输入框内容变化时实时保存（优化防抖机制）\r\n  elements.messageInput.addEventListener(\"input\", () => {\r\n    const currentContent = elements.messageInput.value;\r\n\r\n    // 清除之前的定时器\r\n    if (saveTimeout) {\r\n      clearTimeout(saveTimeout);\r\n    }\r\n\r\n    // 根据文本长度动态调整保存延迟\r\n    const delay = currentContent.length > 1000 ? 300 : 500;\r\n\r\n    // 设置新的定时器，优化防抖延迟\r\n    saveTimeout = setTimeout(async () => {\r\n      await saveMessageContent(currentContent);\r\n    }, delay);\r\n  });\r\n\r\n  // 监听输入框失去焦点事件，立即保存\r\n  elements.messageInput.addEventListener(\"blur\", async () => {\r\n    // 立即清除定时器并保存\r\n    if (saveTimeout) {\r\n      clearTimeout(saveTimeout);\r\n      saveTimeout = null;\r\n    }\r\n    await saveMessageContent(elements.messageInput.value);\r\n  });\r\n\r\n  // 监听输入框获得焦点事件，确保内容同步\r\n  elements.messageInput.addEventListener(\"focus\", async () => {\r\n    // 使用 chrome.storage.local\r\n    const result = await chrome.storage.local.get(\"lastMessage\");\r\n    if (\r\n      result.lastMessage &&\r\n      result.lastMessage !== elements.messageInput.value\r\n    ) {\r\n      elements.messageInput.value = result.lastMessage;\r\n      lastSavedContent = result.lastMessage;\r\n    }\r\n  });\r\n\r\n  // 监听键盘快捷键（Ctrl+S 手动保存）\r\n  elements.messageInput.addEventListener(\"keydown\", async (e) => {\r\n    if (e.ctrlKey && e.key === \"s\") {\r\n      e.preventDefault();\r\n      if (saveTimeout) {\r\n        clearTimeout(saveTimeout);\r\n        saveTimeout = null;\r\n      }\r\n      await saveMessageContent(elements.messageInput.value);\r\n      showTempMessage(\"内容已手动保存\");\r\n    }\r\n  });\r\n\r\n  // 监听页面关闭前保存\r\n  window.addEventListener(\"beforeunload\", async () => {\r\n    if (saveTimeout) {\r\n      clearTimeout(saveTimeout);\r\n    }\r\n    await saveMessageContent(elements.messageInput.value);\r\n  });\r\n\r\n  // 历史记录选择\r\n  elements.historySelect.addEventListener(\"change\", () => {\r\n    if (elements.historySelect.value) {\r\n      elements.messageInput.value = elements.historySelect.value;\r\n      elements.messageInput.dispatchEvent(new Event(\"input\"));\r\n    }\r\n  });\r\n\r\n  // 优化器选择\r\n  elements.promptOptimizerSelect.addEventListener(\"change\", (e) => {\r\n    const value = e.detail.value;\r\n    // 使用 chrome.storage.local\r\n    chrome.storage.local.set({ [OPTIMIZER_KEY]: value });\r\n  });\r\n\r\n  // 平台复选框变化\r\n  elements.platformCheckboxes.forEach((cb) => {\r\n    cb.addEventListener(\"change\", () => {\r\n      const iconWrapper = cb\r\n        .closest(\".platform-icon-option\")\r\n        .querySelector(\".icon-wrapper\");\r\n      if (iconWrapper) {\r\n        iconWrapper.classList.toggle(\"checked\", cb.checked);\r\n      }\r\n      savePlatformStates();\r\n      updateSelectAllText();\r\n    });\r\n  });\r\n\r\n  // 全选/取消全选按钮\r\n  elements.selectAllButton.addEventListener(\"click\", toggleSelectAll);\r\n\r\n  // 发送按钮\r\n  elements.sendButton.addEventListener(\"click\", startSending);\r\n\r\n  // 关闭AI标签页按钮\r\n  elements.closeTabsButton.addEventListener(\"click\", closeAllAITabs);\r\n}\r\n\r\n/**\r\n * 更新全选按钮文本\r\n */\r\nfunction updateSelectAllText() {\r\n  // 只考虑可见的平台复选框\r\n  const visibleCheckboxes = Array.from(elements.platformCheckboxes).filter(\r\n    (checkbox) => {\r\n      const option = checkbox.closest('.platform-icon-option');\r\n      return option && option.style.display !== 'none';\r\n    }\r\n  );\r\n\r\n  if (visibleCheckboxes.length === 0) {\r\n    elements.selectAllButton.textContent = \"全选\";\r\n    return;\r\n  }\r\n\r\n  const allChecked = visibleCheckboxes.every((checkbox) => checkbox.checked);\r\n  elements.selectAllButton.textContent = allChecked ? \"取消全选\" : \"全选\";\r\n}\r\n\r\n/**\r\n * 切换全选/取消全选状态\r\n */\r\nfunction toggleSelectAll() {\r\n  // 只考虑可见的平台复选框\r\n  const visibleCheckboxes = Array.from(elements.platformCheckboxes).filter(\r\n    (checkbox) => {\r\n      const option = checkbox.closest('.platform-icon-option');\r\n      return option && option.style.display !== 'none';\r\n    }\r\n  );\r\n\r\n  if (visibleCheckboxes.length === 0) {\r\n    return;\r\n  }\r\n\r\n  const allChecked = visibleCheckboxes.every((checkbox) => checkbox.checked);\r\n\r\n  // 只切换可见的复选框\r\n  visibleCheckboxes.forEach((checkbox) => {\r\n    checkbox.checked = !allChecked;\r\n    const iconWrapper = checkbox\r\n      .closest(\".platform-icon-option\")\r\n      .querySelector(\".icon-wrapper\");\r\n    if (iconWrapper) {\r\n      iconWrapper.classList.toggle(\"checked\", checkbox.checked);\r\n    }\r\n  });\r\n\r\n  updateSelectAllText();\r\n  savePlatformStates();\r\n}\r\n\r\n/**\r\n * 渲染历史消息\r\n */\r\nfunction populateHistory(historySelect, history) {\r\n  historySelect.innerHTML = `<option value=\"\">选择历史消息</option>`;\r\n  history.forEach((msg) => {\r\n    const opt = document.createElement(\"option\");\r\n    opt.value = msg;\r\n    opt.textContent = msg.length > 40 ? msg.slice(0, 40) + \"...\" : msg;\r\n    historySelect.appendChild(opt);\r\n  });\r\n}\r\n\r\n/**\r\n * 添加消息到历史（使用 local 存储）\r\n */\r\nfunction addToHistory(message) {\r\n  return new Promise((resolve) => {\r\n    // 使用 chrome.storage.local\r\n    chrome.storage.local.get(HISTORY_KEY, (result) => {\r\n      let history = result[HISTORY_KEY] || [];\r\n      history = history.filter((item) => item !== message);\r\n      history.unshift(message);\r\n      if (history.length > MAX_HISTORY) {\r\n        history = history.slice(0, MAX_HISTORY);\r\n      }\r\n      // 使用 chrome.storage.local\r\n      chrome.storage.local.set({ [HISTORY_KEY]: history }, () => {\r\n        populateHistory(elements.historySelect, history);\r\n        resolve();\r\n      });\r\n    });\r\n  });\r\n}\r\n\r\n/**\r\n * 保存平台勾选状态（使用 local 存储）\r\n */\r\nfunction savePlatformStates() {\r\n  const checkedStates = {};\r\n  elements.platformCheckboxes.forEach((cb) => {\r\n    checkedStates[cb.dataset.platform] = cb.checked;\r\n  });\r\n  // 使用 chrome.storage.local\r\n  chrome.storage.local.set({ platformStates: checkedStates });\r\n}\r\n\r\n/**\r\n * 加载并应用平台可见性设置\r\n */\r\nfunction loadPlatformVisibilitySettings() {\r\n  chrome.storage.local.get([PLATFORM_VISIBILITY_KEY], (result) => {\r\n    const visibilitySettings = result[PLATFORM_VISIBILITY_KEY] || {};\r\n\r\n    // 获取所有平台选项\r\n    const platformOptions = document.querySelectorAll('.platform-icon-option');\r\n\r\n    platformOptions.forEach(option => {\r\n      const platformId = option.getAttribute('data-platform-id');\r\n      if (platformId) {\r\n        // 如果设置了可见性为false，则隐藏该平台\r\n        if (visibilitySettings.hasOwnProperty(platformId) && !visibilitySettings[platformId]) {\r\n          option.style.display = 'none';\r\n        } else {\r\n          option.style.display = '';\r\n        }\r\n      }\r\n    });\r\n\r\n    // 更新全选按钮状态（只考虑可见的平台）\r\n    updateSelectAllText();\r\n  });\r\n}\r\n\r\n/**\r\n * 应用平台可见性设置（当设置更新时调用）\r\n */\r\nfunction applyPlatformVisibilitySettings(settings) {\r\n  const platformOptions = document.querySelectorAll('.platform-icon-option');\r\n\r\n  platformOptions.forEach(option => {\r\n    const platformId = option.getAttribute('data-platform-id');\r\n    if (platformId) {\r\n      // 如果设置了可见性为false，则隐藏该平台\r\n      if (settings.hasOwnProperty(platformId) && !settings[platformId]) {\r\n        option.style.display = 'none';\r\n      } else {\r\n        option.style.display = '';\r\n      }\r\n    }\r\n  });\r\n\r\n  // 更新全选按钮状态（只考虑可见的平台）\r\n  updateSelectAllText();\r\n}\r\n\r\n/**\r\n * 关闭所有AI标签页\r\n */\r\nfunction closeAllAITabs() {\r\n  // 添加禁用样式类\r\n  elements.closeTabsButton.classList.add('disabled');\r\n  elements.closeTabsButton.textContent = \"关闭中...\";\r\n  elements.closeTabsButton.style.cursor = 'not-allowed';\r\n\r\n  chrome.runtime.sendMessage({ action: \"closeAllAITabs\" }, (response) => {\r\n    if (chrome.runtime.lastError) {\r\n      console.error(\"关闭AI标签页时出错:\", chrome.runtime.lastError.message);\r\n      showTempMessage(\"关闭标签页失败\");\r\n    } else {\r\n      showTempMessage(\"正在关闭AI标签页\");\r\n    }\r\n\r\n    // 短暂延迟后重置按钮状态\r\n    setTimeout(() => {\r\n      elements.closeTabsButton.classList.remove('disabled');\r\n      elements.closeTabsButton.textContent = \"关闭AI标签页\";\r\n      elements.closeTabsButton.style.cursor = 'pointer';\r\n    }, 1500);\r\n  });\r\n}\r\n\r\n/**\r\n * 发送消息逻辑\r\n */\r\nasync function startSending() {\r\n  // 确保最新的输入被保存\r\n  if (saveTimeout) {\r\n    clearTimeout(saveTimeout);\r\n    saveTimeout = null;\r\n  }\r\n  await saveMessageContent(elements.messageInput.value);\r\n\r\n  const originalMessage = elements.messageInput.value.trim();\r\n  if (!originalMessage) {\r\n    console.error(\"请输入消息内容\");\r\n    showTempMessage(\"请输入消息内容\");\r\n    return;\r\n  }\r\n\r\n  // 从selectedValue中直接获取当前选中的模板\r\n  const selectedValue =\r\n    elements.promptOptimizerSelect.querySelector(\".selected-value\");\r\n  const templateKey = selectedValue.dataset.value;\r\n  const templateContent = selectedValue.dataset.template;\r\n\r\n  let finalMessage = originalMessage;\r\n\r\n  if (templateKey && templateContent) {\r\n    finalMessage = templateContent.includes(\"%s\")\r\n      ? templateContent.replace(\"%s\", originalMessage)\r\n      : originalMessage + \" \" + templateContent;\r\n  }\r\n\r\n  const selectedPlatforms = Array.from(elements.platformCheckboxes)\r\n    .filter((checkbox) => checkbox.checked)\r\n    .map((checkbox) => checkbox.dataset.platform);\r\n\r\n  if (selectedPlatforms.length === 0) {\r\n    console.error(\"请至少选择一个平台\");\r\n    showTempMessage(\"请至少选择一个平台\");\r\n    return;\r\n  }\r\n\r\n  // 检查文本长度，如果超过400则复制到剪切板\r\n  if (finalMessage.length > 400) {\r\n    elements.sendButton.disabled = true;\r\n    elements.sendButton.textContent = \"复制中...\";\r\n\r\n    const copySuccess = await copyToClipboard(finalMessage);\r\n\r\n    if (copySuccess) {\r\n      showTempMessage(`内容已复制到剪切板（${finalMessage.length}字符）`);\r\n    } else {\r\n      showTempMessage(\"复制失败，但将继续发送\");\r\n    }\r\n\r\n    // 短暂延迟让用户看到提示\r\n    await new Promise((resolve) => setTimeout(resolve, 1000));\r\n  }\r\n\r\n  elements.sendButton.disabled = true;\r\n  elements.sendButton.textContent = \"发送中...\";\r\n\r\n  // 确保历史消息保存完成后再发送任务\r\n  Promise.all([\r\n    Promise.resolve(savePlatformStates()),\r\n    addToHistory(originalMessage),\r\n  ]).then(() => {\r\n    const actionsQueue = selectedPlatforms.map((platform) => ({\r\n      platform,\r\n      message: finalMessage,\r\n    }));\r\n\r\n    chrome.runtime.sendMessage(\r\n      { action: \"processTaskQueue\", queue: actionsQueue },\r\n      () => {\r\n        window.close();\r\n      }\r\n    );\r\n  });\r\n}\r\n\r\nexport { initializePopup, setupEventListeners, loadStoredData };\r\n
+-Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+-<+>UTF-8
+-===================================================================
+-diff --git a/popup/popup/popupUtils.js b/popup/popup/popupUtils.js
+---- a/popup/popup/popupUtils.js	(revision 912f9fd52af596a74d3249f6a6f428c0f687e6f1)
+-+++ b/popup/popup/popupUtils.js	(date 1766491147959)
+-@@ -571,22 +571,35 @@
+-   elements.sendButton.textContent = "发送中...";
+- 
+-   // 确保历史消息保存完成后再发送任务
+--  Promise.all([
+--    Promise.resolve(savePlatformStates()),
+--    addToHistory(originalMessage),
+--  ]).then(() => {
+--    const actionsQueue = selectedPlatforms.map((platform) => ({
+--      platform,
+--      message: finalMessage,
+--    }));
+-+// 优化后的发送逻辑：利用并行处理与现代异步语法
+-+(async () => {
+-+        try {
+-+            // 1. 并行执行数据持久化操作
+-+            await Promise.all([
+-+                savePlatformStates(),
+-+                addToHistory(originalMessage)
+-+            ]);
+-+
+-+            // 2. 构造任务队列
+-+            const actionsQueue = selectedPlatforms.map(platform => ({
+-+                platform,
+-+                message: finalMessage,
+-+            }));
+- 
+--    chrome.runtime.sendMessage(
+--      { action: "processTaskQueue", queue: actionsQueue },
+--      () => {
+--        window.close();
+--      }
+--    );
+--  });
+-+            // 3. 发送消息到 background（不等待响应）
+-+            chrome.runtime.sendMessage(
+-+                { action: "processTaskQueue", queue: actionsQueue }
+-+            );
+-+
+-+            // 4. 短暂延迟后关闭窗口，确保消息已发出
+-+            await new Promise(resolve => setTimeout(resolve, 100));
+-+            window.close();
+-+
+-+        } catch (error) {
+-+            console.error("保存并发送过程中出错:", error);
+-+            showTempMessage("操作失败，请重试");
+-+        }
+-+})();
+- }
+- 
+- export { initializePopup, setupEventListeners, loadStoredData };
+-Index: background.js
+-IDEA additional info:
+-Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+-<+>// background.js\r\n// 使用 ES Modules 导入功能\r\nimport { processNextAction, setupTabUpdateListener, closeAllAITabs } from './backgroudtask/ai_platform_processor.js';\r\nimport { executeFunctionScript , setupFuncCommandListener } from './backgroudtask/func_executor.js';\r\nimport { setTabTransListener } from './backgroudtask/gotoServer.js';\r\nimport { startServer } from './backgroudtask/word_http_server.js';\r\n// import { setupClipboardToFileListener } from './backgroudtask/clipboard2file.js';\r\nimport { startCarousel } from './backgroudtask/startCarousel.js';\r\n// 初始化标签页更新监听器，用于处理 AI 平台任务的加载完成事件\r\nsetupTabUpdateListener();\r\nsetupFuncCommandListener();\r\nsetTabTransListener();\r\nstartServer();\r\n// setupClipboardToFileListener();\r\nstartCarousel();\r\n\r\n// 监听来自 popup 的任务请求\r\nchrome.runtime.onMessage.addListener((request, sender, sendResponse) => {\r\n  if (request.action === \"processTaskQueue\") {\r\n    // 收到任务队列，保存并开始处理第一个任务 (AI 平台逻辑)\r\n    chrome.storage.local.set({ actionsQueue: request.queue }, () => {\r\n      processNextAction();\r\n    });\r\n    sendResponse({ status: \"processing_started\" });\r\n    return true; // 异步响应\r\n  } else if (request.action === \"executeFunctionScript\") {\r\n    // 处理通用脚本执行请求，调用导入的模块函数\r\n    executeFunctionScript(request.file, sendResponse);\r\n    return true; // 异步响应\r\n  } else if (request.action === \"closeAllAITabs\") {\r\n    // 处理关闭所有AI标签页的请求\r\n    closeAllAITabs();\r\n    sendResponse({ status: \"closing_tabs\" });\r\n    return true; // 异步响应\r\n  }\r\n\r\n  // 其他消息\r\n  return true;\r\n});
+-Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+-<+>UTF-8
+-===================================================================
+-diff --git a/background.js b/background.js
+---- a/background.js	(revision 912f9fd52af596a74d3249f6a6f428c0f687e6f1)
+-+++ b/background.js	(date 1766491360446)
+-@@ -1,39 +1,67 @@
+- // background.js
+--// 使用 ES Modules 导入功能
+--import { processNextAction, setupTabUpdateListener, closeAllAITabs } from './backgroudtask/ai_platform_processor.js';
+--import { executeFunctionScript , setupFuncCommandListener } from './backgroudtask/func_executor.js';
+-+import {
+-+    processNextAction,
+-+    setupTabUpdateListener,
+-+    closeAllAITabs,
+-+    processTaskQueueConcurrent  // 新增导入
+-+} from './backgroudtask/ai_platform_processor.js';
+-+import { executeFunctionScript, setupFuncCommandListener } from './backgroudtask/func_executor.js';
+- import { setTabTransListener } from './backgroudtask/gotoServer.js';
+- import { startServer } from './backgroudtask/word_http_server.js';
+--// import { setupClipboardToFileListener } from './backgroudtask/clipboard2file.js';
+- import { startCarousel } from './backgroudtask/startCarousel.js';
+--// 初始化标签页更新监听器，用于处理 AI 平台任务的加载完成事件
+-+
+-+// 初始化所有监听器
+- setupTabUpdateListener();
+- setupFuncCommandListener();
+- setTabTransListener();
+- startServer();
+--// setupClipboardToFileListener();
+- startCarousel();
+- 
+--// 监听来自 popup 的任务请求
+-+// 消息处理器
+- chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+--  if (request.action === "processTaskQueue") {
+--    // 收到任务队列，保存并开始处理第一个任务 (AI 平台逻辑)
+--    chrome.storage.local.set({ actionsQueue: request.queue }, () => {
+--      processNextAction();
+--    });
+--    sendResponse({ status: "processing_started" });
+--    return true; // 异步响应
+--  } else if (request.action === "executeFunctionScript") {
+--    // 处理通用脚本执行请求，调用导入的模块函数
+--    executeFunctionScript(request.file, sendResponse);
+--    return true; // 异步响应
+--  } else if (request.action === "closeAllAITabs") {
+--    // 处理关闭所有AI标签页的请求
+--    closeAllAITabs();
+--    sendResponse({ status: "closing_tabs" });
+--    return true; // 异步响应
+--  }
+--
+--  // 其他消息
+--  return true;
+-+    if (request.action === "processTaskQueue") {
+-+        // 方案1: 串行处理（原逻辑，向后兼容）
+-+        // chrome.storage.local.set({ actionsQueue: request.queue }, () => {
+-+        //   processNextAction();
+-+        //   sendResponse({ status: "processing_started" });
+-+        // });
+-+
+-+        // 方案2: 并发处理（推荐）
+-+        processTaskQueueConcurrent(request.queue, {
+-+            maxConcurrent: 3,      // 同时处理3个
+-+            batchDelay: 300,       // 批次间延迟300ms
+-+            tabLoadTimeout: 8000,  // 标签页加载超时8秒
+-+            scriptTimeout: 5000    // 脚本执行超时5秒
+-+        }).then(results => {
+-+            const success = results.filter(r => r.status === 'fulfilled').length;
+-+            const failed = results.filter(r => r.status === 'rejected').length;
+-+
+-+            sendResponse({
+-+                status: "completed",
+-+                total: results.length,
+-+                success: success,
+-+                failed: failed,
+-+                results: results
+-+            });
+-+        }).catch(error => {
+-+            console.error("处理任务队列失败:", error);
+-+            sendResponse({
+-+                status: "error",
+-+                error: error.message
+-+            });
+-+        });
+-+
+-+        return true; // 异步响应
+-+
+-+    } else if (request.action === "executeFunctionScript") {
+-+        executeFunctionScript(request.file, sendResponse);
+-+        return true;
+-+
+-+    } else if (request.action === "closeAllAITabs") {
+-+        closeAllAITabs();
+-+        sendResponse({ status: "tabs_closed" });
+-+        return true;
+-+    }
+-+
+-+    return false;
+- });
+-\ No newline at end of file
+-Index: .idea/workspace.xml
+-IDEA additional info:
+-Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+-<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"AutoImportSettings\">\r\n    <option name=\"autoReloadType\" value=\"SELECTIVE\" />\r\n  </component>\r\n  <component name=\"ChangeListManager\">\r\n    <list default=\"true\" id=\"1f797681-6e21-42bc-94cd-d5f4827fa43b\" name=\"更改\" comment=\"修改下拉列表\">\r\n      <change beforePath=\"$PROJECT_DIR$/.idea/workspace.xml\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/.idea/workspace.xml\" afterDir=\"false\" />\r\n    </list>\r\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\r\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\r\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\r\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\r\n  </component>\r\n  <component name=\"Git.Settings\">\r\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$\" />\r\n  </component>\r\n  <component name=\"ProjectColorInfo\">{\r\n  &quot;customColor&quot;: &quot;&quot;,\r\n  &quot;associatedIndex&quot;: 0\r\n}</component>\r\n  <component name=\"ProjectId\" id=\"35VgvDSQlsufw75nYGfoOWzhn8m\" />\r\n  <component name=\"ProjectViewState\">\r\n    <option name=\"autoscrollToSource\" value=\"true\" />\r\n    <option name=\"hideEmptyMiddlePackages\" value=\"true\" />\r\n    <option name=\"openDirectoriesWithSingleClick\" value=\"true\" />\r\n    <option name=\"showLibraryContents\" value=\"true\" />\r\n  </component>\r\n  <component name=\"PropertiesComponent\"><![CDATA[{\r\n  \"keyToString\": {\r\n    \"RunOnceActivity.ShowReadmeOnStart\": \"true\",\r\n    \"RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252\": \"true\",\r\n    \"RunOnceActivity.git.unshallow\": \"true\",\r\n    \"git-widget-placeholder\": \"main\",\r\n    \"last_opened_file_path\": \"D:/chat/bro_chat\",\r\n    \"node.js.detected.package.eslint\": \"true\",\r\n    \"node.js.detected.package.tslint\": \"true\",\r\n    \"node.js.selected.package.eslint\": \"(autodetect)\",\r\n    \"node.js.selected.package.tslint\": \"(autodetect)\",\r\n    \"nodejs_package_manager_path\": \"npm\",\r\n    \"vue.rearranger.settings.migration\": \"true\"\r\n  }\r\n}]]></component>\r\n  <component name=\"SharedIndexes\">\r\n    <attachedChunks>\r\n      <set>\r\n        <option value=\"bundled-js-predefined-d6986cc7102b-9c94529fcfe0-JavaScript-WS-252.26199.162\" />\r\n      </set>\r\n    </attachedChunks>\r\n  </component>\r\n  <component name=\"SpellCheckerSettings\" RuntimeDictionaries=\"0\" Folders=\"0\" CustomDictionaries=\"0\" DefaultDictionary=\"应用程序级\" UseSingleDictionary=\"true\" transferred=\"true\" />\r\n  <component name=\"TaskManager\">\r\n    <task active=\"true\" id=\"Default\" summary=\"默认任务\">\r\n      <changelist id=\"1f797681-6e21-42bc-94cd-d5f4827fa43b\" name=\"更改\" comment=\"\" />\r\n      <created>1763200884699</created>\r\n      <option name=\"number\" value=\"Default\" />\r\n      <option name=\"presentableId\" value=\"Default\" />\r\n      <updated>1763200884699</updated>\r\n      <workItem from=\"1763200885854\" duration=\"7000\" />\r\n      <workItem from=\"1763311715697\" duration=\"10000\" />\r\n      <workItem from=\"1764388067628\" duration=\"4895000\" />\r\n      <workItem from=\"1764395107111\" duration=\"81000\" />\r\n      <workItem from=\"1764400655334\" duration=\"288000\" />\r\n      <workItem from=\"1764482544987\" duration=\"98000\" />\r\n      <workItem from=\"1766490064962\" duration=\"459000\" />\r\n    </task>\r\n    <task id=\"LOCAL-00001\" summary=\"微调样式\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1764389230197</created>\r\n      <option name=\"number\" value=\"00001\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00001\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1764389230197</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00002\" summary=\"微调样式\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1764394140526</created>\r\n      <option name=\"number\" value=\"00002\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00002\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1764394140526</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00003\" summary=\"修改下拉列表\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1764394696490</created>\r\n      <option name=\"number\" value=\"00003\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00003\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1764394696490</updated>\r\n    </task>\r\n    <option name=\"localTasksCounter\" value=\"4\" />\r\n    <servers />\r\n  </component>\r\n  <component name=\"TypeScriptGeneratedFilesManager\">\r\n    <option name=\"version\" value=\"3\" />\r\n  </component>\r\n  <component name=\"VcsManagerConfiguration\">\r\n    <MESSAGE value=\"微调样式\" />\r\n    <MESSAGE value=\"修改下拉列表\" />\r\n    <option name=\"LAST_COMMIT_MESSAGE\" value=\"修改下拉列表\" />\r\n  </component>\r\n</project>
+-Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+-<+>UTF-8
+-===================================================================
+-diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+---- a/.idea/workspace.xml	(revision 912f9fd52af596a74d3249f6a6f428c0f687e6f1)
+-+++ b/.idea/workspace.xml	(date 1766492092466)
+-@@ -4,8 +4,11 @@
+-     <option name="autoReloadType" value="SELECTIVE" />
+-   </component>
+-   <component name="ChangeListManager">
+--    <list default="true" id="1f797681-6e21-42bc-94cd-d5f4827fa43b" name="更改" comment="修改下拉列表">
+-+    <list default="true" id="1f797681-6e21-42bc-94cd-d5f4827fa43b" name="更改" comment="1111">
+-       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+-+      <change beforePath="$PROJECT_DIR$/backgroudtask/ai_platform_processor.js" beforeDir="false" afterPath="$PROJECT_DIR$/backgroudtask/ai_platform_processor.js" afterDir="false" />
+-+      <change beforePath="$PROJECT_DIR$/background.js" beforeDir="false" afterPath="$PROJECT_DIR$/background.js" afterDir="false" />
+-+      <change beforePath="$PROJECT_DIR$/popup/popup/popupUtils.js" beforeDir="false" afterPath="$PROJECT_DIR$/popup/popup/popupUtils.js" afterDir="false" />
+-     </list>
+-     <option name="SHOW_DIALOG" value="false" />
+-     <option name="HIGHLIGHT_CONFLICTS" value="true" />
+-@@ -62,7 +65,7 @@
+-       <workItem from="1764395107111" duration="81000" />
+-       <workItem from="1764400655334" duration="288000" />
+-       <workItem from="1764482544987" duration="98000" />
+--      <workItem from="1766490064962" duration="459000" />
+-+      <workItem from="1766490064962" duration="2014000" />
+-     </task>
+-     <task id="LOCAL-00001" summary="微调样式">
+-       <option name="closed" value="true" />
+-@@ -88,7 +91,15 @@
+-       <option name="project" value="LOCAL" />
+-       <updated>1764394696490</updated>
+-     </task>
+--    <option name="localTasksCounter" value="4" />
+-+    <task id="LOCAL-00004" summary="1111">
+-+      <option name="closed" value="true" />
+-+      <created>1766490723184</created>
+-+      <option name="number" value="00004" />
+-+      <option name="presentableId" value="LOCAL-00004" />
+-+      <option name="project" value="LOCAL" />
+-+      <updated>1766490723184</updated>
+-+    </task>
+-+    <option name="localTasksCounter" value="5" />
+-     <servers />
+-   </component>
+-   <component name="TypeScriptGeneratedFilesManager">
+-@@ -97,6 +108,7 @@
+-   <component name="VcsManagerConfiguration">
+-     <MESSAGE value="微调样式" />
+-     <MESSAGE value="修改下拉列表" />
+--    <option name="LAST_COMMIT_MESSAGE" value="修改下拉列表" />
+-+    <MESSAGE value="1111" />
+-+    <option name="LAST_COMMIT_MESSAGE" value="1111" />
+-   </component>
+- </project>
+-\ No newline at end of file

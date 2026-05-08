@@ -12,17 +12,6 @@ export const platformUrls = getPlatformUrls();
 // 以 platform 为 key，查询"该平台已在哪些 Tab 注入"更直接
 
 const injectedTabs = new Map(); // platform -> Set<tabId>
-function getPlatformScriptFiles(platform) {
-    const files = [`contentScripts/${platform}.js`];
-
-    if (platform === 'chatgpt') {
-        files.push('contentScripts/chatgptResponseListener.js');
-    }
-
-    return files;
-}
-
-// ==================== 原有的串行处理逻辑（保持不变） ====================
 
 function markInjected(tabId, platform) {
   if (!injectedTabs.has(platform)) {
@@ -259,57 +248,6 @@ function waitForTabComplete(tabId, timeout = 20000) {
       if (tab?.status === 'complete') { cleanup(); setTimeout(resolve, 800); }
     });
   });
-}
-
-/**
- * 注入并执行脚本
- * @param {number} tabId 标签页ID
- * @param {string} platform 平台名称
- * @param {string} message 消息内容
- * @param {number} timeout 超时时间（ms）
- * @returns {Promise<void>}
- */
-function injectAndExecuteScript(tabId, platform, message, timeout = 5000) {
-    return new Promise((resolve, reject) => {
-        const scriptFiles = getPlatformScriptFiles(platform);
-        let timer;
-
-        timer = setTimeout(() => {
-            reject(new Error('脚本执行超时'));
-        }, timeout);
-
-        // 1. 注入脚本文件
-        chrome.scripting.executeScript({
-            target: { tabId },
-            files: scriptFiles
-        }, () => {
-            if (chrome.runtime.lastError) {
-                clearTimeout(timer);
-                reject(new Error(`脚本注入失败: ${chrome.runtime.lastError.message}`));
-                return;
-            }
-
-            // 2. 发送消息到 content script
-            chrome.tabs.sendMessage(tabId, {
-                action: "sendMessage",
-                message: message
-            }, (response) => {
-                clearTimeout(timer);
-
-                if (chrome.runtime.lastError) {
-                    reject(new Error(`消息发送失败: ${chrome.runtime.lastError.message}`));
-                    return;
-                }
-
-                if (!response || response.status === 'failed') {
-                    reject(new Error('Content script 执行失败或无响应'));
-                    return;
-                }
-
-                resolve();
-            });
-        });
-    });
 }
 
 // ==================== 工具函数 ====================
