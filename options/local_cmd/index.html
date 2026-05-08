@@ -521,16 +521,6 @@
       color: var(--ink);
     }
 
-    .skill-panel-header select {
-      padding: 6px 10px;
-      border: 1px solid var(--line-strong);
-      border-radius: 8px;
-      font-size: 13px;
-      background: rgba(255, 255, 255, 0.92);
-      color: var(--ink);
-      max-width: 240px;
-    }
-
     .skill-panel-body {
       flex: 1;
       overflow-y: auto;
@@ -648,6 +638,69 @@
       font-size: 13px;
       color: var(--muted);
     }
+
+    /* 项目选择器样式 */
+    .project-select-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      max-width: 240px;
+    }
+
+    .project-select-wrapper select {
+      flex: 1;
+      min-width: 0;
+      padding: 6px 28px 6px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 251, 245, 0.85)),
+        linear-gradient(135deg, var(--paper) 0%, var(--paper-deep) 100%);
+      color: var(--ink);
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a6858' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+
+    .project-select-wrapper select:hover {
+      border-color: rgba(107, 74, 49, 0.3);
+    }
+
+    .project-select-wrapper select:focus {
+      border-color: rgba(107, 74, 49, 0.4);
+      box-shadow: 0 0 0 3px rgba(153, 103, 63, 0.1);
+    }
+
+    .project-select-wrapper select option {
+      background: var(--paper);
+      color: var(--ink);
+      padding: 8px;
+    }
+
+    .project-remove-btn {
+      width: 24px;
+      height: 24px;
+      min-height: 24px;
+      padding: 0;
+      border-radius: 6px;
+      font-size: 14px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .project-remove-btn:hover {
+      opacity: 0.8;
+    }
   </style>
 </head>
 <body>
@@ -708,9 +761,12 @@
         <div class="skill-panel">
           <div class="skill-panel-header">
             <span class="panel-title">项目</span>
-            <select id="skillProjectSelect">
-              <option value="">-- 选择项目 --</option>
-            </select>
+            <div class="project-select-wrapper">
+              <select id="skillProjectSelect">
+                <option value="">-- 选择项目 --</option>
+              </select>
+              <button class="btn btn-danger project-remove-btn" id="skillProjectRemoveBtn" style="display:none;" data-action="skill-remove-project">×</button>
+            </div>
             <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" data-action="skill-add-project">+ 添加</button>
             <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" data-action="skill-import-from-git">从 Git 导入</button>
           </div>
