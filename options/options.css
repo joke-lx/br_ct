@@ -240,6 +240,76 @@ select {
   transform: scale(1.05);
 }
 
+.pin-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(45, 36, 28, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms ease, transform 120ms ease;
+  padding: 0;
+}
+
+.pin-btn:hover {
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(1.05);
+}
+
+.pin-btn.pinned {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.pin-icon {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+
+/* 图钉头部 - 圆 */
+.pin-icon::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: transparent;
+}
+
+/* 图钉针脚 - 斜线 */
+.pin-icon::after {
+  content: '';
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  transform: translateX(-1px);
+  width: 2px;
+  height: 7px;
+  background: currentColor;
+  border-radius: 0 0 1px 1px;
+}
+
+/* 固定状态 - 填充头部 */
+.pin-btn.pinned .pin-icon::before {
+  background: currentColor;
+}
+
+/* 固定状态 - 针脚旋转45度 */
+.pin-btn.pinned .pin-icon::after {
+  transform: translateX(-1px) rotate(45deg);
+  transform-origin: top center;
+}
+
 .focus-btn.active,
 .app-container.focus-mode .focus-btn {
   background: var(--accent);

@@ -178,6 +178,16 @@ function initializeOptions() {
   // 专注模式按钮
   focusBtn.addEventListener('click', toggleFocusMode);
 
+  // 固定标签页按钮
+  const pinBtn = document.getElementById('pin-btn');
+  pinBtn.addEventListener('click', togglePinTab);
+  // 初始化固定状态
+  chrome.tabs.getCurrent((tab) => {
+    if (tab && tab.pinned) {
+      pinBtn.classList.add('pinned');
+    }
+  });
+
   // 初始化悬浮圆环导航
   initNavRing();
 
@@ -783,6 +793,24 @@ function updateSelectedCard() {
 function switchToPage(page) {
   closeSwitcher();
   navigateToPage(page);
+}
+
+/**
+ * 切换固定标签页
+ */
+function togglePinTab() {
+  const pinBtn = document.getElementById('pin-btn');
+  chrome.tabs.getCurrent((tab) => {
+    if (!tab) return;
+    const newPinned = !tab.pinned;
+    chrome.tabs.update(tab.id, { pinned: newPinned }, () => {
+      if (newPinned) {
+        pinBtn.classList.add('pinned');
+      } else {
+        pinBtn.classList.remove('pinned');
+      }
+    });
+  });
 }
 
 // 页面加载时初始化
