@@ -207,6 +207,37 @@ select {
   transform: scale(1.05);
 }
 
+.pin-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(45, 36, 28, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms ease, transform 120ms ease;
+  font-size: 12px;
+  padding: 0;
+}
+
+.pin-btn:hover {
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(1.05);
+}
+
+.pin-btn.pinned {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.pin-btn.pinned .pin-icon {
+  filter: brightness(10);
+}
+
 .focus-btn.active,
 .app-container.focus-mode .focus-btn {
   background: var(--accent);
