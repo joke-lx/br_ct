@@ -10,23 +10,40 @@ export const OCR_MENU_ID = 'translationOCR';
 /**
  * 创建右键菜单项
  */
+function removeContextMenuSafe(id) {
+  chrome.contextMenus.remove(id, () => {
+    // Swallow "not found" and other benign errors.
+    void chrome.runtime.lastError;
+  });
+}
+
 function createContextMenus() {
   // 先删除已存在的菜单（如果存在）
-  chrome.contextMenus.remove(MENU_ID, () => {});
-  chrome.contextMenus.remove(OCR_MENU_ID, () => {});
+  removeContextMenuSafe(MENU_ID);
+  removeContextMenuSafe(OCR_MENU_ID);
 
   // 创建新菜单
-  chrome.contextMenus.create({
-    id: MENU_ID,
-    title: '📝 翻译 "%s"',
-    contexts: ['selection']
-  });
+  chrome.contextMenus.create(
+    {
+      id: MENU_ID,
+      title: '📝 翻译 "%s"',
+      contexts: ['selection'],
+    },
+    () => {
+      void chrome.runtime.lastError;
+    }
+  );
 
-  chrome.contextMenus.create({
-    id: OCR_MENU_ID,
-    title: '📷 OCR 区域识别',
-    contexts: ['page', 'image']
-  });
+  chrome.contextMenus.create(
+    {
+      id: OCR_MENU_ID,
+      title: '📷 OCR 区域识别',
+      contexts: ['page', 'image'],
+    },
+    () => {
+      void chrome.runtime.lastError;
+    }
+  );
 }
 
 /**
@@ -38,24 +55,30 @@ export function updateContextMenuVisibility() {
 
     if (settings.showContextMenu) {
       // 显示菜单
-      chrome.contextMenus.create({
-        id: MENU_ID,
-        title: '📝 翻译 "%s"',
-        contexts: ['selection']
-      }, () => {
-        // 忽略菜单已存在的错误
-        if (chrome.runtime.lastError) {
-          // 菜单可能已存在，这是正常情况
+      chrome.contextMenus.create(
+        {
+          id: MENU_ID,
+          title: '📝 翻译 "%s"',
+          contexts: ['selection'],
+        },
+        () => {
+          void chrome.runtime.lastError;
         }
-      });
+      );
+      chrome.contextMenus.create(
+        {
+          id: OCR_MENU_ID,
+          title: '📷 OCR 区域识别',
+          contexts: ['page', 'image'],
+        },
+        () => {
+          void chrome.runtime.lastError;
+        }
+      );
     } else {
       // 隐藏菜单
-      chrome.contextMenus.remove(MENU_ID, () => {
-        // 忽略菜单不存在的错误
-        if (chrome.runtime.lastError) {
-          // 菜单可能已被删除，这是正常情况
-        }
-      });
+      removeContextMenuSafe(MENU_ID);
+      removeContextMenuSafe(OCR_MENU_ID);
     }
   });
 }
@@ -91,14 +114,16 @@ export function setupContextMenu() {
   }
   contextMenuSetup = true;
 
-  // 监听扩展安装事件，创建右键菜单
+  const syncContextMenus = () => {
+    createContextMenus();
+  };
+
+  // 启动时先同步一次，避免重启后菜单缺失
+  syncContextMenus();
+
+  // 监听扩展安装/更新事件，创建右键菜单
   chrome.runtime.onInstalled.addListener(() => {
-    // 使用 try-catch 避免重复创建错误
-    try {
-      createContextMenus();
-    } catch (e) {
-      // 忽略重复创建错误
-    }
+    syncContextMenus();
   });
 
   // 监听右键菜单点击事件

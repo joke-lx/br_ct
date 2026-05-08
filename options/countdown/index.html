@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>倒计时面板</title>
     <link rel="stylesheet" href="countdown.css">
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="./vendor/Sortable.min.js"></script>
 </head>
 <body>
     <div class="countdown-container">
@@ -120,10 +120,7 @@
         </div>
     </div>
 
-    <script type="module">
-      import { initFocusScrollAgent } from '../focusScroll/iframeScrollAgent.js';
-      import './countdown.js';
-      initFocusScrollAgent();
-    </script>
+    <script type="module" src="../focusScroll/init.js"></script>
+    <script src="./countdown.js"></script>
 </body>
 </html>
