@@ -193,19 +193,33 @@ export async function processTaskQueueConcurrent(queue, options = {}) {
 }
 
 async function processSingleTask(task, opts = {}) {
-  const { isFirst = false, shouldJump = true } = opts;
   const { platform, message } = task;
-
-  // 查找或创建 Tab
-  const tab = await findOrCreatePlatformTab(platform, isFirst, shouldJump);
-
-  // 等待加载完成
+  const tab = await findOrCreatePlatformTab(platform, opts.isFirst, opts.shouldJump);
   await waitForTabComplete(tab.id);
 
-  // 发消息
-  await sendMessage(tab.id, message);
+  try {
+    return await trySend(tab.id, platform, message, false);
+  } catch (firstErr) {
+    console.warn(`[${platform}] 首次发送失败，尝试重注:`, firstErr.message);
 
-  return { platform, success: true, tabId: tab.id };
+    try {
+      injectedTabs.get(platform)?.delete(tab.id);
+      await injectScript(tab.id, platform);
+      return await trySend(tab.id, platform, message, true);
+    } catch (finalErr) {
+      console.error(`[${platform}] 最终发送失败:`, finalErr.message);
+      throw finalErr; // ✅ 不再重试
+    }
+  }
+}
+
+async function trySend(tabId, platform, message, isRetry) {
+  try {
+    await sendMessage(tabId, message);
+    return { platform, success: true, tabId, retried: isRetry };
+  } catch (err) {
+    throw err; // 明确抛出，让上层决定
+  }
 }
 
 /**

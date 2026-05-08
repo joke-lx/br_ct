@@ -13,6 +13,17 @@ function init() {
   startGitAutoRefresh();
 }
 
+/**
+ * 刷新全部 - 重新检测native并刷新Git和Skill状态
+ */
+async function refreshAll() {
+  toast('正在刷新...', 'info');
+  await checkNativeHost();
+  await loadGitStatus();
+  await loadSkills();
+  toast('刷新完成', 'success');
+}
+
 function setupDelegation() {
   document.addEventListener('click', (e) => {
     // Tab 切换
@@ -62,6 +73,7 @@ function setupDelegation() {
       // Skills (skill.js)
       case 'skill-save-central': saveSkillCentralPath(); break;
       case 'skill-add-project': openSkillProjectModal(); break;
+      case 'refresh-all': refreshAll(); break;
       case 'skill-remove-project': if (needConfirm(btn)) return; removeSkillProject(); break;
       case 'skill-import-from-git': importProjectFromGit(); break;
       case 'skill-project-cancel': closeSkillProjectModal(); break;
