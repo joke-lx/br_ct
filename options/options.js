@@ -603,6 +603,9 @@ function renderSwitcherGrid(grid) {
     card.setAttribute('tabindex', '0');
     card.setAttribute('aria-label', item.name);
 
+    // 为每个卡片添加 staggered delay，实现逐个出现的动画
+    card.style.transitionDelay = `${index * 35}ms`;
+
     // 顶部标题栏
     const topbar = document.createElement('div');
     topbar.className = 'switcher-card-topbar';
@@ -670,8 +673,14 @@ function closeSwitcher() {
   if (!overlay) return;
 
   overlay.classList.remove('is-open');
-  overlay.setAttribute('hidden', '');
   switcherState.open = false;
+
+  // 等待关闭动画完成后再隐藏
+  setTimeout(() => {
+    if (!switcherState.open) {
+      overlay.setAttribute('hidden', '');
+    }
+  }, 300);
 
   // 恢复焦点
   if (switcherState.lastFocusedElement) {
