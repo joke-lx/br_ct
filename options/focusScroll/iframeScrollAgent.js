@@ -234,9 +234,26 @@ export function initFocusScrollAgent() {
 
       // Give precedence to inner scrollables.
       const inner = getScrollableAncestor(e.target, root);
-      if (inner && canScrollInDirection(inner, direction)) {
-        acc = 0;
-        log('wheel inner-scrollable consumes', {
+      if (inner) {
+        const innerCanScroll = canScrollInDirection(inner, direction);
+        if (innerCanScroll) {
+          acc = 0;
+          log('wheel inner-scrollable consumes', {
+            direction,
+            deltaY: e.deltaY,
+            inner: {
+              tag: inner.tagName,
+              className: inner.className,
+              scrollTop: inner.scrollTop,
+              scrollHeight: inner.scrollHeight,
+              clientHeight: inner.clientHeight,
+            },
+          });
+          return;
+        }
+
+        // Inner is scrollable but already at its edge; allow paging from here.
+        log('wheel inner-scrollable at edge', {
           direction,
           deltaY: e.deltaY,
           inner: {
@@ -247,19 +264,18 @@ export function initFocusScrollAgent() {
             clientHeight: inner.clientHeight,
           },
         });
-        return;
       }
 
-      const atEdge = isAtPageEdge(root, direction);
+      const atRootEdge = isAtPageEdge(root, direction);
       log('wheel edge check', {
         direction,
-        atEdge,
+        atRootEdge,
         scrollTop: before.scrollTop,
         maxScrollTop: Math.max(0, before.scrollHeight - before.clientHeight),
       });
 
-      // If we're at the root edge, accumulate and maybe navigate.
-      if (atEdge) {
+      // If we're at the root edge (or inner edge), accumulate and maybe navigate.
+      if (atRootEdge || !!inner) {
         const now = Date.now();
         if (now - lastTs > EDGE_DELTA_DECAY_MS && acc !== 0) {
           log('wheel accumulator decay reset', {
