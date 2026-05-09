@@ -325,6 +325,54 @@ function setFrameTransform(frameEl, translateY) {
   frameEl.style.transform = `translate3d(0, ${translateY}px, 0)`;
 }
 
+function setFrameTransformImmediately(frameEl, translateY) {
+  if (!frameEl) return;
+  const prevTransition = frameEl.style.transition;
+  frameEl.style.transition = 'none';
+  setFrameTransform(frameEl, translateY);
+
+  // Flush styles so the next transform change uses the restored transition.
+  void frameEl.offsetHeight;
+
+  frameEl.style.transition = prevTransition;
+}
+
+function parseTimeToMs(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return 0;
+  if (raw.endsWith('ms')) return Number.parseFloat(raw) || 0;
+  if (raw.endsWith('s')) return (Number.parseFloat(raw) || 0) * 1000;
+  return Number.parseFloat(raw) || 0;
+}
+
+function getTransitionTimeoutMs(frameEl) {
+  if (!frameEl) return 0;
+
+  const style = window.getComputedStyle(frameEl);
+  const durations = style.transitionDuration.split(',').map(parseTimeToMs);
+  const delays = style.transitionDelay.split(',').map(parseTimeToMs);
+  const count = Math.max(durations.length, delays.length);
+
+  let maxMs = 0;
+  for (let i = 0; i < count; i += 1) {
+    const duration = durations[i] ?? durations[durations.length - 1] ?? 0;
+    const delay = delays[i] ?? delays[delays.length - 1] ?? 0;
+    maxMs = Math.max(maxMs, duration + delay);
+  }
+
+  return maxMs;
+}
+
+function waitForFrameTransition(frameEl) {
+  const transitionMs = getTransitionTimeoutMs(frameEl);
+  if (transitionMs <= 0) return Promise.resolve();
+
+  return Promise.race([
+    waitTransitionOnce(frameEl),
+    new Promise((resolve) => setTimeout(resolve, transitionMs + 80)),
+  ]);
+}
+
 function handleFocusScrollNavigate(direction) {
   if (isFrameTransitioning) return;
 
@@ -349,6 +397,8 @@ function handleFocusScrollNavigate(direction) {
     targetPage,
     edge,
     currentPage: getCurrentPage(),
+    viewportH,
+    fromY,
   });
 
   // 非专注模式：保持原先直接切换
@@ -365,8 +415,8 @@ function handleFocusScrollNavigate(direction) {
   incomingFrame.src = targetPage;
 
   // 先放到屏幕外
-  setFrameTransform(incomingFrame, fromY);
-  setFrameTransform(currentFrame, 0);
+  setFrameTransformImmediately(incomingFrame, fromY);
+  setFrameTransformImmediately(currentFrame, 0);
 
   const incomingLoad = () => {
     incomingFrame.removeEventListener('load', incomingLoad);
@@ -389,12 +439,7 @@ function handleFocusScrollNavigate(direction) {
       requestAnimationFrame(async () => {
         setFrameTransform(currentFrame, -fromY);
         setFrameTransform(incomingFrame, 0);
-
-        // Smoothness: ensure at least ~420ms so the eye catches the movement.
-        await Promise.race([
-          waitTransitionOnce(incomingFrame),
-          new Promise((r) => setTimeout(r, 700)),
-        ]);
+        await waitForFrameTransition(incomingFrame);
 
         // 3) 动画结束：交换角色
         const oldCurrent = currentFrameEl;
@@ -556,6 +601,7 @@ function ensureFramesForDirectNav(targetPage) {
   const incomingFrame = getIncomingFrame();
   if (!currentFrame || !incomingFrame) return;
 
+
   // If we already swapped frames, the "content-frame" id might not be on current.
   // Keep ids stable so other code (and CSS) remain predictable.
   if (currentFrame.id !== 'content-frame') {
@@ -568,7 +614,7 @@ function ensureFramesForDirectNav(targetPage) {
   // Always keep incoming hidden for direct nav.
   incomingFrame.setAttribute('aria-hidden', 'true');
   incomingFrame.style.pointerEvents = 'none';
-  setFrameTransform(incomingFrame, 0);
+  setFrameTransformImmediately(incomingFrame, 0);
 }
 
 /**
