@@ -373,6 +373,133 @@ function waitForFrameTransition(frameEl) {
   ]);
 }
 
+function waitForIframeLoad(frameEl) {
+  return new Promise((resolve) => {
+    const onLoad = () => {
+      frameEl.removeEventListener('load', onLoad);
+      resolve();
+    };
+    frameEl.addEventListener('load', onLoad);
+  });
+}
+
+function getFrameScrollTop(frameEl) {
+  try {
+    const doc = frameEl?.contentDocument;
+    const root = doc?.scrollingElement || doc?.documentElement;
+    return Number(root?.scrollTop || 0);
+  } catch {
+    return 0;
+  }
+}
+
+function syncFormState(sourceDoc, cloneDoc) {
+  const sourceFields = sourceDoc.querySelectorAll('input, textarea, select');
+  const cloneFields = cloneDoc.querySelectorAll('input, textarea, select');
+
+  sourceFields.forEach((field, index) => {
+    const cloneField = cloneFields[index];
+    if (!cloneField) return;
+
+    if (field instanceof HTMLTextAreaElement) {
+      cloneField.textContent = field.value;
+      return;
+    }
+
+    if (field instanceof HTMLSelectElement) {
+      Array.from(cloneField.options).forEach((option, optionIndex) => {
+        option.selected = field.options[optionIndex]?.selected || false;
+      });
+      return;
+    }
+
+    if (field instanceof HTMLInputElement) {
+      cloneField.setAttribute('value', field.value);
+      cloneField.value = field.value;
+      if (field.checked) cloneField.setAttribute('checked', '');
+      else cloneField.removeAttribute('checked');
+    }
+  });
+}
+
+function buildSnapshotSrcdoc(frameEl) {
+  try {
+    const sourceDoc = frameEl?.contentDocument;
+    if (!sourceDoc?.documentElement) return null;
+
+    const clonedRoot = sourceDoc.documentElement.cloneNode(true);
+    clonedRoot.querySelectorAll('script').forEach((node) => node.remove());
+    syncFormState(sourceDoc, clonedRoot);
+
+    const head = clonedRoot.querySelector('head');
+    if (!head) return null;
+
+    const base = sourceDoc.createElement('base');
+    base.href = sourceDoc.location.href;
+    head.prepend(base);
+
+    const snapshotStyle = sourceDoc.createElement('style');
+    snapshotStyle.textContent = `
+      html, body {
+        overflow: hidden !important;
+        scrollbar-width: none !important;
+      }
+      body::-webkit-scrollbar {
+        display: none !important;
+      }
+      * {
+        pointer-events: none !important;
+        animation-play-state: paused !important;
+        caret-color: transparent !important;
+      }
+    `;
+    head.appendChild(snapshotStyle);
+
+    const doctype = sourceDoc.doctype
+      ? `<!DOCTYPE ${sourceDoc.doctype.name}>`
+      : '<!DOCTYPE html>';
+
+    return `${doctype}\n${clonedRoot.outerHTML}`;
+  } catch (error) {
+    console.warn('[Options FocusScroll Parent] buildSnapshotSrcdoc failed', error);
+    return null;
+  }
+}
+
+async function prepareSnapshotFrame(snapshotFrame, sourceFrame) {
+  const srcdoc = buildSnapshotSrcdoc(sourceFrame);
+  if (!srcdoc) return false;
+
+  const scrollTop = getFrameScrollTop(sourceFrame);
+
+  snapshotFrame.classList.add('snapshot-active');
+  snapshotFrame.setAttribute('aria-hidden', 'false');
+  snapshotFrame.style.pointerEvents = 'none';
+  setFrameTransformImmediately(snapshotFrame, 0);
+
+  const loaded = waitForIframeLoad(snapshotFrame);
+  snapshotFrame.srcdoc = srcdoc;
+  await loaded;
+
+  try {
+    snapshotFrame.contentWindow?.scrollTo(0, scrollTop);
+  } catch {
+    // ignore
+  }
+
+  return true;
+}
+
+function resetSnapshotFrame(snapshotFrame) {
+  if (!snapshotFrame) return;
+
+  snapshotFrame.classList.remove('snapshot-active');
+  snapshotFrame.setAttribute('aria-hidden', 'true');
+  snapshotFrame.style.pointerEvents = 'none';
+  setFrameTransformImmediately(snapshotFrame, 0);
+  snapshotFrame.srcdoc = '<!DOCTYPE html><html><head></head><body></body></html>';
+}
+
 function handleFocusScrollNavigate(direction) {
   if (isFrameTransitioning) return;
 
@@ -490,6 +617,94 @@ function handleFocusScrollNavigate(direction) {
 /**
  * 更新点导航的显示状态
  */
+async function handleFocusScrollNavigate(direction) {
+  if (isFrameTransitioning) return;
+
+  const currentFrame = getCurrentFrame();
+  const snapshotFrame = getIncomingFrame();
+
+  const targetPage = getCyclicPageByDirection(direction);
+  if (!targetPage) {
+    console.log('[Options FocusScroll Parent] no target page for direction', direction);
+    return;
+  }
+
+  const edge = getScrollEdgeByDirection(direction);
+  const viewportH = Math.max(
+    1,
+    document.querySelector('.main-content')?.clientHeight || window.innerHeight
+  );
+  const fromY = direction === 'next' ? viewportH : -viewportH;
+
+  console.log('[Options FocusScroll Parent] navigate (snapshot)', {
+    direction,
+    targetPage,
+    edge,
+    currentPage: getCurrentPage(),
+    viewportH,
+    fromY,
+  });
+
+  if (!isFocusMode()) {
+    navigateToPage(targetPage);
+    return;
+  }
+
+  isFrameTransitioning = true;
+
+  try {
+    await prepareSnapshotFrame(snapshotFrame, currentFrame);
+
+    currentFrame.style.pointerEvents = 'none';
+    currentFrame.style.visibility = 'hidden';
+
+    const currentLoad = waitForIframeLoad(currentFrame);
+    currentFrame.src = targetPage;
+    await currentLoad;
+
+    const frameOrigin = getFrameTargetOrigin(currentFrame);
+    if (frameOrigin) {
+      try {
+        currentFrame.contentWindow.postMessage(
+          { action: 'scrollToEdge', edge },
+          frameOrigin
+        );
+      } catch {
+        // ignore
+      }
+    }
+
+    setFrameTransformImmediately(currentFrame, fromY);
+    currentFrame.style.visibility = 'visible';
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setFrameTransform(snapshotFrame, -fromY);
+        setFrameTransform(currentFrame, 0);
+      });
+    });
+
+    await waitForFrameTransition(currentFrame);
+
+    resetSnapshotFrame(snapshotFrame);
+    currentFrame.style.pointerEvents = 'auto';
+
+    chrome.storage.local.set({ [STORAGE_KEYS.selectedTab]: targetPage });
+    updateNavRingActive();
+  } catch (error) {
+    console.error('[Options FocusScroll Parent] snapshot transition failed', error);
+    resetSnapshotFrame(snapshotFrame);
+    currentFrame.style.visibility = 'visible';
+    currentFrame.style.pointerEvents = 'auto';
+    setFrameTransformImmediately(currentFrame, 0);
+    currentFrame.src = targetPage;
+    chrome.storage.local.set({ [STORAGE_KEYS.selectedTab]: targetPage });
+    updateNavRingActive();
+  } finally {
+    isFrameTransitioning = false;
+  }
+}
+
 function updateNavRingActive() {
   const container = document.getElementById('dot-nav');
   const exitItem = document.getElementById('dot-nav-exit');
@@ -612,9 +827,7 @@ function ensureFramesForDirectNav(targetPage) {
   }
 
   // Always keep incoming hidden for direct nav.
-  incomingFrame.setAttribute('aria-hidden', 'true');
-  incomingFrame.style.pointerEvents = 'none';
-  setFrameTransformImmediately(incomingFrame, 0);
+  resetSnapshotFrame(incomingFrame);
 }
 
 /**

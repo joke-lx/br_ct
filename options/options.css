@@ -118,6 +118,13 @@ select {
 .incoming-frame {
   z-index: 2;
   pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.incoming-frame.snapshot-active {
+  opacity: 1;
+  visibility: visible;
 }
 
 .app-container:not(.focus-mode) .incoming-frame {
