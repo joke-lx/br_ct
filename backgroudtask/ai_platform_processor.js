@@ -60,20 +60,26 @@ function getPlatformFromUrl(url) {
 /**
  * 注入平台脚本到指定 Tab（幂等）
  */
+import { getPlatformScriptFiles } from "./platformScriptFiles.js";
+
 function injectScript(tabId, platform) {
   return new Promise((resolve, reject) => {
-    const scriptFile = `contentScripts/${platform}.js`;
-    chrome.scripting.executeScript({
-      target: { tabId },
-      files: [scriptFile]
-    }, () => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
+    const files = getPlatformScriptFiles(platform);
+
+    chrome.scripting.executeScript(
+      {
+        target: { tabId },
+        files,
+      },
+      () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        markInjected(tabId, platform);
+        resolve();
       }
-      markInjected(tabId, platform);
-      resolve();
-    });
+    );
   });
 }
 
