@@ -10,70 +10,7 @@
   }
   window.__chatgptResponseListenerInjected = true;
 
-  // ==================== Copy Capture Harness (Task 1) ====================
-
-  const DEBUG_COPY_CAPTURE = true;
-
-  function logCopyCapture(label, data) {
-    if (!DEBUG_COPY_CAPTURE) return;
-    console.log(`[ChatGPT Copy Capture] ${label}`, data);
-  }
-
-  function normalizeCopyCapture(payload) {
-    const now = Date.now();
-
-    const rawHtml = typeof payload?.html === "string" ? payload.html : null;
-    const rawText = typeof payload?.text === "string" ? payload.text : null;
-
-    const html = rawHtml && rawHtml.trim() ? rawHtml : null;
-    const text = rawText && rawText.trim() ? normalizeText(rawText) : null;
-
-    if (!html && !text) return null;
-
-    const ctx = getActiveCopyContext();
-    if (ctx) {
-      return {
-        platform: "chatgpt",
-        conversationId: ctx.conversationId,
-        messageId: ctx.messageId,
-        html,
-        text,
-        htmlMissing: !html,
-        source: payload?.source || "unknown",
-        timestamp: now
-      };
-    }
-
-    // 无上下文时仍捕获，使用当前 conversationId 兜底
-    return {
-      platform: "chatgpt",
-      conversationId: getConversationId(),
-      messageId: null,
-      html,
-      text,
-      htmlMissing: !html,
-      source: payload?.source || "unknown",
-      timestamp: now
-    };
-  }
-
-  function captureClipboardPayload(payload) {
-    const normalized = normalizeCopyCapture(payload);
-    if (!normalized) return;
-
-    logCopyCapture("capture", normalized);
-
-    lastCopyCaptureByMessageId.set(normalized.messageId, { ts: normalized.timestamp, source: normalized.source });
-
-    chrome.runtime
-      .sendMessage({ action: "chatgptCopyCapture", data: normalized })
-      .catch((err) => {
-        // 忽略接收端不存在时的错误（例如 sidebar 未打开）
-        if (!err?.message?.includes("Receiving end does not exist")) {
-          console.error("[ChatGPT Copy Capture] sendMessage failed:", err);
-        }
-      });
-  }
+  const capture = window.ClipboardCapture.create(window.chatgptCaptureConfig);
 
   // ==================== 配置 ====================
 
@@ -109,14 +46,6 @@
   let pendingUpdateTimeout = null;
   let isMonitoring = false;
   const conversationStateById = new Map();
-
-  // ==================== Copy Capture Context (Task 2) ====================
-
-  let lastCopyContext = null;
-  const COPY_CAPTURE_WINDOW_MS = 2500;
-  let copyClickListenerAttached = false;
-  let clipboardHooksInstalled = false;
-  const lastCopyCaptureByMessageId = new Map();
 
   // ==================== 工具函数 ====================
 
@@ -276,130 +205,7 @@
     return null;
   }
 
-  // ==================== Copy Capture Helpers (Task 2) ====================
-
-  function getAssistantTurnFromTarget(target) {
-    if (!(target instanceof Element)) return null;
-
-    for (const selector of CONFIG.responseSelectors) {
-      const turn = target.closest(selector);
-      if (turn) return turn;
-    }
-
-    return null;
-  }
-
-  function isCopyLikeControl(element) {
-    if (!(element instanceof Element)) return false;
-
-    // 直接匹配 data-testid（ChatGPT 的 icon-only 复制按钮）
-    if (element.closest('[data-testid="copy-turn-action-button"]')) return true;
-
-    const label = [
-      element.getAttribute("aria-label"),
-      element.getAttribute("title"),
-      element.textContent
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
-    return /copy|复制/.test(label);
-  }
-
-  function openCopyCaptureWindow(turnElement, sourceTarget) {
-    const conversationId = getConversationId();
-    const messageId = getMessageId(turnElement) || `unknown-${conversationId}`;
-
-    lastCopyContext = {
-      turnElement,
-      conversationId,
-      messageId,
-      sourceTarget,
-      openedAt: Date.now()
-    };
-
-    logCopyCapture("context.open", {
-      conversationId,
-      messageId,
-      sourceTarget
-    });
-  }
-
-  function getActiveCopyContext() {
-    if (!lastCopyContext) return null;
-
-    if (Date.now() - lastCopyContext.openedAt > COPY_CAPTURE_WINDOW_MS) {
-      lastCopyContext = null;
-      return null;
-    }
-
-    return lastCopyContext;
-  }
-
-  async function readClipboardItemData(item) {
-    if (!item || typeof item.getType !== "function" || !Array.isArray(item.types)) {
-      return { html: null, text: null };
-    }
-
-    const htmlBlobPromise = item.types.includes("text/html") ? item.getType("text/html") : null;
-    const textBlobPromise = item.types.includes("text/plain") ? item.getType("text/plain") : null;
-
-    const [htmlBlob, textBlob] = await Promise.all([
-      htmlBlobPromise ? htmlBlobPromise.catch(() => null) : Promise.resolve(null),
-      textBlobPromise ? textBlobPromise.catch(() => null) : Promise.resolve(null)
-    ]);
-
-    const [html, text] = await Promise.all([
-      htmlBlob ? htmlBlob.text().catch(() => null) : Promise.resolve(null),
-      textBlob ? textBlob.text().catch(() => null) : Promise.resolve(null)
-    ]);
-
-    return {
-      html: typeof html === "string" ? html : null,
-      text: typeof text === "string" ? text : null
-    };
-  }
-
-  function installClipboardHooks() {
-    if (clipboardHooksInstalled) return;
-    clipboardHooksInstalled = true;
-
-    // 1. 注入主世界脚本（prototype 级别 hook + simulateCopy + postMessage 回传）
-    //     CSP 只允许 chrome-extension:// 来源，必须先注册到 web_accessible_resources
-    if (!document.getElementById('__ccCaptureHookScript')) {
-      const script = document.createElement('script');
-      script.id = '__ccCaptureHookScript';
-      script.src = chrome.runtime.getURL('contentScripts/chatResponse/ccMainWorldHook.js');
-      document.documentElement.appendChild(script);
-      script.remove();
-    }
-
-    // 2. 监听主世界发来的 postMessage
-    window.addEventListener('message', (event) => {
-      if (event.data?.source !== 'cc-capture-hook') return;
-      if (event.data.type === 'clipboard-data') {
-        captureClipboardPayload(event.data.payload || {});
-      }
-    });
-
-    // 3. DataTransfer.setData hook（prototype 共享，可直接 hook）
-    const originalSetData = window.DataTransfer?.prototype?.setData;
-    if (typeof originalSetData === "function") {
-      window.DataTransfer.prototype.setData = function (type, data) {
-        if (type === "text/html" || type === "text/plain") {
-          captureClipboardPayload({
-            html: type === "text/html" ? String(data ?? "") : null,
-            text: type === "text/plain" ? String(data ?? "") : null,
-            source: "dt.setData"
-          });
-        }
-        return originalSetData.call(this, type, data);
-      };
-    }
-
-    logCopyCapture("hooks.installed");
-  }
+  // ==================== 工具函数（续） ====================
 
   /**
    * 读取回复内容
@@ -505,67 +311,6 @@
     return container.closest('[data-testid^="conversation-turn-"]') || container;
   }
 
-  function findCopyReplyButton(turnRoot) {
-    if (!(turnRoot instanceof Element)) return null;
-
-    return (
-      turnRoot.querySelector('button[data-testid="copy-turn-action-button"]') ||
-      turnRoot.querySelector('button[aria-label*="复制回复"]') ||
-      turnRoot.querySelector('button[aria-label*="Copy"]')
-    );
-  }
-
-  function deriveTurnHtmlFallback(turnRoot) {
-    if (!(turnRoot instanceof Element)) return null;
-
-    const contentRoot =
-      turnRoot.querySelector("[data-message-content]") ||
-      turnRoot.querySelector(".markdown") ||
-      turnRoot.querySelector(".prose") ||
-      turnRoot;
-
-    return contentRoot instanceof Element ? contentRoot.innerHTML : null;
-  }
-
-  function attemptAutoCopyForCompletedTurn(turnRoot) {
-    // 主世界模拟点击复制按钮，触发 ChatGPT copy handler 获取格式化文本
-    openCopyCaptureWindow(turnRoot, null);
-
-    // 限定在当前 turn 内查找复制按钮，避免点到用户消息的复制按钮
-    var turnEl = turnRoot.closest?.('[data-testid^="conversation-turn-"]') || turnRoot;
-    var turnTestId = turnEl.getAttribute('data-testid');
-    var btnSelector = turnTestId
-      ? '[data-testid="' + turnTestId + '"] button[data-testid="copy-turn-action-button"]'
-      : 'button[data-testid="copy-turn-action-button"]';
-
-    var copyBtn = findCopyReplyButton(turnRoot);
-    if (copyBtn) {
-      logCopyCapture("autoCopy.triggerSent", { hasBtn: true, selector: btnSelector });
-      window.postMessage({
-        source: 'cc-capture-hook',
-        type: 'trigger-copy',
-        selector: btnSelector
-      }, '*');
-    } else {
-      logCopyCapture("autoCopy.triggerSent", { hasBtn: false });
-    }
-
-    // DOM 兜底（clipboard hook 捕获到数据会覆盖这个）
-    var html = deriveTurnHtmlFallback(turnRoot);
-    var text = readResponseContent(turnRoot);
-    if (html) {
-      captureClipboardPayload({
-        html: html,
-        text: text || null,
-        source: "dom.auto"
-      });
-    } else {
-      logCopyCapture("autoCopy.skip", { reason: "dom html fallback missing" });
-    }
-
-    lastCopyContext = null;
-  }
-
   // ==================== 监听逻辑 ====================
 
   /**
@@ -613,7 +358,7 @@
     if (!generating) {
       const turnRoot = findTurnRootFromContainer(container);
       if (turnRoot) {
-        attemptAutoCopyForCompletedTurn(turnRoot);
+        capture.autoCapture(turnRoot);
       }
     }
 
@@ -658,33 +403,8 @@
 
     console.log("[ChatGPT Response Listener] 启动监听");
 
-    installClipboardHooks();
-
-    if (!copyClickListenerAttached) {
-      document.addEventListener(
-        "click",
-        (event) => {
-          const target = event.target;
-          const turn = getAssistantTurnFromTarget(target);
-          if (!turn) return;
-
-          // Copy UI 通常是 button / role=button，且带 copy/复制 的 aria-label/title/text
-          const candidate =
-            (target instanceof Element && target.closest?.("button, [role='button']")) ||
-            target;
-
-          if (!isCopyLikeControl(target) && !isCopyLikeControl(candidate)) {
-            return;
-          }
-
-          openCopyCaptureWindow(turn, target);
-        },
-        true
-      );
-
-      copyClickListenerAttached = true;
-      logCopyCapture("listener.attached", { type: "document.click.capture" });
-    }
+    capture.installHooks();
+    capture.setupClickListener();
 
     // 创建观察器
     observer = new MutationObserver(handleMutations);

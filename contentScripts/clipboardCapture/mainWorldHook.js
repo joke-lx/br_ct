@@ -4,6 +4,7 @@
 
   console.log('[CC-Hook] loaded');
 
+  // Hook clipboard.write at prototype level
   var proto = Object.getPrototypeOf(navigator.clipboard);
   Object.defineProperty(proto, 'write', {
     value: async function(items) {
@@ -18,6 +19,7 @@
     configurable: true, writable: true
   });
 
+  // Hook clipboard.writeText
   Object.defineProperty(proto, 'writeText', {
     value: async function(text) {
       window.postMessage({ source: 'cc-capture-hook', type: 'clipboard-data', payload: { html: null, text: String(text || ''), source: 'clipboard.writeText' } }, '*');
@@ -26,6 +28,7 @@
     configurable: true, writable: true
   });
 
+  // Hook copy event (execCommand('copy') path)
   document.addEventListener('copy', function(e) {
     try {
       var text = null, html = null;
@@ -37,6 +40,7 @@
     } catch(ex) {}
   });
 
+  // Expose simulateCopy for programmatic clicks
   window.__ccSimulateCopy = function(btn) {
     if (!(btn instanceof Element)) return false;
     console.log('[CC-Hook] simulateCopy click', btn);
@@ -44,6 +48,7 @@
     return true;
   };
 
+  // Listen for trigger-copy from content script
   window.addEventListener('message', function(e) {
     if (e.data && e.data.source === 'cc-capture-hook' && e.data.type === 'trigger-copy') {
       console.log('[CC-Hook] received trigger-copy', e.data.selector);
