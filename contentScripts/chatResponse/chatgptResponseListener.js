@@ -20,22 +20,35 @@
   }
 
   function normalizeCopyCapture(payload) {
-    const ctx = getActiveCopyContext();
-    if (!ctx) return null;
-
     const now = Date.now();
 
     const rawHtml = typeof payload?.html === "string" ? payload.html : null;
     const rawText = typeof payload?.text === "string" ? payload.text : null;
 
-    // Precedence: prefer html, then plain text. (We still return both when available.)
     const html = rawHtml && rawHtml.trim() ? rawHtml : null;
     const text = rawText && rawText.trim() ? normalizeText(rawText) : null;
 
+    if (!html && !text) return null;
+
+    const ctx = getActiveCopyContext();
+    if (ctx) {
+      return {
+        platform: "chatgpt",
+        conversationId: ctx.conversationId,
+        messageId: ctx.messageId,
+        html,
+        text,
+        htmlMissing: !html,
+        source: payload?.source || "unknown",
+        timestamp: now
+      };
+    }
+
+    // 无上下文时仍捕获，使用当前 conversationId 兜底
     return {
       platform: "chatgpt",
-      conversationId: ctx.conversationId,
-      messageId: ctx.messageId,
+      conversationId: getConversationId(),
+      messageId: null,
       html,
       text,
       htmlMissing: !html,
@@ -279,6 +292,9 @@
   function isCopyLikeControl(element) {
     if (!(element instanceof Element)) return false;
 
+    // 直接匹配 data-testid（ChatGPT 的 icon-only 复制按钮）
+    if (element.closest('[data-testid="copy-turn-action-button"]')) return true;
+
     const label = [
       element.getAttribute("aria-label"),
       element.getAttribute("title"),
@@ -347,83 +363,68 @@
 
   function installClipboardHooks() {
     if (clipboardHooksInstalled) return;
+    clipboardHooksInstalled = true;
 
-    const clipboard = navigator.clipboard;
-    if (!clipboard) {
-      logCopyCapture("hooks.skip", { reason: "navigator.clipboard unavailable" });
-      return;
+    // 1. 注入主世界 clipboard hook（content script 对 navigator.clipboard 的修改在主世界不可见）
+    if (!document.querySelector('script[data-cc-capture-hook]')) {
+      const script = document.createElement('script');
+      script.setAttribute('data-cc-capture-hook', '');
+      script.textContent = `
+(function() {
+  if (window.__ccCaptureHook) return;
+  window.__ccCaptureHook = true;
+  var _w = navigator.clipboard.write.bind(navigator.clipboard);
+  var _wt = navigator.clipboard.writeText.bind(navigator.clipboard);
+  navigator.clipboard.write = async function(items) {
+    var html = null, text = null;
+    for (var i = 0; i < (items || []).length; i++) {
+      try { if (items[i].types.includes('text/html')) { var b = await items[i].getType('text/html'); html = await b.text(); } } catch(e) {}
+      try { if (items[i].types.includes('text/plain')) { var b = await items[i].getType('text/plain'); text = await b.text(); } } catch(e) {}
+    }
+    window.dispatchEvent(new CustomEvent('__ccCapture', { detail: { html: html || null, text: text || null, source: 'clipboard.write' } }));
+    try { return await _w(items); } catch(e) { return Promise.resolve(); }
+  };
+  navigator.clipboard.writeText = async function(text) {
+    window.dispatchEvent(new CustomEvent('__ccCapture', { detail: { html: null, text: String(text || ''), source: 'clipboard.writeText' } }));
+    try { return await _wt(text); } catch(e) { return Promise.resolve(); }
+  };
+  document.addEventListener('copy', function(e) {
+    try {
+      var text = null, html = null;
+      try { text = e.clipboardData.getData('text/plain'); } catch(ex) {}
+      try { html = e.clipboardData.getData('text/html'); } catch(ex) {}
+      if (text || html) {
+        window.dispatchEvent(new CustomEvent('__ccCapture', { detail: { html: html || null, text: text || null, source: 'copy.event' } }));
+      }
+    } catch(ex) {}
+  });
+})();
+`;
+      document.documentElement.appendChild(script);
+      script.remove();
     }
 
-    const originalWrite = typeof clipboard.write === "function" ? clipboard.write.bind(clipboard) : null;
-    const originalWriteText = typeof clipboard.writeText === "function" ? clipboard.writeText.bind(clipboard) : null;
+    // 2. 监听主世界发来的 clipboard capture 事件
+    window.addEventListener('__ccCapture', (event) => {
+      captureClipboardPayload(event.detail || {});
+    });
+
+    // 3. DataTransfer.setData（prototype 共享，可直接 hook）
     const originalSetData = window.DataTransfer?.prototype?.setData;
-
-    if (!originalWrite && !originalWriteText && !originalSetData) {
-      logCopyCapture("hooks.skip", { reason: "no clipboard write methods" });
-      return;
-    }
-
-    if (originalWrite) {
-      clipboard.write = async (items) => {
-        const ctx = getActiveCopyContext();
-        if (ctx) {
-          let html = null;
-          let text = null;
-
-          for (const item of items || []) {
-            const extracted = await readClipboardItemData(item);
-            if (!html && extracted.html) html = extracted.html;
-            if (!text && extracted.text) text = extracted.text;
-            if (html && text) break;
-          }
-
-          captureClipboardPayload({
-            html,
-            text,
-            source: "clipboard.write"
-          });
-        }
-
-        return originalWrite(items);
-      };
-    }
-
-    if (originalWriteText) {
-      clipboard.writeText = async (text) => {
-        const ctx = getActiveCopyContext();
-        if (ctx) {
-          captureClipboardPayload({
-            html: null,
-            text: typeof text === "string" ? text : String(text ?? ""),
-            source: "clipboard.writeText"
-          });
-        }
-
-        return originalWriteText(text);
-      };
-    }
-
-    if (typeof originalSetData === "function" && window.DataTransfer?.prototype) {
+    if (typeof originalSetData === "function") {
       window.DataTransfer.prototype.setData = function (type, data) {
-        const ctx = getActiveCopyContext();
-        if (ctx && (type === "text/html" || type === "text/plain")) {
+        if (type === "text/html" || type === "text/plain") {
           captureClipboardPayload({
             html: type === "text/html" ? String(data ?? "") : null,
             text: type === "text/plain" ? String(data ?? "") : null,
             source: "dt.setData"
           });
         }
-
         return originalSetData.call(this, type, data);
       };
     }
 
-    clipboardHooksInstalled = true;
-    logCopyCapture("hooks.installed", {
-      hasWrite: !!originalWrite,
-      hasWriteText: !!originalWriteText,
-      hasSetData: typeof originalSetData === "function"
-    });
+    logCopyCapture("hooks.installed");
   }
 
   /**
