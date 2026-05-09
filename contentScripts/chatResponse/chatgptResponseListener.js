@@ -531,13 +531,20 @@
     // 主世界模拟点击复制按钮，触发 ChatGPT copy handler 获取格式化文本
     openCopyCaptureWindow(turnRoot, null);
 
+    // 限定在当前 turn 内查找复制按钮，避免点到用户消息的复制按钮
+    var turnEl = turnRoot.closest?.('[data-testid^="conversation-turn-"]') || turnRoot;
+    var turnTestId = turnEl.getAttribute('data-testid');
+    var btnSelector = turnTestId
+      ? '[data-testid="' + turnTestId + '"] button[data-testid="copy-turn-action-button"]'
+      : 'button[data-testid="copy-turn-action-button"]';
+
     var copyBtn = findCopyReplyButton(turnRoot);
     if (copyBtn) {
-      logCopyCapture("autoCopy.triggerSent", { hasBtn: true });
+      logCopyCapture("autoCopy.triggerSent", { hasBtn: true, selector: btnSelector });
       window.postMessage({
         source: 'cc-capture-hook',
         type: 'trigger-copy',
-        selector: 'button[data-testid="copy-turn-action-button"]'
+        selector: btnSelector
       }, '*');
     } else {
       logCopyCapture("autoCopy.triggerSent", { hasBtn: false });
