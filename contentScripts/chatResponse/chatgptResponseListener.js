@@ -365,51 +365,25 @@
     if (clipboardHooksInstalled) return;
     clipboardHooksInstalled = true;
 
-    // 1. 注入主世界 clipboard hook（content script 对 navigator.clipboard 的修改在主世界不可见）
-    if (!document.querySelector('script[data-cc-capture-hook]')) {
+    // 1. 注入主世界脚本（prototype 级别 hook + simulateCopy + postMessage 回传）
+    //     CSP 只允许 chrome-extension:// 来源，必须先注册到 web_accessible_resources
+    if (!document.getElementById('__ccCaptureHookScript')) {
       const script = document.createElement('script');
-      script.setAttribute('data-cc-capture-hook', '');
-      script.textContent = `
-(function() {
-  if (window.__ccCaptureHook) return;
-  window.__ccCaptureHook = true;
-  var _w = navigator.clipboard.write.bind(navigator.clipboard);
-  var _wt = navigator.clipboard.writeText.bind(navigator.clipboard);
-  navigator.clipboard.write = async function(items) {
-    var html = null, text = null;
-    for (var i = 0; i < (items || []).length; i++) {
-      try { if (items[i].types.includes('text/html')) { var b = await items[i].getType('text/html'); html = await b.text(); } } catch(e) {}
-      try { if (items[i].types.includes('text/plain')) { var b = await items[i].getType('text/plain'); text = await b.text(); } } catch(e) {}
-    }
-    window.dispatchEvent(new CustomEvent('__ccCapture', { detail: { html: html || null, text: text || null, source: 'clipboard.write' } }));
-    try { return await _w(items); } catch(e) { return Promise.resolve(); }
-  };
-  navigator.clipboard.writeText = async function(text) {
-    window.dispatchEvent(new CustomEvent('__ccCapture', { detail: { html: null, text: String(text || ''), source: 'clipboard.writeText' } }));
-    try { return await _wt(text); } catch(e) { return Promise.resolve(); }
-  };
-  document.addEventListener('copy', function(e) {
-    try {
-      var text = null, html = null;
-      try { text = e.clipboardData.getData('text/plain'); } catch(ex) {}
-      try { html = e.clipboardData.getData('text/html'); } catch(ex) {}
-      if (text || html) {
-        window.dispatchEvent(new CustomEvent('__ccCapture', { detail: { html: html || null, text: text || null, source: 'copy.event' } }));
-      }
-    } catch(ex) {}
-  });
-})();
-`;
+      script.id = '__ccCaptureHookScript';
+      script.src = chrome.runtime.getURL('contentScripts/chatResponse/ccMainWorldHook.js');
       document.documentElement.appendChild(script);
       script.remove();
     }
 
-    // 2. 监听主世界发来的 clipboard capture 事件
-    window.addEventListener('__ccCapture', (event) => {
-      captureClipboardPayload(event.detail || {});
+    // 2. 监听主世界发来的 postMessage
+    window.addEventListener('message', (event) => {
+      if (event.data?.source !== 'cc-capture-hook') return;
+      if (event.data.type === 'clipboard-data') {
+        captureClipboardPayload(event.data.payload || {});
+      }
     });
 
-    // 3. DataTransfer.setData（prototype 共享，可直接 hook）
+    // 3. DataTransfer.setData hook（prototype 共享，可直接 hook）
     const originalSetData = window.DataTransfer?.prototype?.setData;
     if (typeof originalSetData === "function") {
       window.DataTransfer.prototype.setData = function (type, data) {
@@ -554,24 +528,34 @@
   }
 
   function attemptAutoCopyForCompletedTurn(turnRoot) {
-    // Auto-triggering ChatGPT's built-in copy button is unreliable due to user-activation
-    // restrictions and can cause the page to toast.error + unhandled promise rejections.
-    // For stability, always capture via DOM-derived HTML.
-
+    // 主世界模拟点击复制按钮，触发 ChatGPT copy handler 获取格式化文本
     openCopyCaptureWindow(turnRoot, null);
 
-    const html = deriveTurnHtmlFallback(turnRoot);
+    var copyBtn = findCopyReplyButton(turnRoot);
+    if (copyBtn) {
+      logCopyCapture("autoCopy.triggerSent", { hasBtn: true });
+      window.postMessage({
+        source: 'cc-capture-hook',
+        type: 'trigger-copy',
+        selector: 'button[data-testid="copy-turn-action-button"]'
+      }, '*');
+    } else {
+      logCopyCapture("autoCopy.triggerSent", { hasBtn: false });
+    }
+
+    // DOM 兜底（clipboard hook 捕获到数据会覆盖这个）
+    var html = deriveTurnHtmlFallback(turnRoot);
+    var text = readResponseContent(turnRoot);
     if (html) {
       captureClipboardPayload({
-        html,
-        text: null,
-        source: "dom.html.auto"
+        html: html,
+        text: text || null,
+        source: "dom.auto"
       });
     } else {
       logCopyCapture("autoCopy.skip", { reason: "dom html fallback missing" });
     }
 
-    // Close the context immediately so later unrelated clipboard writes aren't mis-attributed.
     lastCopyContext = null;
   }
 
