@@ -3,7 +3,7 @@
  * 提供平台域名映射和设置管理
  */
 
-import { PLATFORM_CONFIG } from '../config/platformConfig.js';
+import { PLATFORM_CONFIG } from '../../config/platformConfig.js';
 
 /**
  * 构建域名→平台映射
