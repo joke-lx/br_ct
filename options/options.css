@@ -108,7 +108,7 @@ select {
   border-radius: 32px;
   will-change: transform;
   transform: translate3d(0, 0, 0);
-  transition: transform 520ms cubic-bezier(.2, 1, .2, 1);
+  transition: transform 1000ms cubic-bezier(.22, 1, .36, 1);
 }
 
 .current-frame {
@@ -118,6 +118,13 @@ select {
 .incoming-frame {
   z-index: 2;
   pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.incoming-frame.snapshot-active {
+  opacity: 1;
+  visibility: visible;
 }
 
 .app-container:not(.focus-mode) .incoming-frame {

@@ -29,6 +29,8 @@ import {
   validatePlatformSelection
 } from "../../popup/main/modules/uiHelpers.js";
 
+import { renderMarkdownSafe } from "./markdownRender.js";
+
 // DOM 元素缓存
 let elements = {};
 
@@ -704,10 +706,10 @@ function createThreadMessageElement(message, index) {
         <button type="button" class="chatgpt-msg-toggle" title="折叠/展开">${message.collapsed ? "▸" : "▾"}</button>
       </div>
     </div>
-    <pre class="chatgpt-msg-body"></pre>
+    <div class="chatgpt-msg-body"></div>
   `;
 
-  el.querySelector(".chatgpt-msg-body").textContent = message.content || "";
+  el.querySelector(".chatgpt-msg-body").innerHTML = renderMarkdownSafe(message.content || "");
 
   el.querySelector(".chatgpt-msg-copy").addEventListener("click", async () => {
     try {
@@ -781,7 +783,7 @@ function patchThreadMessage(index, shouldAutoScroll = false) {
 
   const body = el.querySelector(".chatgpt-msg-body");
   const bodyWasNearBottom = isNearBottom(body);
-  body.textContent = message.content || "";
+  body.innerHTML = renderMarkdownSafe(message.content || "");
   if (bodyWasNearBottom) {
     body.scrollTop = body.scrollHeight;
   }
@@ -1045,9 +1047,9 @@ async function copyResponseContent() {
 
   try {
     const capture = lastCopyCaptureByConversation.get(activeConversationId);
-    const preferred = typeof capture?.html === "string" && capture.html.trim() ? capture.html : null;
+    const preferredText = typeof capture?.text === "string" && capture.text.trim() ? capture.text : null;
 
-    await navigator.clipboard.writeText(preferred || allText);
+    await navigator.clipboard.writeText(preferredText || allText);
     showTempMessage("已复制到剪切板");
 
     if (responseCopy) {

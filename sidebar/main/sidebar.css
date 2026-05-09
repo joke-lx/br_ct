@@ -814,12 +814,24 @@ body {
   margin: 0;
   padding: 8px 10px;
   background: var(--light-gray);
-  white-space: pre-wrap;
+  white-space: normal;
   word-break: break-word;
   font-size: 12px;
   line-height: 1.6;
   max-height: 180px;
   overflow: auto;
+}
+
+.chatgpt-msg-body pre {
+  overflow: auto;
+  padding: 8px;
+  background: #0b1020;
+  color: #e5e7eb;
+  border-radius: 8px;
+}
+
+.chatgpt-msg-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 .chatgpt-msg[data-collapsed="true"] .chatgpt-msg-body {
