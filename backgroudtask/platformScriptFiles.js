@@ -129,5 +129,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "coderqwen") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/coderqwen.js",
+      "contentScripts/coderqwen.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/coderqwenResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
