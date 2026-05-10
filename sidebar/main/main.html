@@ -70,10 +70,14 @@
       <div class="extract-url" id="extract-url"></div>
       <pre class="extract-content" id="extract-content"></pre>
     </div>
-  <!-- ChatGPT 回复展示区 -->
-  <div class="chatgpt-response-container" id="chatgpt-response-container" style="display: none;">
+  <!-- 平台回复展示区 -->
+  <div class="response-container" id="response-container" style="display: none;">
     <div class="response-header">
-      <span class="response-title">ChatGPT 回复</span>
+      <div class="nav-group">
+        <button class="nav-btn" id="nav-prev">◀</button>
+        <span class="response-title" id="response-title">回复</span>
+        <button class="nav-btn" id="nav-next">▶</button>
+      </div>
       <div class="response-controls">
         <button class="response-toggle" id="response-toggle" title="折叠/展开">−</button>
         <button class="response-copy" id="response-copy" title="复制">📋</button>

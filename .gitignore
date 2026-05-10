@@ -17,3 +17,6 @@ generate_key.js
 # Claude Code worktrees (harness-managed)
 .CLAUDE/worktrees/
 .idea/
+.gstack/
+debug_selector.js
+_run_debug.js
