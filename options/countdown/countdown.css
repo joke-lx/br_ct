@@ -32,7 +32,7 @@ body {
 
 .header-left {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 12px;
 }
 
@@ -40,6 +40,21 @@ body {
     font-size: 24px;
     font-weight: 600;
     color: #212529;
+}
+
+.countdown-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.countdown-title-icon {
+    display: inline-flex;
+    color: #6b4a31;
+}
+
+.countdown-title-icon svg {
+    display: block;
 }
 
 .count-stat {

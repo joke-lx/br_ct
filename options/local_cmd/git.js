@@ -117,7 +117,7 @@ function renderGitStatus(dirs, statuses) {
       if (!files || files.length === 0) return '';
       return `<div style="margin-top:6px;">
         <span style="font-size:12px;font-weight:600;color:${color};">${label} (${files.length})</span>
-        <div style="margin-top:2px;font-size:12px;color:var(--muted);max-height:80px;overflow:auto;">
+        <div style="margin-top:2px;font-size:12px;color:var(--muted);overflow-x: auto;overflow-y: visible;">
           ${files.map(f => `<div>${escapeHtml(f)}</div>`).join('')}
         </div>
       </div>`;
@@ -144,7 +144,7 @@ function renderGitStatus(dirs, statuses) {
         <span class="git-stat-item ${s.untrackCount > 0 ? 'dirty' : 'clean'}">未跟踪 <b>${s.untrackCount}</b></span>
         ${toggleBtn}
       </div>
-      <div class="git-details" id="git-details-${d.id}" style="margin-top:10px;">
+      <div class="git-details" id="git-details-${d.id}" style="margin-top:10px;max-width: 700px;">
         ${detailsHtml}
       </div>
     `;

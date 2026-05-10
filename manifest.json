@@ -96,6 +96,7 @@
     {
       "resources": [
         "contentScripts/*.js",
+        "contentScripts/**/*.js",
         "funcs/*.js",
         "funcs/**/*.js",
         "runjs/*.js",

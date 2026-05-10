@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="main.css">
 </head>
 <body>
-    <div class="ocr-container">
+    <div class="ocr-container page-container">
         <header class="ocr-header">
             <div class="ocr-kicker">OCR Workbench</div>
             <h1>图片 OCR 批量识别</h1>
@@ -55,8 +55,8 @@
                             <span id="queueCount">待处理 0</span>
                         </div>
                         <div class="button-group">
-                            <button id="processBtn" class="btn btn-primary" disabled>开始处理</button>
-                            <button id="clearBtn" class="btn btn-secondary">清除</button>
+                            <button id="processBtn" class="btn btn-primary btn-begin" disabled>开始处理</button>
+                            <button id="clearBtn" class="btn btn-secondary btn-begin">清除</button>
                         </div>
                     </div>
                 </section>
@@ -92,6 +92,7 @@
     </div>
 
     <script src="../../runjs/translation/lib/marked.min.js"></script>
-    <script src="main.js"></script>
+    <script type="module" src="../focusScroll/init.js"></script>
+    <script src="./main.js"></script>
 </body>
 </html>

@@ -115,7 +115,7 @@ function createBookmarkItem(bookmark) {
 
   div.innerHTML = `
     <div class="bookmark-favicon">
-      <img src="${faviconUrl}" alt="" onerror="this.style.display='none'">
+      <img src="${faviconUrl}" alt="">
     </div>
     <div class="bookmark-info">
       <div class="bookmark-title">${escapeHtml(bookmark.title || '无标题')}</div>
@@ -128,6 +128,14 @@ function createBookmarkItem(bookmark) {
       <button class="btn btn-sm btn-danger" data-action="deleteBookmark" data-id="${bookmark.id}" title="删除">🗑️</button>
     </div>
   `;
+
+  const faviconImg = div.querySelector('img');
+  if (faviconImg) {
+    faviconImg.addEventListener('error', () => {
+      faviconImg.style.display = 'none';
+    }, { once: true });
+  }
+
 
   // 点击打开书签
   div.addEventListener('click', (e) => {

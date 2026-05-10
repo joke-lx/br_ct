@@ -29,6 +29,8 @@ import {
   validatePlatformSelection
 } from "../../popup/main/modules/uiHelpers.js";
 
+import { renderMarkdownSafe } from "./markdownRender.js";
+
 // DOM 元素缓存
 let elements = {};
 
@@ -276,6 +278,11 @@ export function setupEventListeners() {
         console.error("保存平台状态失败:", error);
       }
       updateSelectAllButton();
+
+      // 选择 ChatGPT 平台时，提前展示回复对话框（即使还没有收到回复）
+      if (cb.dataset.platform === "chatgpt" && cb.checked) {
+        showResponseContainer();
+      }
     });
   });
 
@@ -555,4 +562,548 @@ async function startSending() {
         // 恢复按钮状态
         resetButtonState(elements.sendButton, "发送消息");
     }
+}
+
+// ==================== ChatGPT 回复展示 ====================
+
+// ChatGPT 回复相关变量
+let responseContainer;
+let responseContent;
+let responseStatus;
+let statusIndicator;
+let statusText;
+let responseToggle;
+let responseCopy;
+let responseClose;
+
+// ChatGPT copy capture preview
+let responseCapture;
+let responseCaptureValue;
+
+// Task 4: keep last copy capture per conversation, so copy prefers captured HTML.
+const lastCopyCaptureByConversation = new Map();
+
+const DEFAULT_CONVERSATION_ID = "__default__";
+const threadStateByConversation = new Map();
+
+let activeConversationId = DEFAULT_CONVERSATION_ID;
+let isCollapsed = false;
+
+/**
+ * 获取会话键
+ */
+function getConversationKey(conversationId) {
+  return conversationId || DEFAULT_CONVERSATION_ID;
+}
+
+/**
+ * 获取或创建会话线程状态
+ */
+function getOrCreateConversationState(conversationId = activeConversationId) {
+  const conversationKey = getConversationKey(conversationId);
+
+  if (!threadStateByConversation.has(conversationKey)) {
+    threadStateByConversation.set(conversationKey, {
+      messages: [],
+      messageIndex: new Map(),
+    });
+  }
+
+  return threadStateByConversation.get(conversationKey);
+}
+
+/**
+ * 获取当前活动会话的消息列表
+ */
+function getActiveThreadMessages() {
+  return getOrCreateConversationState(activeConversationId).messages;
+}
+
+/**
+ * 清空线程状态
+ */
+function clearThreadState() {
+  threadStateByConversation.clear();
+  activeConversationId = DEFAULT_CONVERSATION_ID;
+}
+
+/**
+ * 渲染占位符
+ */
+function renderResponsePlaceholder() {
+  if (!responseContent) return;
+
+  responseContent.innerHTML = '<div class="response-placeholder">暂无回复内容</div>';
+  responseContent.classList.remove("streaming");
+}
+
+/**
+ * 确保线程根节点存在
+ */
+function ensureThreadRoot() {
+  if (!responseContent) return null;
+
+  let root = responseContent.querySelector("#chatgpt-thread");
+  if (!root) {
+    responseContent.innerHTML = "";
+    root = document.createElement("div");
+    root.id = "chatgpt-thread";
+    root.className = "chatgpt-thread chatgpt-thread--enhanced";
+    responseContent.appendChild(root);
+  }
+
+  if (root.dataset.conversationId !== activeConversationId) {
+    root.dataset.conversationId = activeConversationId;
+    root.innerHTML = "";
+  }
+
+  return root;
+}
+
+/**
+ * 格式化时间
+ */
+function formatTime(ts) {
+  const date = new Date(ts || Date.now());
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * 判断元素是否接近底部
+ */
+function isNearBottom(el, thresholdPx = 40) {
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= thresholdPx;
+}
+
+/**
+ * 根据状态自动滚动
+ */
+function maybeAutoScroll(shouldAutoScroll) {
+  if (!responseContent || !shouldAutoScroll || responseContent.classList.contains("collapsed")) {
+    return;
+  }
+
+  responseContent.scrollTop = responseContent.scrollHeight;
+}
+
+/**
+ * 创建线程消息卡片
+ */
+function createThreadMessageElement(message, index) {
+  const el = document.createElement("div");
+  el.className = "chatgpt-msg";
+  el.dataset.messageId = message.messageId;
+  el.dataset.state = message.isComplete ? "completed" : "generating";
+  el.dataset.collapsed = message.collapsed ? "true" : "false";
+
+  el.innerHTML = `
+    <div class="chatgpt-msg-head">
+      <span class="chatgpt-msg-title">Assistant #${index + 1}</span>
+      <span class="chatgpt-msg-time">${formatTime(message.timestamp)}</span>
+      <div class="chatgpt-msg-actions">
+        <button type="button" class="chatgpt-msg-copy" title="复制本条">复制</button>
+        <button type="button" class="chatgpt-msg-toggle" title="折叠/展开">${message.collapsed ? "▸" : "▾"}</button>
+      </div>
+    </div>
+    <div class="chatgpt-msg-body"></div>
+  `;
+
+  el.querySelector(".chatgpt-msg-body").innerHTML = renderMarkdownSafe(message.content || "");
+
+  el.querySelector(".chatgpt-msg-copy").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(message.content || "");
+      showTempMessage("已复制本条");
+    } catch (error) {
+      console.error("复制单条回复失败:", error);
+      showTempMessage("复制失败");
+    }
+  });
+
+  el.querySelector(".chatgpt-msg-toggle").addEventListener("click", () => {
+    message.collapsed = !message.collapsed;
+    el.dataset.collapsed = message.collapsed ? "true" : "false";
+    el.querySelector(".chatgpt-msg-toggle").textContent = message.collapsed ? "▸" : "▾";
+  });
+
+  return el;
+}
+
+/**
+ * 渲染当前活动会话的完整线程
+ */
+function renderActiveConversationThread(shouldAutoScroll = false) {
+  const root = ensureThreadRoot();
+  if (!root) return;
+
+  root.innerHTML = "";
+  getActiveThreadMessages().forEach((message, index) => {
+    root.appendChild(createThreadMessageElement(message, index));
+  });
+
+  maybeAutoScroll(shouldAutoScroll);
+}
+
+/**
+ * 渲染新增消息卡片
+ */
+function renderThreadMessage(index, shouldAutoScroll = false) {
+  const root = ensureThreadRoot();
+  if (!root) return;
+
+  const message = getActiveThreadMessages()[index];
+  if (!message) return;
+
+  root.appendChild(createThreadMessageElement(message, index));
+  maybeAutoScroll(shouldAutoScroll);
+}
+
+/**
+ * 更新已有消息卡片
+ */
+function patchThreadMessage(index, shouldAutoScroll = false) {
+  const root = ensureThreadRoot();
+  if (!root) return;
+
+  const message = getActiveThreadMessages()[index];
+  if (!message) return;
+
+  const el = Array.from(root.querySelectorAll(".chatgpt-msg")).find(
+    (node) => node.dataset.messageId === message.messageId
+  );
+
+  if (!el) {
+    renderActiveConversationThread(shouldAutoScroll);
+    return;
+  }
+
+  el.dataset.state = message.isComplete ? "completed" : "generating";
+  el.dataset.collapsed = message.collapsed ? "true" : "false";
+
+  const body = el.querySelector(".chatgpt-msg-body");
+  const bodyWasNearBottom = isNearBottom(body);
+  body.innerHTML = renderMarkdownSafe(message.content || "");
+  if (bodyWasNearBottom) {
+    body.scrollTop = body.scrollHeight;
+  }
+
+  const timeEl = el.querySelector(".chatgpt-msg-time");
+  if (timeEl) {
+    timeEl.textContent = formatTime(message.timestamp);
+  }
+
+  const toggleButton = el.querySelector(".chatgpt-msg-toggle");
+  if (toggleButton) {
+    toggleButton.textContent = message.collapsed ? "▸" : "▾";
+  }
+
+  maybeAutoScroll(shouldAutoScroll);
+}
+
+/**
+ * 新增或更新线程消息
+ */
+function upsertThreadMessage({ conversationId, messageId, content, isComplete, timestamp }) {
+  if (!messageId) return;
+
+  const conversationKey = getConversationKey(conversationId);
+  const shouldAutoScroll = isNearBottom(responseContent);
+  const isConversationSwitch = activeConversationId !== conversationKey;
+  const normalizedContent = typeof content === "string" ? content : String(content ?? "");
+
+  activeConversationId = conversationKey;
+  const threadState = getOrCreateConversationState(conversationKey);
+  const existingIndex = threadState.messageIndex.get(messageId);
+
+  if (existingIndex == null) {
+    threadState.messageIndex.set(messageId, threadState.messages.length);
+    threadState.messages.push({
+      messageId,
+      content: normalizedContent,
+      isComplete: !!isComplete,
+      timestamp: timestamp || Date.now(),
+      collapsed: false,
+    });
+
+    if (isConversationSwitch) {
+      renderActiveConversationThread(shouldAutoScroll);
+    } else {
+      renderThreadMessage(threadState.messages.length - 1, shouldAutoScroll);
+    }
+
+    return;
+  }
+
+  const message = threadState.messages[existingIndex];
+  message.content = normalizedContent;
+  message.isComplete = !!isComplete;
+  message.timestamp = timestamp || message.timestamp || Date.now();
+
+  if (isConversationSwitch) {
+    renderActiveConversationThread(shouldAutoScroll);
+  } else {
+    patchThreadMessage(existingIndex, shouldAutoScroll);
+  }
+}
+
+/**
+ * 初始化 ChatGPT 回复展示
+ */
+export function initializeChatGPTResponse() {
+  // 获取 DOM 元素
+  responseContainer = document.getElementById("chatgpt-response-container");
+  responseContent = document.getElementById("response-content");
+  responseStatus = document.getElementById("response-status");
+  statusIndicator = responseStatus?.querySelector(".status-indicator");
+  statusText = responseStatus?.querySelector(".status-text");
+  responseCapture = document.getElementById("response-capture");
+  responseCaptureValue = document.getElementById("response-capture-value");
+  responseToggle = document.getElementById("response-toggle");
+  responseCopy = document.getElementById("response-copy");
+  responseClose = document.getElementById("response-close");
+
+  if (!responseContainer || !responseContent) {
+    console.warn("ChatGPT 回复展示区元素未找到");
+    return;
+  }
+
+  // 设置控制按钮事件
+  if (responseToggle) {
+    responseToggle.addEventListener("click", toggleResponseCollapse);
+  }
+  if (responseCopy) {
+    responseCopy.addEventListener("click", copyResponseContent);
+  }
+  if (responseClose) {
+    responseClose.addEventListener("click", closeResponseContainer);
+  }
+
+  // 监听来自 content script 的回复 / copy capture
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "chatgptResponse") {
+      console.log("[Sidebar] chatgptResponse received", request.data);
+      handleChatGPTResponse(request.data);
+    }
+
+    if (request.action === "chatgptCopyCapture") {
+      console.log("[Sidebar] chatgptCopyCapture received", request.data);
+      renderCapturedHtmlToSidebar(request.data);
+    }
+
+    return false;
+  });
+
+  console.log("ChatGPT 回复展示模块已初始化");
+}
+
+/**
+ * 处理 ChatGPT 回复
+ */
+function handleChatGPTResponse(data) {
+  const { content, messageId, isComplete, timestamp, conversationId } = data || {};
+
+  if (responseContainer) {
+    responseContainer.style.display = "flex";
+  }
+
+  updateResponseStatus(isComplete);
+
+  upsertThreadMessage({
+    conversationId: conversationId || DEFAULT_CONVERSATION_ID,
+    messageId: messageId || `unknown-${Date.now()}`,
+    content,
+    isComplete,
+    timestamp,
+  });
+}
+
+/**
+ * 处理 ChatGPT copy capture
+ */
+function renderCapturedHtmlToSidebar(data) {
+  if (!responseContent) return;
+
+  const html = typeof data?.html === "string" ? data.html : "";
+  const text = typeof data?.text === "string" ? data.text : "";
+  const htmlMissing = !!data?.htmlMissing || !html;
+  const source = data?.source || "unknown";
+  const conversationKey = getConversationKey(data?.conversationId);
+  lastCopyCaptureByConversation.set(conversationKey, data);
+
+  responseContent.innerHTML = "";
+  const root = document.createElement("div");
+  root.className = "chatgpt-rendered-html";
+  root.dataset.source = source;
+  if (html) {
+    root.innerHTML = html;
+  } else if (text) {
+    root.innerHTML = renderMarkdownText(text);
+  } else {
+    root.innerHTML = "";
+  }
+  responseContent.appendChild(root);
+
+  if (responseCapture) {
+    responseCapture.style.display = "flex";
+    responseCapture.classList.toggle("response-capture--missing-html", htmlMissing);
+  }
+
+  if (responseCaptureValue) {
+    const rawPreview = (html || text || "").replace(/\s+/g, " ").trim();
+    responseCaptureValue.textContent = rawPreview ? rawPreview.slice(0, 140) : "尚未捕获";
+  }
+}
+
+function renderMarkdownText(markdown) {
+  const text = String(markdown || "");
+
+  // Prefer marked (already shipped in repo) but block raw HTML for safety.
+  if (window.marked?.parse) {
+    const renderer = new window.marked.Renderer();
+    renderer.html = () => "";
+
+    try {
+      return window.marked.parse(text, {
+        gfm: true,
+        breaks: true,
+        renderer,
+        mangle: false,
+        headerIds: false
+      });
+    } catch (err) {
+      console.warn("[Sidebar] marked.parse failed, falling back to plain text:", err);
+    }
+  }
+
+  return escapeHtml(text).replace(/\n/g, "<br>");
+}
+
+function escapeHtml(input) {
+  return String(input || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+
+/**
+ * 更新回复状态
+ */
+function updateResponseStatus(isComplete) {
+  if (!statusIndicator || !statusText) return;
+
+  statusIndicator.classList.remove("generating", "completed", "error");
+
+  if (isComplete) {
+    statusIndicator.classList.add("completed");
+    statusText.textContent = "回复完成";
+  } else {
+    statusIndicator.classList.add("generating");
+    statusText.textContent = "正在生成...";
+  }
+
+  if (responseContent) {
+    responseContent.classList.toggle("streaming", !isComplete);
+  }
+}
+
+/**
+ * 切换折叠/展开状态
+ */
+function toggleResponseCollapse() {
+  if (!responseContent) return;
+
+  isCollapsed = !isCollapsed;
+
+  if (isCollapsed) {
+    responseContent.classList.add("collapsed");
+    if (responseToggle) {
+      responseToggle.textContent = "+";
+    }
+  } else {
+    responseContent.classList.remove("collapsed");
+    if (responseToggle) {
+      responseToggle.textContent = "−";
+    }
+  }
+}
+
+/**
+ * 复制回复内容
+ */
+async function copyResponseContent() {
+  const messages = getActiveThreadMessages();
+  if (!messages.length) {
+    showTempMessage("没有可复制的内容");
+    return;
+  }
+
+  const allText = messages
+    .map((message, index) => `Assistant #${index + 1}\n${message.content || ""}`)
+    .join("\n\n");
+
+  try {
+    const capture = lastCopyCaptureByConversation.get(activeConversationId);
+    const preferredText = typeof capture?.text === "string" && capture.text.trim() ? capture.text : null;
+
+    await navigator.clipboard.writeText(preferredText || allText);
+    showTempMessage("已复制到剪切板");
+
+    if (responseCopy) {
+      const originalText = responseCopy.textContent;
+      responseCopy.textContent = "✓";
+      setTimeout(() => {
+        responseCopy.textContent = originalText;
+      }, 1500);
+    }
+  } catch (error) {
+    console.error("复制失败:", error);
+    showTempMessage("复制失败");
+  }
+}
+
+/**
+ * 关闭回复容器
+ */
+function closeResponseContainer() {
+  if (responseContainer) {
+    responseContainer.style.display = "none";
+  }
+
+  clearThreadState();
+  renderResponsePlaceholder();
+}
+
+/**
+ * 显示回复容器（供外部调用）
+ */
+export function showResponseContainer() {
+  if (responseContainer) {
+    responseContainer.style.display = "flex";
+  }
+}
+
+/**
+ * 隐藏回复容器（供外部调用）
+ */
+export function hideResponseContainer() {
+  if (responseContainer) {
+    responseContainer.style.display = "none";
+  }
+}
+
+/**
+ * 重置回复展示状态
+ */
+export function resetResponseDisplay() {
+  closeResponseContainer();
+  if (statusIndicator) {
+    statusIndicator.classList.remove("generating", "completed", "error");
+  }
+  if (statusText) {
+    statusText.textContent = "等待回复...";
+  }
 }
