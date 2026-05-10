@@ -56,10 +56,27 @@
   }, true);
 
   // Expose simulateCopy for programmatic clicks
+  // 用完整鼠标事件序列代替 click()，部分框架（豆包）会检查 isTrusted 忽略纯脚本 click
   window.__ccSimulateCopy = function(btn) {
     if (!(btn instanceof Element)) return false;
     console.log('[CC-Hook] simulateCopy click', btn);
-    btn.click();
+
+    // Gemini: btn.click() 避免 Angular BardChatUi "No ID or name found in config" 错误
+    if (window.location.hostname.indexOf('gemini.google.com') !== -1) {
+      btn.focus();
+      btn.click();
+      return true;
+    }
+
+    btn.focus();
+    var rect = btn.getBoundingClientRect();
+    var x = rect.left + rect.width / 2;
+    var y = rect.top + rect.height / 2;
+    btn.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+    btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+    btn.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+    btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+    btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
     return true;
   };
 
@@ -86,10 +103,20 @@
         }
       }
 
-      // 兜底：直接使用原始选择器
+      // 兜底1：原始作用域选择器（找一次）
       var btn = document.querySelector(selector);
-      if (btn) { console.log('[CC-Hook] btn found, simulating click'); window.__ccSimulateCopy(btn); }
-      else { console.log('[CC-Hook] btn NOT found'); }
+      if (btn) { console.log('[CC-Hook] btn found via direct selector'); window.__ccSimulateCopy(btn); return; }
+
+      // 兜底2：去掉 data-testid 作用域，全局取最后一个匹配按钮
+      // 适用场景：Gemini、豆包等平台的复制按钮在 turn 容器外部
+      var unscopedMatch = selector.replace(/\[data-testid="[^"]+"\]\s*/g, '');
+      if (unscopedMatch !== selector) {
+        var all = document.querySelectorAll(unscopedMatch);
+        var lastBtn = all[all.length - 1] || null;
+        if (lastBtn) { console.log('[CC-Hook] btn found via unscoped fallback'); window.__ccSimulateCopy(lastBtn); return; }
+      }
+
+      console.log('[CC-Hook] btn NOT found');
     }
   });
 })();
