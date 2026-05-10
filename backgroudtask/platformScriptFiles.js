@@ -89,5 +89,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "tongyi") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/tongyi.js",
+      "contentScripts/tongyi.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/tongyiResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
