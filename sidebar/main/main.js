@@ -2,7 +2,7 @@ import {
   initializePopup,
   setupEventListeners,
   loadStoredData,
-  initializeChatGPTResponse,
+  initializeResponseDisplay,
 } from "./mainUtils.js";
 import { setupDragDropEvents } from "../../popup/main/dragDropHandler.js";
 import { initializePlatformOptions } from "../../popup/main/platformRenderer.js";
@@ -13,8 +13,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     initializePlatformOptions();
     await initializePopup();
     console.log("[Sidebar] initializePopup done");
-    initializeChatGPTResponse();
-    console.log("[Sidebar] initializeChatGPTResponse done");
+    initializeResponseDisplay();
+    console.log("[Sidebar] initializeResponseDisplay done");
     await loadStoredData();
     setupEventListeners();
     setupDragDropEvents();
