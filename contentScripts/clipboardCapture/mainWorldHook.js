@@ -70,14 +70,15 @@
 
     // 定位最内层元素作为点击目标。某些平台（如元宝）的 onClick 绑定在
     // 内层图标上，dispatchEvent 从外层触发时事件向外冒泡，到不了内层。
+    // 用 firstElementChild 遍历到第一个叶子元素（避免拿到下拉箭头等附属元素）
     var target = btn;
-    var lastChild = target;
-    while (lastChild.lastElementChild) {
-      lastChild = lastChild.lastElementChild;
+    var child = target;
+    while (child.firstElementChild) {
+      child = child.firstElementChild;
     }
-    target = lastChild;
+    target = child;
     if (target === btn) {
-      // 无子元素，取第一个非空子节点作为 fallback
+      // 无子元素，取常见可交互子元素作为 fallback
       var leaf = btn.querySelector('span, i, svg, img, button, a, [class*="icon"], [onclick]');
       if (leaf) target = leaf;
     }
