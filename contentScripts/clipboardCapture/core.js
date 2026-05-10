@@ -234,6 +234,9 @@
       clickListenerAttached = true;
 
       document.addEventListener('click', function(e) {
+        // 跳过脚本 dispatchEvent 产生的模拟点击（isTrusted===false），
+        // 避免 autoCapture 的 simulateCopy 触发二次 context.open
+        if (!e.isTrusted) return;
         var target = e.target;
         var turn = config.detectTurn ? config.detectTurn(target) : null;
         if (!turn) return;
