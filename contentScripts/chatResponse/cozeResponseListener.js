@@ -3,8 +3,6 @@
  *
  * 通过 chrome.scripting.executeScript 注入，使用 IIFE + window.* 全局通信。
  * 依赖：ResponseListenerCore（core.js 中定义）
- *
- * NOTE: 此配置未在真实对话页面验证，需要测试后调整。
  */
 (function() {
   if (window.__cozeResponseListenerInjected) return;
@@ -19,16 +17,17 @@
     platform: 'coze',
     hostnames: ['www.coze.cn', 'chat.coze.com'],
 
+    // Coze 回复内容在 .flow-markdown-body 中
     responseSelectors: [
-      '[class*="message-content"]',
-      '[class*="content"]',
-      '.markdown-body',
+      '.flow-markdown-body',
+      '.message-jIHrwV',
+      '.md-viewer',
     ],
 
+    // Turn 容器使用 [class*="message-item"]，含 data-message-id
     turnSelectors: [
-      '[class*="turn"]',
-      '[class*="message"]',
-      '[class*="chat-item"]',
+      '[class*="message-item"]',
+      '[data-message-id]',
     ],
 
     skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
@@ -45,8 +44,10 @@
 
     getMessageId: function(element) {
       if (!element) return null;
-      var turn = element.closest('[class*="turn"], [class*="message"], [class*="chat-item"]');
+      if (element.dataset.messageId) return element.dataset.messageId;
+      var turn = element.closest('[class*="message-item"], [data-message-id]');
       if (turn) {
+        if (turn.dataset.messageId) return turn.dataset.messageId;
         if (!turn.dataset.testid) {
           window.__cozeTurnSeq = (window.__cozeTurnSeq || 0) + 1;
           turn.dataset.testid = 'coze-turn-' + window.__cozeTurnSeq + '-' + Date.now();

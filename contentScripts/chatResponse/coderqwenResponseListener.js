@@ -4,7 +4,9 @@
  * 通过 chrome.scripting.executeScript 注入，使用 IIFE + window.* 全局通信。
  * 依赖：ResponseListenerCore（core.js 中定义）
  *
- * NOTE: 此配置未在真实对话页面验证，需要测试后调整。
+ * NOTE: CoderQwen 是代码代理工具，输出以代码 diff 为主。
+ *       页面中无复制按钮（只有赞/踩/重新生成），
+ *       复制功能需通过 DOM fallback 实现。
  */
 (function() {
   if (window.__coderqwenResponseListenerInjected) return;
@@ -19,16 +21,19 @@
     platform: 'coderqwen',
     hostnames: ['coder.qwen.ai'],
 
+    // CoderQwen 回复内容在 .response-message-content 中
     responseSelectors: [
-      '[class*="content"]',
-      '[class*="message"]',
-      '.markdown-body',
+      '.response-message-content',
+      '.user-message-content',
+      '.qwen-markdown',
     ],
 
+    // Turn 容器
     turnSelectors: [
-      '[class*="turn"]',
-      '[class*="message"]',
-      '[class*="chat-item"]',
+      '.chat-user-message-container',
+      '.chat-response-message',
+      '[class*="response-message"]',
+      '[class*="user-message"]',
     ],
 
     skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
@@ -38,6 +43,7 @@
     getConversationId: function() {
       try {
         var parts = window.location.pathname.split('/').filter(Boolean);
+        if (parts[0] === 'c' && parts[1]) return parts[1];
         return parts[parts.length - 1] || '__default__';
       } catch(e) {}
       return '__default__';
@@ -45,7 +51,7 @@
 
     getMessageId: function(element) {
       if (!element) return null;
-      var turn = element.closest('[class*="turn"], [class*="message"], [class*="chat-item"]');
+      var turn = element.closest('.chat-user-message-container, .chat-response-message, [class*="response-message"], [class*="user-message"]');
       if (turn) {
         if (!turn.dataset.testid) {
           window.__coderqwenTurnSeq = (window.__coderqwenTurnSeq || 0) + 1;

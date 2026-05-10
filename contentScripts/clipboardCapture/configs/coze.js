@@ -2,11 +2,14 @@
  * Coze 剪贴板捕获配置
  * 通过 chrome.scripting.executeScript 注入，不使用 ES module。
  *
- * NOTE: 未登录无法访问对话页面 (/chat/ 需要登录)，以下选择器基于通用推测，
- * 需要在已登录状态的 Chrome 会话中验证。
+ * 已验证：2026-05-10，已登录状态，对话页可正常使用。
  *
- * Coze 技术栈: React + CodeMirror 编辑器
- * 对话页路由: /chat/{id}
+ * DOM 结构特征：
+ * - React + Semi UI (字节跳动 UI 框架) + CodeMirror
+ * - Turn 容器: [class*="message-item"]，带 data-message-id 属性
+ * - AI 回复内容: .flow-markdown-body 或 .message-jIHrwV
+ * - 复制按钮: svg.lucide-copy（非 button，aria-hidden="true"），点击通过 onclick 绑定在 SVG 上
+ * - 用户消息有乐观渲染（message-item-start-*）和确认后（message-item-*）两个版本
  */
 (function() {
   if (window.cozeCaptureConfig) return;
@@ -15,18 +18,19 @@
     name: 'coze',
     action: 'cozeCopyCapture',
 
-    copyBtnPrimarySelector: 'button[aria-label*="copy" i]',
+    copyBtnPrimarySelector: 'svg.lucide-copy',
     copyBtnSelectors: [
-      'button[aria-label*="copy" i]',
-      'button[aria-label*="复制"]',
-      '[class*="copy-btn"]',
+      'svg.lucide-copy',
+      '.lucide-copy',
       '[class*="copy"]',
     ],
 
     getContentRoot: function(turnRoot) {
-      var el = turnRoot.querySelector('[class*="message-content"]') ||
-               turnRoot.querySelector('[class*="content"]') ||
-               turnRoot.querySelector('.markdown-body');
+      var el = turnRoot.querySelector('.flow-markdown-body') ||
+               turnRoot.querySelector('.message-jIHrwV') ||
+               turnRoot.querySelector('.md-viewer') ||
+               turnRoot.querySelector('[class*="message-content"]') ||
+               turnRoot.querySelector('[class*="content"]');
       if (el) return el;
       return turnRoot;
     },
@@ -41,20 +45,33 @@
 
     getMessageId: function(element) {
       if (!element) return null;
-      if (!element.dataset.testid) {
-        window.__cozeTurnSeq = (window.__cozeTurnSeq || 0) + 1;
-        element.dataset.testid = 'coze-turn-' + window.__cozeTurnSeq + '-' + Date.now();
+      // 优先使用原生 data-message-id
+      if (element.dataset.messageId) return element.dataset.messageId;
+      var turn = element.closest('[class*="message-item"], [data-message-id]');
+      if (turn) {
+        if (turn.dataset.messageId) return turn.dataset.messageId;
+        if (!turn.dataset.testid) {
+          window.__cozeTurnSeq = (window.__cozeTurnSeq || 0) + 1;
+          turn.dataset.testid = 'coze-turn-' + window.__cozeTurnSeq + '-' + Date.now();
+        }
+        return turn.dataset.testid;
       }
-      return element.dataset.testid;
+      return null;
     },
 
     detectTurn: function(target) {
       if (!(target instanceof Element)) return null;
-      return target.closest('[class*="turn"], [class*="message"], [class*="chat-item"]');
+      return target.closest('[class*="message-item"], [data-message-id], [class*="message"], [class*="chat-item"]');
     },
 
     isCopyControl: function(element) {
       if (!(element instanceof Element)) return false;
+      // Coze 复制按钮是 svg.lucide-copy，无 aria-label 无 textContent
+      if (element.classList && element.classList.contains('lucide-copy')) return true;
+      var svg = element.querySelector('svg.lucide-copy');
+      if (svg) return true;
+      var cls = element.className || '';
+      if (typeof cls === 'string' && /copy/.test(cls)) return true;
       var aria = element.getAttribute('aria-label') || '';
       if (/copy|复制/i.test(aria)) return true;
       var label = [
@@ -64,7 +81,8 @@
       return /copy|复制/.test(label);
     },
 
-    skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
+    // Coze 复制按钮是 SVG 元素，不能跳过 SVG
+    skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'PATH']),
     contextWindowMs: 2500,
     debug: true,
   };
