@@ -49,5 +49,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "grok") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/grok.js",
+      "contentScripts/grok.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/grokResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
