@@ -59,5 +59,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "glm") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/glm.js",
+      "contentScripts/glm.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/glmResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
