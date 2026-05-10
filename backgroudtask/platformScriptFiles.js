@@ -109,5 +109,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "notionai") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/notionai.js",
+      "contentScripts/notionai.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/notionaiResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
