@@ -19,5 +19,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "gemini") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/gemini.js",
+      "contentScripts/gemini.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/geminiResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
