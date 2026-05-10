@@ -39,5 +39,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "deepseek") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/deepseek.js",
+      "contentScripts/deepseek.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/deepseekResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
