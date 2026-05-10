@@ -24,9 +24,11 @@
       '.agent-chat__bubble__content',
     ],
 
-    // Turn 容器使用 BEM 类名
+    // Turn 容器使用 BEM 类名，用 -- 修饰符区分 turn 和子元素
+    // agent-chat__list__item--ai / --human（带 --）是实际 turn
+    // agent-chat__list__item__content / __checkbox（带 __）是子元素，避免误匹配
     turnSelectors: [
-      '[class*="agent-chat__list__item"]',
+      '[class*="agent-chat__list__item--"]',
     ],
 
     skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
@@ -43,7 +45,7 @@
 
     getMessageId: function(element) {
       if (!element) return null;
-      var turn = element.closest('[class*="agent-chat__list__item"]');
+      var turn = element.closest('[class*="agent-chat__list__item--"]');
       if (turn) {
         if (!turn.dataset.testid) {
           window.__yuanbaoTurnSeq = (window.__yuanbaoTurnSeq || 0) + 1;

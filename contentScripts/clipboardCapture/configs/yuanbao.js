@@ -61,8 +61,8 @@
 
     detectTurn: function(target) {
       if (!(target instanceof Element)) return null;
-      // 元宝使用 BEM 类名: agent-chat__list__item--ai / agent-chat__list__item--human
-      return target.closest('[class*="agent-chat__list__item"]');
+      // 元宝使用 BEM 类名，用 -- 修饰符区分 turn 和子元素
+      return target.closest('[class*="agent-chat__list__item--"]');
     },
 
     isCopyControl: function(element) {
