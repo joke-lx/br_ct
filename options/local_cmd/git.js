@@ -78,13 +78,14 @@ async function deleteGitDir(id) {
   loadGitDirList();
 }
 
-async function loadGitStatus() {
+async function loadGitStatus(withFetch = false) {
   const dirs = await loadStorage(STORAGE_KEYS.gitMonitoredDirs);
   if (dirs.length === 0) return;
 
   try {
+    const command = withFetch ? 'gitBatchFetch' : 'gitBatchStatus';
     const resp = await sendNativeMessage({
-      command: 'gitBatchStatus',
+      command,
       dirs: dirs.map(d => d.path),
     });
     gitStatusCache = resp.data || [];
@@ -172,14 +173,19 @@ async function gitRefreshDir(id) {
   if (area) area.innerHTML = '<span style="color:var(--muted);font-size:14px;">刷新中...</span>';
 
   try {
-    const resp = await sendNativeMessage({ command: 'gitStatus', path: dir.path });
+    // 先 fetch 再 status，获取准确的 ahead/behind
+    const fetchResp = await sendNativeMessage({
+      command: 'gitBatchFetch',
+      dirs: [dir.path],
+    });
+    const statuses = fetchResp.data || [];
     const allStatuses = gitStatusCache.length === dirs.length ? [...gitStatusCache] : [];
     const idx = dirs.indexOf(dir);
-    if (idx >= 0) {
-      allStatuses[idx] = resp.data;
+    if (idx >= 0 && statuses[0]) {
+      allStatuses[idx] = statuses[0];
       gitStatusCache = allStatuses;
     }
-    renderGitStatus(dirs, allStatuses.length ? allStatuses : [resp.data]);
+    renderGitStatus(dirs, allStatuses.length ? allStatuses : statuses);
   } catch (err) {
     if (area) area.innerHTML = `<span style="color:var(--danger);font-size:14px;">${escapeHtml(err.message)}</span>`;
   }

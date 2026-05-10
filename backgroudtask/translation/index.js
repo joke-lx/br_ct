@@ -7,6 +7,7 @@ import { setupContextMenu } from './contextMenu.js';
 import { setupMessageHandler } from './messageHandler.js';
 import { setupStorage } from './storage.js';
 import { setupOCR } from './ocr.js';
+import { initSelectionAskConfig } from './selectionAskConfig.js';
 
 /**
  * 初始化所有翻译模块
@@ -19,6 +20,7 @@ export function setupTranslationModule() {
   setupContextMenu();
   setupMessageHandler();
   setupOCR();
+  initSelectionAskConfig();
 
   console.log('[Translation Module] 所有翻译模块已启动');
 }

@@ -44,6 +44,7 @@ func main() {
 	registry.Register("gitPull", gitmon.GitPull)
 	registry.Register("gitPush", gitmon.GitPush)
 	registry.Register("gitBatchStatus", gitmon.GitBatchStatus)
+	registry.Register("gitBatchFetch", gitmon.GitBatchFetch)
 	registry.Register("gitBatchPull", gitmon.GitBatchPull)
 	registry.Register("gitBatchPush", gitmon.GitBatchPush)
 	registry.Register("gitAutoCommitAndPush", gitmon.GitAutoCommitAndPush)
