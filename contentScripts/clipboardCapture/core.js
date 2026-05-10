@@ -158,11 +158,20 @@
     }
 
     // ==================== DOM helpers ====================
+    function getSearchRoot(turnRoot) {
+      if (typeof config.getCopyBtnRoot === 'function') {
+        var custom = config.getCopyBtnRoot(turnRoot);
+        if (custom instanceof Element) return custom;
+      }
+      return turnRoot;
+    }
+
     function findCopyBtn(turnRoot) {
       if (!(turnRoot instanceof Element)) return null;
+      var root = getSearchRoot(turnRoot);
       var selectors = config.copyBtnSelectors;
       for (var i = 0; i < selectors.length; i++) {
-        var btn = turnRoot.querySelector(selectors[i]);
+        var btn = root.querySelector(selectors[i]);
         if (btn) return btn;
       }
       return null;
@@ -215,7 +224,8 @@
         log('autoCopy.skip', { reason: 'dom html fallback missing' });
       }
 
-      lastContext = null;
+      // 不立即清除 lastContext，让 contextWindowMs 超时机制自动清理，
+      // 确保异步到达的 clipboard write 数据能获取到正确的 messageId
     }
 
     // ==================== click listener ====================

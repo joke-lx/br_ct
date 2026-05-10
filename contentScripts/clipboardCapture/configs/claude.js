@@ -18,6 +18,13 @@
       'button[aria-label*="copy"]',
     ],
 
+    // ============= 复制按钮搜索根 =============
+    getCopyBtnRoot: function(turnRoot) {
+      // claude.ai 复制按钮在 div.contents 外部的同级分支中，
+      // 两者同属于一个 div.group 父容器
+      return turnRoot.parentElement || turnRoot;
+    },
+
     // ============= 内容定位 =============
     getContentRoot: function(turnRoot) {
       // claude.ai 回复内容在 div.contents 中的最后一个 div.group 内
@@ -26,8 +33,9 @@
         var textEl = groups[i].querySelector('.whitespace-pre-wrap') ||
                      groups[i].querySelector('[class*="font-claude"]');
         if (textEl) return textEl;
-        return groups[i];
       }
+      // 没有找到文本元素时返回最后一个 group
+      if (groups.length > 0) return groups[groups.length - 1];
       return turnRoot;
     },
 
@@ -52,9 +60,16 @@
     // ============= 事件检测 =============
     detectTurn: function(target) {
       if (!(target instanceof Element)) return null;
-      // div.contents 包裹每一轮对话
+      // Claude 的复制按钮在 div.contents 外部，
+      // 两者同属于一个 div.group 父容器
       var turn = target.closest('div.contents');
       if (turn) return turn;
+      // 从同级的 div.group 中查找对应的 div.contents
+      var group = target.closest('div.group');
+      if (group) {
+        turn = group.querySelector('div.contents');
+        if (turn) return turn;
+      }
       return null;
     },
 

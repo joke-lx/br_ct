@@ -223,13 +223,17 @@
 
     // ==================== 剪贴板捕获 ====================
 
+    var _captureInstance = null;
+
     function tryGetCapture() {
       if (!captureConfig) return null;
+      if (_captureInstance) return _captureInstance;
       var name = typeof captureConfig === 'string' ? captureConfig : null;
       if (!name) return null;
       var cfg = window[name];
       if (!cfg || !window.ClipboardCapture) return null;
-      return window.ClipboardCapture.create(cfg);
+      _captureInstance = window.ClipboardCapture.create(cfg);
+      return _captureInstance;
     }
 
     // ==================== MutationObserver ====================

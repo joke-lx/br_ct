@@ -109,7 +109,7 @@
 
       // 兜底2：去掉 data-testid 作用域，全局取最后一个匹配按钮
       // 适用场景：Gemini、豆包等平台的复制按钮在 turn 容器外部
-      var unscopedMatch = selector.replace(/\[data-testid="[^"]+"\]\s*/g, '');
+      var unscopedMatch = selector.replace(/\[data-testid="[^"]+"\]\s*/, '');
       if (unscopedMatch !== selector) {
         var all = document.querySelectorAll(unscopedMatch);
         var lastBtn = all[all.length - 1] || null;
