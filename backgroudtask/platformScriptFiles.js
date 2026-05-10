@@ -99,5 +99,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "googlestudio") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/googlestudio.js",
+      "contentScripts/googlestudio.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/googlestudioResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
