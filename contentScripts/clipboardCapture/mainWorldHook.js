@@ -68,15 +68,35 @@
       return true;
     }
 
-    btn.focus();
-    var rect = btn.getBoundingClientRect();
+    // 定位最内层元素作为点击目标。某些平台（如元宝）的 onClick 绑定在
+    // 内层图标上，dispatchEvent 从外层触发时事件向外冒泡，到不了内层。
+    var target = btn;
+    var lastChild = target;
+    while (lastChild.lastElementChild) {
+      lastChild = lastChild.lastElementChild;
+    }
+    target = lastChild;
+    if (target === btn) {
+      // 无子元素，取第一个非空子节点作为 fallback
+      var leaf = btn.querySelector('span, i, svg, img, button, a, [class*="icon"], [onclick]');
+      if (leaf) target = leaf;
+    }
+
+    target.focus();
+    var rect = target.getBoundingClientRect();
+    // 如果内层元素不可见或大小为0，回退到外层按钮
+    if (rect.width === 0 || rect.height === 0) {
+      target = btn;
+      rect = btn.getBoundingClientRect();
+      target.focus();
+    }
     var x = rect.left + rect.width / 2;
     var y = rect.top + rect.height / 2;
-    btn.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
-    btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
-    btn.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
-    btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
-    btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+    target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+    target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+    target.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+    target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
     return true;
   };
 
