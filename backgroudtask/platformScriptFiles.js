@@ -139,5 +139,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "zai") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/zai.js",
+      "contentScripts/zai.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/zaiResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
