@@ -79,5 +79,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "yuanbao") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/yuanbao.js",
+      "contentScripts/yuanbao.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/yuanbaoResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
