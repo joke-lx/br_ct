@@ -3,8 +3,6 @@
  *
  * 通过 chrome.scripting.executeScript 注入，使用 IIFE + window.* 全局通信。
  * 依赖：ResponseListenerCore（core.js 中定义）
- *
- * NOTE: 此配置未在真实对话页面验证，需要测试后调整。
  */
 (function() {
   if (window.__yuanbaoResponseListenerInjected) return;
@@ -19,16 +17,16 @@
     platform: 'yuanbao',
     hostnames: ['yuanbao.tencent.com'],
 
+    // 元宝回复内容在 .hyc-content-md 或 .agent-chat__bubble__content 中
     responseSelectors: [
-      '[class*="message-content"]',
-      '[class*="answer"]',
-      '.markdown-body',
+      '.hyc-content-md',
+      '.hyc-content-text',
+      '.agent-chat__bubble__content',
     ],
 
+    // Turn 容器使用 BEM 类名
     turnSelectors: [
-      '[class*="turn"]',
-      '[class*="message"]',
-      '[class*="chat-item"]',
+      '[class*="agent-chat__list__item"]',
     ],
 
     skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
@@ -45,7 +43,7 @@
 
     getMessageId: function(element) {
       if (!element) return null;
-      var turn = element.closest('[class*="turn"], [class*="message"], [class*="chat-item"]');
+      var turn = element.closest('[class*="agent-chat__list__item"]');
       if (turn) {
         if (!turn.dataset.testid) {
           window.__yuanbaoTurnSeq = (window.__yuanbaoTurnSeq || 0) + 1;

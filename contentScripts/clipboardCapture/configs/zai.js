@@ -2,7 +2,16 @@
  * Zai 剪贴板捕获配置
  * 通过 chrome.scripting.executeScript 注入，不使用 ES module。
  *
- * NOTE: 此配置未在真实对话页面验证，需要测试后调整。
+ * 已验证：2026-05-10，可跳过登录直接使用对话。
+ *
+ * DOM 结构特征：
+ * - SvelteKit + Tailwind CSS，运行时 svelte-xxx 类名
+ * - Turn 容器: div.group（含 user-message 和 message-{uuid} 子元素）
+ * - 用户消息: .user-message > .chat-user.markdown-prose
+ * - AI 回复: .message-{uuid} > .chat-assistant.markdown-prose
+ * - Markdown 使用 .markdown-prose（非 .markdown-body）
+ * - 复制按钮: div[aria-label="复制"] > button（中文 aria-label）
+ * - 复制按钮仅 hover 可见
  */
 (function() {
   if (window.zaiCaptureConfig) return;
@@ -11,17 +20,17 @@
     name: 'zai',
     action: 'zaiCopyCapture',
 
-    copyBtnPrimarySelector: 'button[aria-label*="copy" i]',
+    copyBtnPrimarySelector: 'div[aria-label="复制"] button',
     copyBtnSelectors: [
+      'div[aria-label="复制"] button',
+      '[aria-label="复制"]',
       'button[aria-label*="copy" i]',
-      'button[aria-label*="复制"]',
-      '[class*="copy"]',
     ],
 
     getContentRoot: function(turnRoot) {
-      var el = turnRoot.querySelector('[class*="content"]') ||
-               turnRoot.querySelector('[class*="message"]') ||
-               turnRoot.querySelector('.markdown-body');
+      var el = turnRoot.querySelector('.chat-assistant.markdown-prose') ||
+               turnRoot.querySelector('.chat-user.markdown-prose') ||
+               turnRoot.querySelector('.markdown-prose');
       if (el) return el;
       return turnRoot;
     },
@@ -45,7 +54,8 @@
 
     detectTurn: function(target) {
       if (!(target instanceof Element)) return null;
-      return target.closest('[class*="turn"], [class*="message"], [class*="chat-item"]');
+      // Zai 使用 div.group 作为 turn 容器（含 .user-message 和 .message-*）
+      return target.closest('.group, .user-message');
     },
 
     isCopyControl: function(element) {

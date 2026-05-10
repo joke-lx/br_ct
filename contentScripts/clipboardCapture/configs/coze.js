@@ -2,7 +2,11 @@
  * Coze 剪贴板捕获配置
  * 通过 chrome.scripting.executeScript 注入，不使用 ES module。
  *
- * NOTE: 此配置未在真实对话页面验证，需要测试后调整。
+ * NOTE: 未登录无法访问对话页面 (/chat/ 需要登录)，以下选择器基于通用推测，
+ * 需要在已登录状态的 Chrome 会话中验证。
+ *
+ * Coze 技术栈: React + CodeMirror 编辑器
+ * 对话页路由: /chat/{id}
  */
 (function() {
   if (window.cozeCaptureConfig) return;

@@ -3,8 +3,6 @@
  *
  * 通过 chrome.scripting.executeScript 注入，使用 IIFE + window.* 全局通信。
  * 依赖：ResponseListenerCore（core.js 中定义）
- *
- * NOTE: 此配置未在真实对话页面验证，需要测试后调整。
  */
 (function() {
   if (window.__tongyiResponseListenerInjected) return;
@@ -19,16 +17,17 @@
     platform: 'tongyi',
     hostnames: ['www.qianwen.com', 'tongyi.aliyun.com'],
 
+    // 通义回复在 .markdown-pc-special-class 或 .chat-answers-card-wrap 中
     responseSelectors: [
-      '[class*="content"]',
-      '[class*="message"]',
-      '.markdown-body',
+      '.markdown-pc-special-class',
+      '.chat-answers-card-wrap',
+      '.chat-question-card-wrap',
     ],
 
+    // Turn 容器是 .chat-round（含 data-chat 属性）
     turnSelectors: [
-      '[class*="turn"]',
-      '[class*="message"]',
-      '[class*="chat-item"]',
+      '.chat-round',
+      '[data-chat]',
     ],
 
     skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
@@ -37,6 +36,8 @@
 
     getConversationId: function() {
       try {
+        var chatRound = document.querySelector('.chat-round');
+        if (chatRound && chatRound.dataset.chat) return chatRound.dataset.chat;
         var parts = window.location.pathname.split('/').filter(Boolean);
         return parts[parts.length - 1] || '__default__';
       } catch(e) {}
@@ -45,7 +46,7 @@
 
     getMessageId: function(element) {
       if (!element) return null;
-      var turn = element.closest('[class*="turn"], [class*="message"], [class*="chat-item"]');
+      var turn = element.closest('.chat-round, [data-chat]');
       if (turn) {
         if (!turn.dataset.testid) {
           window.__tongyiTurnSeq = (window.__tongyiTurnSeq || 0) + 1;

@@ -3,8 +3,6 @@
  *
  * 通过 chrome.scripting.executeScript 注入，使用 IIFE + window.* 全局通信。
  * 依赖：ResponseListenerCore（core.js 中定义）
- *
- * NOTE: 此配置未在真实对话页面验证，需要测试后调整。
  */
 (function() {
   if (window.__zaiResponseListenerInjected) return;
@@ -19,16 +17,17 @@
     platform: 'zai',
     hostnames: ['chat.z.ai'],
 
+    // Zai 使用 .chat-assistant 和 .chat-user 作为消息容器
     responseSelectors: [
-      '[class*="content"]',
-      '[class*="message"]',
-      '.markdown-body',
+      '.chat-assistant',
+      '.chat-user',
+      '.markdown-prose',
     ],
 
+    // Turn 容器是 div.group
     turnSelectors: [
-      '[class*="turn"]',
-      '[class*="message"]',
-      '[class*="chat-item"]',
+      '.group',
+      '.user-message',
     ],
 
     skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
@@ -45,7 +44,7 @@
 
     getMessageId: function(element) {
       if (!element) return null;
-      var turn = element.closest('[class*="turn"], [class*="message"], [class*="chat-item"]');
+      var turn = element.closest('.group, .user-message');
       if (turn) {
         if (!turn.dataset.testid) {
           window.__zaiTurnSeq = (window.__zaiTurnSeq || 0) + 1;
