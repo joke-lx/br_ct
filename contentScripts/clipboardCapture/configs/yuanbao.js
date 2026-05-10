@@ -8,10 +8,11 @@
  * - Turn 容器: .agent-chat__list__item--ai / --human
  * - AI 回复内容: .hyc-content-md.hyc-content-md-done > .hyc-common-markdown
  * - 用户消息内容: .hyc-content-text
- * - 用户消息复制按钮: div.agent-chat__question-toolbar__copy-wrapper
+ * - 复制按钮: div.agent-chat__question-toolbar__copy-wrapper（AI 和用户区域都用这个 class）
  *   (内部为 div.ToolbarCopy_copyIconWrap__PfQIm > span.iconfont-yb.icon-yb-ic_copy_2504)
- * - ⚠️ AI 回复区域没有复制按钮（有赞/踩/更多等但无复制）
+ * - ⚠️ 类名中的 "question" 是误导，AI 回复工具栏也使用相同的 class
  * - 复制元素为 div（非 button），无 aria-label，无 textContent
+ * - 每个 turn 独立，AI turn 内有自己的 toolbar
  */
 (function() {
   if (window.yuanbaoCaptureConfig) return;
@@ -20,17 +21,15 @@
     name: 'yuanbao',
     action: 'yuanbaoCopyCapture',
 
-    // AI 回复区域没有复制按钮，留空强制走 DOM fallback
-    copyBtnPrimarySelector: '',
-    copyBtnSelectors: [''],
-
-    // 将复制按钮搜索限定在 AI 回复区域
-    getCopyBtnRoot: function(turnRoot) {
-      var el = turnRoot.querySelector('.hyc-content-md.hyc-content-md-done') ||
-               turnRoot.querySelector('.hyc-common-markdown');
-      if (el) return el;
-      return turnRoot;
-    },
+    // 复制按钮在 AI 回复工具栏中，和用户消息使用相同 class
+    copyBtnPrimarySelector: '.agent-chat__question-toolbar__copy-wrapper',
+    copyBtnSelectors: [
+      '.agent-chat__question-toolbar__copy-wrapper',
+      '.ToolbarCopy_copyIconWrap__PfQIm',
+      '[class*="copy_wrapper"]',
+      '[class*="copyIconWrap"]',
+      'span.iconfont-yb.icon-yb-ic_copy_2504',
+    ],
 
     getContentRoot: function(turnRoot) {
       // 优先 AI 回复的 markdown 容器
