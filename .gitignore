@@ -18,3 +18,5 @@ generate_key.js
 .CLAUDE/worktrees/
 .idea/
 .gstack/
+debug_selector.js
+_run_debug.js
