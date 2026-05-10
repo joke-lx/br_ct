@@ -10,7 +10,12 @@
     action: 'glmCopyCapture',
 
     // ============= 复制按钮 =============
-    // GLM 的复制按钮在 div.answer div.copy 中，内层 i.shim.copy 触发点击
+    // DOM 结构:
+    //   div.copy
+    //     └── i.shim.copy           ← onclick 在此层
+    //         └── svg
+    //             └── path
+    // simulateCopy 会跳过 SVG 容器，在 i.shim.copy 上派发事件
     copyBtnPrimarySelector: 'div.answer div.copy',
     copyBtnSelectors: [
       'div.answer div.copy',

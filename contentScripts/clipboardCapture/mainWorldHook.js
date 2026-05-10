@@ -74,7 +74,9 @@
     var target = btn;
     var child = target;
     while (child.firstElementChild) {
-      child = child.firstElementChild;
+      var next = child.firstElementChild;
+      if (next.tagName && next.tagName.toLowerCase() === 'svg') break;
+      child = next;
     }
     target = child;
     if (target === btn) {

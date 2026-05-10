@@ -757,6 +757,25 @@ function renderPlatformMessages(convState) {
 /**
  * 渲染平台 copy capture
  */
+/**
+ * 检查 html 是否为"裸容器"——剔除标签后内容和 text 基本一致。
+ * 这种 HTML 来自 copy.event 的 Selection fallback，不适合直接 innerHTML，
+ * 应改用 markdown 渲染。
+ * 如果剥离标签后和 text 有明显差异（含语义标签如 table/ol/ul/img 等），
+ * 则为真正的富 HTML，可直接使用。
+ */
+function isBareHtmlContainer(html, text) {
+  if (!html) return true;
+  var stripped = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  var normalizedText = (text || '').replace(/\s+/g, ' ').trim();
+  // 最强信号：剥掉标签后和 text 一样 → 裸容器
+  if (stripped === normalizedText) return true;
+  // 有差异，且含语义标签 → 真正的富 HTML
+  if (/<(table|ol|ul|img|h[1-6]|blockquote|iframe)\b/i.test(html)) return false;
+  // 有差异但无语义标签 → 仍是裸容器（如加了无关属性/包装）
+  return true;
+}
+
 function renderPlatformCapture(data) {
   if (!responseContent) return;
 
@@ -771,7 +790,7 @@ function renderPlatformCapture(data) {
   root.className = "chatgpt-rendered-html";
   root.dataset.source = source;
 
-  if (html) {
+  if (html && !isBareHtmlContainer(html, text)) {
     root.innerHTML = html;
   } else if (text) {
     root.innerHTML = renderMarkdownText(text);
@@ -966,6 +985,7 @@ function handlePlatformCapture(platformId, data) {
 
   const ps = getPlatformState(platformId);
   const key = data.conversationId || DEFAULT_CONVERSATION_ID;
+  ps.activeConvId = key;
   const captureKey = `${platformId}::${key}`;
   lastCopyCaptureByConversation.set(captureKey, data);
 
