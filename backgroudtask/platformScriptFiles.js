@@ -69,5 +69,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "kimi") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/kimi.js",
+      "contentScripts/kimi.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/kimiResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
