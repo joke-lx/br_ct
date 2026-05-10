@@ -19,6 +19,16 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "claude") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/claude.js",
+      "contentScripts/claude.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/claudeResponseListener.js",
+    ];
+  }
+
   if (platform === "gemini") {
     return [
       "contentScripts/clipboardCapture/core.js",
