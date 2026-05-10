@@ -7,10 +7,11 @@
  * DOM 结构特征：
  * - Turn 容器: div.chat-round（含 data-chat 属性）
  * - 用户消息: .chat-question-wrap > .chat-question-card-wrap > .question-text-card
- *   toolbar: div.qs-bottom-icon (依次为编辑、复制、删除)
+ *   toolbar: div.qs-bottom-icon (依次为编辑、复制、删除)，复制是第 2 个
  * - AI 回复: .chat-answers-card-wrap > .answer-common-card
  *   markdown: .markdown-pc-special-class
- *   toolbar: div 级 hover:bg-tag 图标（好评/差评/复制/重新生成/更多）
+ *   toolbar: div 级 hover:bg-tag 图标（赞/踩/重新生成/更多）
+ *   ⚠️ AI 回复区域没有复制按钮！只有用户消息区域有复制按钮
  * - 复制按钮: div（非 button），内嵌 SVG，clipPath id="copy_svg__a"
  * - 所有工具图标无 aria-label，无 title，textContent 为空（纯 SVG）
  */
@@ -21,14 +22,16 @@
     name: 'tongyi',
     action: 'tongyiCopyCapture',
 
-    // 问题区域复制按钮是 div.qs-bottom-icon 的第 2 个
-    copyBtnPrimarySelector: 'div.qs-bottom-icon:nth-child(2)',
-    copyBtnSelectors: [
-      'div.qs-bottom-icon:nth-child(2)',
-      '[clipPath*="copy"]',
-      'svg clipPath[id*="copy"]',
-      '[class*="qs-bottom-icon"]',
-    ],
+    // AI 回复区域没有复制按钮，留空强制走 DOM fallback
+    copyBtnPrimarySelector: '',
+    copyBtnSelectors: [''],
+
+    // 将复制按钮搜索限定在 AI 回复区域，避免误点用户消息的复制按钮
+    getCopyBtnRoot: function(turnRoot) {
+      var answerArea = turnRoot.querySelector('.chat-answers-card-wrap');
+      if (answerArea) return answerArea;
+      return turnRoot;
+    },
 
     getContentRoot: function(turnRoot) {
       // 优先 AI 回复的 markdown 容器
