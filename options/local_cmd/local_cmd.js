@@ -19,7 +19,7 @@ function init() {
 async function refreshAll() {
   toast('正在刷新...', 'info');
   await checkNativeHost();
-  await loadGitStatus();
+  await loadGitStatus(true);
   await loadSkills();
   toast('刷新完成', 'success');
 }
@@ -66,7 +66,7 @@ function setupDelegation() {
       case 'git-push': gitPushDir(id); break;
       case 'git-add-commit-pull': gitAddCommitPush(id); break;
       case 'git-delete': if (needConfirm(btn)) return; deleteGitDir(id); break;
-      case 'git-batch-refresh': loadGitStatus(); break;
+      case 'git-batch-refresh': loadGitStatus(true); break;
       case 'git-batch-pull': batchPull(); break;
       case 'git-batch-push': if (needConfirm(btn)) return; batchPush(); break;
 

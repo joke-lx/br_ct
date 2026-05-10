@@ -112,6 +112,16 @@ func GitBatchPush(req protocol.Request) protocol.Response {
 	return protocol.Response{Status: "ok", Data: results}
 }
 
+// GitBatchFetch fetch 所有目录后返回最新 status
+func GitBatchFetch(req protocol.Request) protocol.Response {
+	var results []GitStatusInfo
+	for _, dir := range req.Dirs {
+		runGit(dir, "fetch")
+		results = append(results, gitStatusForDir(dir))
+	}
+	return protocol.Response{Status: "ok", Data: results}
+}
+
 // GitAutoCommitAndPush 执行 git add . && git commit -m "msg" && git push
 func GitAutoCommitAndPush(req protocol.Request) protocol.Response {
 	dir := req.Path
