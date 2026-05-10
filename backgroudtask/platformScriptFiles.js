@@ -119,5 +119,15 @@ export function getPlatformScriptFiles(platform) {
     ];
   }
 
+  if (platform === "coze") {
+    return [
+      "contentScripts/clipboardCapture/core.js",
+      "contentScripts/clipboardCapture/configs/coze.js",
+      "contentScripts/coze.js",
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/cozeResponseListener.js",
+    ];
+  }
+
   return [`contentScripts/${platform}.js`];
 }
