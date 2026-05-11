@@ -18,9 +18,9 @@
     hostnames: ['yuanbao.tencent.com'],
 
     // 元宝回复内容在 .hyc-content-md 或 .agent-chat__bubble__content 中
+    // ⚠️ 不包含 .hyc-content-text（用户消息容器），避免误触发 autoCapture
     responseSelectors: [
       '.hyc-content-md',
-      '.hyc-content-text',
       '.agent-chat__bubble__content',
     ],
 

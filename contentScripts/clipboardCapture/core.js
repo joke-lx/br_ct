@@ -12,7 +12,7 @@
 (function() {
   if (window.ClipboardCapture) return;
 
-  const DEFAULT_WINDOW_MS = 2500;
+  const DEFAULT_WINDOW_MS = 6000;
 
   function createClipboardCapture(config) {
     // ---------- state ----------
@@ -195,7 +195,7 @@
 
     // ==================== auto capture ====================
 
-    var RETRY_INTERVALS = [100, 300, 700, 1500];
+    var RETRY_INTERVALS = [100, 300, 700, 1500, 3000];
 
     function tryCopyBtn(turnRoot, btnSelector, retryIndex) {
       var btn = findCopyBtn(turnRoot);
