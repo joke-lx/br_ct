@@ -75,7 +75,7 @@
 
     // ============= 可选 =============
     skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
-    contextWindowMs: 2500,
+    contextWindowMs: 6000,
     debug: true,
   };
 })();

@@ -24,6 +24,7 @@
       getConversationId,
       getMessageId,
       isGenerating,
+      settleTimeMs = 0,
     } = config;
 
     // ==================== 状态管理 ====================
@@ -31,6 +32,7 @@
     let observer = null;
     let initialCheckTimeout = null;
     let pendingUpdateTimeout = null;
+    let settleCaptureTimer = null;
     let isMonitoring = false;
     const conversationStateById = new Map();
 
@@ -195,11 +197,19 @@
       sendResponseToSidebar(content, stableMessageId, !generating, conversationId);
 
       if (!generating) {
-        var capture = tryGetCapture();
-        if (capture) {
-          var turnRoot = findTurnRootFromContainer(container);
-          if (turnRoot) capture.autoCapture(turnRoot);
+        if (settleTimeMs > 0) {
+          // 流式平台：等待内容稳定后再触发捕获，避免捕获到不完整内容
+          scheduleSettledCapture(container);
+        } else {
+          var capture = tryGetCapture();
+          if (capture) {
+            var turnRoot = findTurnRootFromContainer(container);
+            if (turnRoot) capture.autoCapture(turnRoot);
+          }
         }
+      } else {
+        // 生成中：清除之前的 settle timer，内容变化时重新计时
+        clearSettleTimer();
       }
 
       state.lastUpdateTime = now;
@@ -234,6 +244,26 @@
       if (!cfg || !window.ClipboardCapture) return null;
       _captureInstance = window.ClipboardCapture.create(cfg);
       return _captureInstance;
+    }
+
+    // ==================== 内容稳定后捕获 ====================
+
+    function clearSettleTimer() {
+      if (settleCaptureTimer !== null) {
+        clearTimeout(settleCaptureTimer);
+        settleCaptureTimer = null;
+      }
+    }
+
+    function scheduleSettledCapture(container) {
+      clearSettleTimer();
+      settleCaptureTimer = setTimeout(function() {
+        settleCaptureTimer = null;
+        var capture = tryGetCapture();
+        if (!capture) return;
+        var turnRoot = findTurnRootFromContainer(container);
+        if (turnRoot) capture.autoCapture(turnRoot);
+      }, settleTimeMs);
     }
 
     // ==================== MutationObserver ====================
@@ -296,6 +326,7 @@
         window.clearTimeout(pendingUpdateTimeout);
         pendingUpdateTimeout = null;
       }
+      clearSettleTimer();
       if (observer) {
         observer.disconnect();
         observer = null;

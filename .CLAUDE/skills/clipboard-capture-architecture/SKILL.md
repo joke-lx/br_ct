@@ -311,6 +311,28 @@ function autoCapture(turnRoot) {
 
 ---
 
+## 扩展配置项
+
+### `skipDomFallback` — 跳过 DOM 兜底
+
+Angular 虚拟滚动平台（如 Google AI Studio）的 AI 回复内容不在 DOM 中，DOM fallback 只会捕获到 Angular placeholder（`<!---->`）或不完整的流式输出片段。
+
+```js
+skipDomFallback: true, // 跳过 DOM 兜底，只依赖 clipboard/execCommand hook
+```
+
+### `settleTimeMs` — 流式输出稳定等待
+
+流式平台在生成过程中内容不断变化，`isGenerating` 可能不准确（如 AI Studio 无 Stop 按钮）。`settleTimeMs` 让 autoCapture 等内容稳定后再触发，内容变化时自动重置计时。
+
+```js
+settleTimeMs: 1500, // ms，内容无变化后延迟多久触发捕获
+```
+
+在 responseListenerCore 中实现：每次 `handleResponseUpdate` 检测到内容变化但尚在生成 → 重置 timer；内容稳定超时 → 执行 `capture.autoCapture`。
+
+
+
 ## 平台复制按钮 DOM 结构分类
 
 ### A 类：标准 `<button>` 元素（最友好）
@@ -384,6 +406,7 @@ function autoCapture(turnRoot) {
 | DeepSeek | `<div class="ds-icon-button">` | `firstElementChild` 停在 `<div>` | clipboard.write（路径 A） | — |
 | 元宝 | `<div class="...copy-wrapper">` > `<span>` | `firstElementChild` 遍历到 `<span>` | clipboard.write（路径 A） | 修复：避免用 `lastElementChild` 拿到下拉箭头 |
 | 智谱（GLM） | `<div class="copy">` > `<i>` > `<svg>` | SVG 跳过策略停在 `<i>` | **execCommand hook（路径 C）** + DOM fallback | GLM 用 `document.execCommand('copy')`，dispatchEvent 无 TA，需路径 C 拦截 |
+| **Google AI Studio** | **无直接复制按钮** → `button[aria-label="Open options"]`（more_vert）→ 下拉菜单 "Copy as text" | **两步流程**：`__ccSimulateCopy(more_vert)` → 等 500ms → `__ccSimulateCopy("Copy as text")` | **execCommand hook（路径 C）** — 纯文本无 HTML | Angular 虚拟滚动，内容不在 DOM 中，需 `skipDomFallback: true` + `settleTimeMs: 1500` |
 
 ---
 
@@ -400,6 +423,9 @@ function autoCapture(turnRoot) {
 | simulateCopy 触发 DOM 变化 → MutationObserver → autoCapture 循环 | copy 按钮点击后页面 UI 变化（tooltip、"已复制"状态）触发 observer，observer 回调又调 autoCapture，形成死循环 | autoCapture 内加**基于 messageId 的去重锁**：同一个 turn 只执行一次捕获流程，5 秒超时后释放 |
 | 认为 copy 事件 capture handler 能拦截 execCommand 模拟点击 | **dispatchEvent 没有 transient activation** → execCommand 静默失败 → copy 事件不触发 | 对于 execCommand 平台，使用路径 C 的 `document.execCommand` 方法级替换 |
 | 用路径 A 试图拦截 GLM 的复制 | GLM 不使用 `navigator.clipboard.write()`，使用 `execCommand('copy')` | 路径 C 的 execCommand hook + DOM fallback |
+| 在 Angular 虚拟滚动平台使用 DOM fallback 捕获流式内容 | DOM fallback 执行时 AI 尚未生成完，只捕获到首个 token（如"由于"） | 走 execCommand hook 或设置 `skipDomFallback: true`，并在 response listener 添加 `settleTimeMs` |
+| 在 AI Studio 点击 more_vert 后不点 Copy as text | more_vert 只打开菜单，不触发复制 | 两步流程：先点 more_vert，等 menu 渲染后点 "Copy as text"（mainWorldHook 内实现） |
+| 平台 isGenerating 不准确时 autoCapture 过早触发 | isGenerating 返回 false 但 AI 仍在生成，autoCapture 获取到不完整内容 | responseListenerCore 新增 `settleTimeMs` 配置：内容稳定后再触发，流式输出时自动重置计时 |
 
 ## 调试检查清单
 

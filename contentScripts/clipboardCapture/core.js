@@ -268,13 +268,17 @@
         tryCopyBtn(turnRoot, btnSelector, 0);
       }
 
-      // DOM 兜底
-      var html = deriveHtmlFallback(turnRoot);
-      var text = deriveTextFallback(turnRoot);
-      if (html) {
-        _capture({ html: html, text: text || null, source: 'dom.auto' });
+      // DOM 兜底（Angular 虚拟滚动平台内容不在 DOM 中，通过 skipDomFallback 跳过）
+      if (!config.skipDomFallback) {
+        var html = deriveHtmlFallback(turnRoot);
+        var text = deriveTextFallback(turnRoot);
+        if (html) {
+          _capture({ html: html, text: text || null, source: 'dom.auto' });
+        } else {
+          log('autoCopy.skip', { reason: 'dom html fallback missing' });
+        }
       } else {
-        log('autoCopy.skip', { reason: 'dom html fallback missing' });
+        log('autoCopy.skip', { reason: 'skipDomFallback enabled' });
       }
 
       // 不立即清除 lastContext，让 contextWindowMs 超时机制自动清理，

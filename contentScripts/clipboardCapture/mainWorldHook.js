@@ -163,7 +163,28 @@
 
       // 兜底1：原始作用域选择器（找一次）
       var btn = document.querySelector(selector);
-      if (btn) { console.log('[CC-Hook] btn found via direct selector'); window.__ccSimulateCopy(btn); return; }
+      if (btn) {
+        // AI Studio 特殊处理：more_vert 只打开菜单，需第二步点击 Copy as text 触发 execCommand
+        if (window.location.hostname.indexOf('aistudio.google.com') !== -1) {
+          console.log('[CC-Hook] AI Studio two-step: clicking more_vert');
+          window.__ccSimulateCopy(btn);
+          setTimeout(function() {
+            var menuItems = document.querySelectorAll('button.mat-mdc-menu-item');
+            for (var i = 0; i < menuItems.length; i++) {
+              if (menuItems[i].textContent.indexOf('Copy as text') >= 0) {
+                console.log('[CC-Hook] AI Studio two-step: clicking Copy as text');
+                window.__ccSimulateCopy(menuItems[i]);
+                break;
+              }
+            }
+          }, 500);
+          console.log('[CC-Hook] btn found via direct selector');
+          return;
+        }
+        console.log('[CC-Hook] btn found via direct selector');
+        window.__ccSimulateCopy(btn);
+        return;
+      }
 
       // 兜底2：去掉 data-testid 作用域，全局取最后一个匹配按钮
       // 适用场景：Gemini、豆包等平台的复制按钮在 turn 容器外部
