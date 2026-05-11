@@ -46,6 +46,9 @@
             div.appendChild(range.cloneContents());
             html = div.innerHTML || null;
           } catch(ex) {}
+          // textarea 等替换元素的 cloneContents() 不产生 HTML，
+          // 用 text 作为 html 兜底，确保侧边栏能渲染内容
+          if (!html && text) html = text;
         }
       }
 

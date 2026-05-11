@@ -1086,12 +1086,15 @@ function renderCapturedHtmlToSidebar(data) {
 function renderMarkdownText(markdown) {
   const text = String(markdown || "");
 
+  // 将 tab 分隔的表格数据转换为 pipe 分隔的 markdown 表格
+  const md = convertTableTabsToPipes(text);
+
   if (window.marked?.parse) {
     const renderer = new window.marked.Renderer();
     renderer.html = () => "";
 
     try {
-      return window.marked.parse(text, {
+      return window.marked.parse(md, {
         gfm: true,
         breaks: true,
         renderer,
@@ -1103,7 +1106,39 @@ function renderMarkdownText(markdown) {
     }
   }
 
-  return escapeHtml(text).replace(/\n/g, "<br>");
+  return escapeHtml(md).replace(/\n/g, "<br>");
+}
+
+/**
+ * 检测文本是否包含 tab 分隔的表格数据，如果是则转换为 pipe 分隔的 markdown 表格。
+ * 浏览器对 HTML 表格执行 sel.toString() 时，列之间用 tab 分隔，行之间用换行分隔。
+ * marked 不识别 tab 分隔的表格，需要转为管道格式。
+ */
+function convertTableTabsToPipes(text) {
+  if (!text || text.indexOf("\t") === -1) return text;
+
+  var lines = text.split("\n").filter(function(l) { return l.trim(); });
+  if (lines.length < 2) return text;
+
+  // 检查每行是否有相同数量的 tab 分隔列
+  var tabCounts = lines.map(function(l) {
+    return l.split("\t").length;
+  });
+  var firstCount = tabCounts[0];
+  if (firstCount < 2) return text;
+  var consistent = tabCounts.every(function(c) { return c === firstCount; });
+  if (!consistent) return text;
+
+  // 转换为 pipe 表格：每行用 | 包裹
+  var pipeLines = lines.map(function(l) {
+    return "| " + l.split("\t").map(function(c) { return c.trim(); }).join(" | ") + " |";
+  });
+
+  // 插入分隔行（在表头后）
+  var separator = "| " + Array(firstCount).fill("---").join(" | ") + " |";
+  pipeLines.splice(1, 0, separator);
+
+  return pipeLines.join("\n");
 }
 
 function escapeHtml(input) {

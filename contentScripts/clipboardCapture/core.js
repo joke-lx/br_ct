@@ -193,6 +193,32 @@
     }
 
     // ==================== auto capture ====================
+
+    var RETRY_INTERVALS = [100, 300, 700, 1500];
+
+    function tryCopyBtn(turnRoot, btnSelector, retryIndex) {
+      var btn = findCopyBtn(turnRoot);
+      if (btn) {
+        log('autoCopy.triggerSent', { hasBtn: true, selector: btnSelector, retry: retryIndex + 1 });
+        window.postMessage({
+          source: 'cc-capture-hook',
+          type: 'trigger-copy',
+          selector: btnSelector
+        }, '*');
+        return true;
+      }
+      if (retryIndex < RETRY_INTERVALS.length) {
+        var delay = RETRY_INTERVALS[retryIndex];
+        log('autoCopy.retry', { retry: retryIndex + 1, delay: delay });
+        setTimeout(function() {
+          tryCopyBtn(turnRoot, btnSelector, retryIndex + 1);
+        }, delay);
+      } else {
+        log('autoCopy.retry.giveUp', { retries: RETRY_INTERVALS.length });
+      }
+      return false;
+    }
+
     function autoCapture(turnRoot) {
       openContext(turnRoot, null);
 
@@ -205,14 +231,15 @@
 
       var btn = findCopyBtn(turnRoot);
       if (btn) {
-        log('autoCopy.triggerSent', { hasBtn: true, selector: btnSelector });
+        log('autoCopy.triggerSent', { hasBtn: true, selector: btnSelector, retry: 0 });
         window.postMessage({
           source: 'cc-capture-hook',
           type: 'trigger-copy',
           selector: btnSelector
         }, '*');
       } else {
-        log('autoCopy.triggerSent', { hasBtn: false });
+        log('autoCopy.triggerSent', { hasBtn: false, retry: 0 });
+        tryCopyBtn(turnRoot, btnSelector, 0);
       }
 
       // DOM 兜底
