@@ -172,8 +172,15 @@
       var root = getSearchRoot(turnRoot);
       var selectors = config.copyBtnSelectors;
       for (var i = 0; i < selectors.length; i++) {
-        var btn = root.querySelector(selectors[i]);
-        if (btn) return btn;
+        if (config.copyBtnFindLast) {
+          // Notion AI 等平台在同一个 turn 容器内有多个相同 aria-label 的复制按钮，
+          // querySelector 总是返回第一个（最早的消息），取最后一个匹配最新消息。
+          var all = root.querySelectorAll(selectors[i]);
+          if (all.length > 0) return all[all.length - 1];
+        } else {
+          var btn = root.querySelector(selectors[i]);
+          if (btn) return btn;
+        }
       }
       return null;
     }
@@ -197,15 +204,62 @@
 
     var RETRY_INTERVALS = [100, 300, 700, 1500, 3000];
 
+    // 直接从 content script 世界 dispatch click，不再依赖主世界脚本重新查找元素。
+    // React 事件委托会在 document root 捕获冒泡事件，页面 handler 调用 clipboard.write，
+    // 主世界 hook 拦截并 postMessage 回传数据。
+    // 避免因 React 重渲染导致 DOM 节点被替换，标记失效的问题。
+    function triggerDirectCopy(btn) {
+      if (!(btn instanceof Element)) return;
+      log('triggerDirectCopy', { tag: btn.tagName, label: btn.getAttribute('aria-label') });
+
+      var target = btn;
+      var child = target;
+      while (child.firstElementChild) {
+        var next = child.firstElementChild;
+        if (next.tagName && next.tagName.toLowerCase() === 'svg') break;
+        child = next;
+      }
+      target = child;
+      if (target === btn) {
+        var leaf = btn.querySelector('span, i, svg, img, button, a, [class*="icon"], [onclick]');
+        if (leaf) target = leaf;
+      }
+
+      target.focus();
+      var rect = target.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        target = btn;
+        rect = btn.getBoundingClientRect();
+        target.focus();
+      }
+
+      var x = rect.left + rect.width / 2;
+      var y = rect.top + rect.height / 2;
+      target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+      target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+      target.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+      target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+      target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }));
+    }
+
+    // fallback：通过 postMessage 通知主世界脚本查找并点击按钮
+    // 适用于 click dispatch 被 isTrusted 检查拦截的平台
+    function triggerMarkerCopy(btn) {
+      var markerId = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      btn.setAttribute('data-cc-marker', markerId);
+      window.postMessage({
+        source: 'cc-capture-hook',
+        type: 'trigger-copy',
+        selector: '[data-cc-marker="' + markerId + '"]',
+        markerId: markerId
+      }, '*');
+    }
+
     function tryCopyBtn(turnRoot, btnSelector, retryIndex) {
       var btn = findCopyBtn(turnRoot);
       if (btn) {
         log('autoCopy.triggerSent', { hasBtn: true, selector: btnSelector, retry: retryIndex + 1 });
-        window.postMessage({
-          source: 'cc-capture-hook',
-          type: 'trigger-copy',
-          selector: btnSelector
-        }, '*');
+        triggerDirectCopy(btn);
         return true;
       }
       if (retryIndex < RETRY_INTERVALS.length) {
@@ -253,16 +307,19 @@
         turnTestId = dedupId && typeof dedupId === 'string' ? dedupId : ('cc-turn-' + Date.now());
         turnEl.setAttribute('data-testid', turnTestId);
       }
-      var btnSelector = '[data-testid="' + turnTestId + '"] ' + config.copyBtnPrimarySelector;
+      // 对每个逗号分隔的选择器部分分别添加 turn 作用域限定
+      // 避免 [aria-label="A"],[aria-label="B"] → 只有前半段有 scope
+      var rawParts = config.copyBtnPrimarySelector.split(',');
+      var scopedParts = [];
+      for (var si = 0; si < rawParts.length; si++) {
+        scopedParts.push('[data-testid="' + turnTestId + '"] ' + rawParts[si].trim());
+      }
+      var btnSelector = scopedParts.join(',');
 
       var btn = findCopyBtn(turnRoot);
       if (btn) {
-        log('autoCopy.triggerSent', { hasBtn: true, selector: btnSelector, retry: 0 });
-        window.postMessage({
-          source: 'cc-capture-hook',
-          type: 'trigger-copy',
-          selector: btnSelector
-        }, '*');
+        log('autoCopy.triggerSent', { hasBtn: true, retry: 0 });
+        triggerDirectCopy(btn);
       } else {
         log('autoCopy.triggerSent', { hasBtn: false, retry: 0 });
         tryCopyBtn(turnRoot, btnSelector, 0);

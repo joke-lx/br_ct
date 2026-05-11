@@ -138,11 +138,32 @@
     return true;
   };
 
+  // Helper: clean up marker attribute for a markerId
+  function cleanMarker(markerId) {
+    if (!markerId) return;
+    var m = document.querySelector('[data-cc-marker="' + markerId + '"]');
+    if (m) m.removeAttribute('data-cc-marker');
+  }
+
   // Listen for trigger-copy from content script
   window.addEventListener('message', function(e) {
     if (e.data && e.data.source === 'cc-capture-hook' && e.data.type === 'trigger-copy') {
       console.log('[CC-Hook] received trigger-copy', e.data.selector);
       var selector = e.data.selector || 'button[data-testid="copy-turn-action-button"]';
+      var markerId = e.data.markerId;
+
+      // 路径 A：基于 data-cc-marker 标记的精确定位（content script 在找到的元素上设标记）
+      // 避免 CSS 选择器跨域失效的问题（不同 world 的 data-testid 可能不一致）
+      if (markerId) {
+        var markerEl = document.querySelector('[data-cc-marker="' + markerId + '"]');
+        if (markerEl) {
+          console.log('[CC-Hook] btn found via marker');
+          window.__ccSimulateCopy(markerEl);
+          markerEl.removeAttribute('data-cc-marker');
+          return;
+        }
+        // 标记已被清理，继续兜底
+      }
 
       // 从选择器中提取 data-testid 作用域，精确定位到对应 turn 的操作栏第一个 button
       var testidMatch = selector.match(/\[data-testid="([^"]+)"\]/);
@@ -155,13 +176,14 @@
             if (btns.length > 0) {
               console.log('[CC-Hook] btn found via turn scoping');
               window.__ccSimulateCopy(btns[0]);
+              cleanMarker(markerId);
               return;
             }
           }
         }
       }
 
-      // 兜底1：原始作用域选择器（找一次）
+      // 兜底1：原始选择器（找一次）
       var btn = document.querySelector(selector);
       if (btn) {
         // AI Studio 特殊处理：more_vert 只打开菜单，需第二步点击 Copy as text 触发 execCommand
@@ -178,24 +200,30 @@
               }
             }
           }, 500);
-          console.log('[CC-Hook] btn found via direct selector');
+          cleanMarker(markerId);
           return;
         }
         console.log('[CC-Hook] btn found via direct selector');
         window.__ccSimulateCopy(btn);
+        cleanMarker(markerId);
         return;
       }
 
       // 兜底2：去掉 data-testid 作用域，全局取最后一个匹配按钮
-      // 适用场景：Gemini、豆包等平台的复制按钮在 turn 容器外部
       var unscopedMatch = selector.replace(/\[data-testid="[^"]+"\]\s*/, '');
       if (unscopedMatch !== selector) {
         var all = document.querySelectorAll(unscopedMatch);
         var lastBtn = all[all.length - 1] || null;
-        if (lastBtn) { console.log('[CC-Hook] btn found via unscoped fallback'); window.__ccSimulateCopy(lastBtn); return; }
+        if (lastBtn) {
+          console.log('[CC-Hook] btn found via unscoped fallback');
+          window.__ccSimulateCopy(lastBtn);
+          cleanMarker(markerId);
+          return;
+        }
       }
 
       console.log('[CC-Hook] btn NOT found');
+      cleanMarker(markerId);
     }
   });
 })();
