@@ -244,12 +244,16 @@
 
       openContext(turnRoot, null);
 
-      // 限定在当前 turn 内查找复制按钮
+      // 确保 turn 有 data-testid 用于按钮选择器作用域限定
+      // 某些平台（如豆包）的 turn 容器没有原生 data-testid，导致 btnSelector 无作用域，
+      // mainWorldHook 的 document.querySelector() 取到第一个匹配（上一个 turn）而非当前 turn
       var turnEl = (turnRoot.closest && turnRoot.closest('[data-testid^="conversation-turn-"]')) || turnRoot;
       var turnTestId = turnEl.getAttribute('data-testid');
-      var btnSelector = turnTestId
-        ? '[data-testid="' + turnTestId + '"] ' + config.copyBtnPrimarySelector
-        : config.copyBtnPrimarySelector;
+      if (!turnTestId) {
+        turnTestId = dedupId && typeof dedupId === 'string' ? dedupId : ('cc-turn-' + Date.now());
+        turnEl.setAttribute('data-testid', turnTestId);
+      }
+      var btnSelector = '[data-testid="' + turnTestId + '"] ' + config.copyBtnPrimarySelector;
 
       var btn = findCopyBtn(turnRoot);
       if (btn) {
