@@ -2,105 +2,107 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>AI Assistant - 多端AI调度工具</title>
-    <!-- 引入外部CSS文件 -->
+    <title>AI Assistant - 多端 AI 调度工具</title>
     <link rel="stylesheet" href="../../popup/main/prompts/promptsUI.css" />
     <link rel="stylesheet" href="sidebar.css" />
   </head>
   <body>
-    <!-- 标题容器 -->
-    <div class="header">
-      <h1>AI Assistant</h1>
-    </div>
-
-    <!-- 平台选择区 -->
-    <div class="platform-selector">
-      <div class="platform-selector-header">
-        <h3>选择平台</h3>
-        <div class="header-buttons">
-          <div class="select-all" id="select-all">全选</div>
-          <div class="close-tabs" id="close-tabs-button">关闭</div>
-        </div>
+    <div class="app-shell">
+      <div class="header">
+        <h1>AI Assistant</h1>
       </div>
 
-      <div class="platform-options-row" id="platform-options-row">
-        <!-- 平台选项将由 JS 从 platformConfig.js 动态生成 -->
+      <div class="view-switcher" id="view-switcher">
+        <button class="view-tab active" id="tab-compose" data-view="compose" type="button">
+          发送
+        </button>
+        <button class="view-tab" id="tab-reply" data-view="reply" type="button">
+          回复
+        </button>
+      </div>
+
+      <div class="main-pages">
+        <section class="page page-compose active" id="page-compose">
+          <div class="platform-selector">
+            <div class="platform-selector-header">
+              <h3>选择平台</h3>
+              <div class="header-buttons">
+                <div class="select-all" id="select-all">全选</div>
+                <div class="close-tabs" id="close-tabs-button">关闭</div>
+              </div>
+            </div>
+
+            <div class="platform-options-row" id="platform-options-row">
+              <!-- 平台选项将由 JS 动态生成 -->
+            </div>
+          </div>
+
+          <select id="history-select" class="history-select">
+            <option value="">选择历史消息</option>
+          </select>
+
+          <div class="prompt-optimizer-selector">
+            <div class="custom-select" id="prompt-optimizer-select">
+              <div class="selected-value">不使用优化</div>
+              <div class="custom-select-options"></div>
+            </div>
+          </div>
+
+          <textarea
+            class="message-input"
+            id="message-input"
+            placeholder="输入要发送的消息，或拖放文件 / 文件夹到此处"
+          ></textarea>
+
+          <div class="button-group">
+            <button class="send-button" id="send-button">发送消息</button>
+          </div>
+
+          <div class="button-group">
+            <button class="extract-text-button" id="extract-text-button">提取页面文本</button>
+          </div>
+
+          <div class="extract-result" id="extract-result" style="display: none;">
+            <div class="extract-result-header">
+              <span class="extract-title" id="extract-title"></span>
+              <button class="close-result" id="close-result" type="button">×</button>
+            </div>
+            <div class="extract-url" id="extract-url"></div>
+            <pre class="extract-content" id="extract-content"></pre>
+          </div>
+        </section>
+
+        <section class="page page-reply" id="page-reply">
+          <div class="response-container" id="response-container">
+            <div class="response-header">
+              <div class="nav-group">
+                <button class="nav-btn" id="nav-prev" type="button">◀</button>
+                <span class="response-title" id="response-title">回复</span>
+                <button class="nav-btn" id="nav-next" type="button">▶</button>
+              </div>
+              <div class="response-controls">
+                <button class="response-toggle" id="response-toggle" type="button" title="折叠/展开">−</button>
+                <button class="response-copy" id="response-copy" type="button" title="复制">复制</button>
+                <button class="response-close" id="response-close" type="button" title="清空">×</button>
+              </div>
+            </div>
+            <div class="response-status" id="response-status">
+              <span class="status-indicator"></span>
+              <span class="status-text">等待回复...</span>
+            </div>
+            <div class="response-capture" id="response-capture" style="display: none;">
+              <span class="response-capture-label">复制捕获预览</span>
+              <span class="response-capture-value" id="response-capture-value">尚未捕获</span>
+            </div>
+            <div class="response-content" id="response-content">
+              <div class="response-placeholder">暂无回复内容</div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
 
-    <!-- 历史消息选择框 -->
-    <select id="history-select" class="history-select">
-      <option value="">选择历史消息</option>
-    </select>
-
-    <!-- 提示词优化选择框 -->
-    <div class="prompt-optimizer-selector">
-      <div class="custom-select" id="prompt-optimizer-select">
-        <div class="selected-value">不使用优化</div>
-        <div class="custom-select-options">
-          <!-- 由JS动态填充选项 -->
-        </div>
-      </div>
-    </div>
-
-    <!-- 消息输入框 -->
-    <textarea
-      class="message-input"
-      id="message-input"
-      placeholder="输入要发送的消息或拖放文件/文件夹到此处"
-    ></textarea>
-
- 
-
-    <!-- 发送按钮 -->
-    <div class="button-group">
-      <button class="send-button" id="send-button">发送消息</button>
-    </div>
-   <!-- 页面文本提取按钮 -->
-    <div class="button-group">
-      <button class="extract-text-button" id="extract-text-button">📄 提取页面文本</button>
-    </div>
-
-    <!-- 提取结果展示区 -->
-    <div class="extract-result" id="extract-result" style="display: none;">
-      <div class="extract-result-header">
-        <span class="extract-title" id="extract-title"></span>
-        <button class="close-result" id="close-result">×</button>
-      </div>
-      <div class="extract-url" id="extract-url"></div>
-      <pre class="extract-content" id="extract-content"></pre>
-    </div>
-  <!-- 平台回复展示区 -->
-  <div class="response-container" id="response-container" style="display: none;">
-    <div class="response-header">
-      <div class="nav-group">
-        <button class="nav-btn" id="nav-prev">◀</button>
-        <span class="response-title" id="response-title">回复</span>
-        <button class="nav-btn" id="nav-next">▶</button>
-      </div>
-      <div class="response-controls">
-        <button class="response-toggle" id="response-toggle" title="折叠/展开">−</button>
-        <button class="response-copy" id="response-copy" title="复制">📋</button>
-        <button class="response-close" id="response-close" title="关闭">×</button>
-      </div>
-    </div>
-    <div class="response-status" id="response-status">
-      <span class="status-indicator"></span>
-      <span class="status-text">等待回复...</span>
-    </div>
-    <div class="response-capture" id="response-capture" style="display: none;">
-      <span class="response-capture-label">复制捕获预览</span>
-      <span class="response-capture-value" id="response-capture-value">尚未捕获</span>
-    </div>
-    <div class="response-content" id="response-content">
-      <div class="response-placeholder">暂无回复内容</div>
-    </div>
-  </div>
-
-  <!-- Markdown renderer (global marked) -->
-  <script src="../../runjs/translation/lib/marked.min.js"></script>
-
-  <!-- 脚本引用 -->
-  <script src="main.js" type="module"></script>
+    <script src="../../runjs/translation/lib/marked.min.js"></script>
+    <script src="main.js" type="module"></script>
   </body>
 </html>
