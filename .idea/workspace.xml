@@ -4,18 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1f797681-6e21-42bc-94cd-d5f4827fa43b" name="更改" comment="微调">
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/_2025_12_24_12_00____.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/___2.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/在变基之前未提交的更改_[更改]2/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/在进行合并之前于_2025_12_24_12_00_取消提交了更改_[更改]/shelved.patch" beforeDir="false" />
+    <list default="true" id="1f797681-6e21-42bc-94cd-d5f4827fa43b" name="更改" comment="更新一下skill~">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backgroudtask/ai_platform_processor.js" beforeDir="false" afterPath="$PROJECT_DIR$/backgroudtask/ai_platform_processor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/popup/main/prompts/groups/xxxx_trans.js" beforeDir="false" afterPath="$PROJECT_DIR$/popup/main/prompts/groups/xxxx_trans.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sidebar/main/main.html" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/main.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sidebar/main/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/main.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sidebar/main/mainUtils.js" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/mainUtils.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sidebar/main/sidebar.css" beforeDir="false" afterPath="$PROJECT_DIR$/sidebar/main/sidebar.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -29,6 +19,7 @@
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
@@ -103,6 +94,10 @@
       <workItem from="1778063473438" duration="1101000" />
       <workItem from="1778066716856" duration="5135000" />
       <workItem from="1778073630457" duration="398000" />
+      <workItem from="1778305076788" duration="12680000" />
+      <workItem from="1778325024027" duration="921000" />
+      <workItem from="1778394006690" duration="25536000" />
+      <workItem from="1778483318368" duration="4957000" />
     </task>
     <task id="LOCAL-00001" summary="微调样式">
       <option name="closed" value="true" />
@@ -168,7 +163,151 @@
       <option name="project" value="LOCAL" />
       <updated>1776529036357</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="双实例轮播">
+      <option name="closed" value="true" />
+      <created>1778313803564</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1778313803564</updated>
+    </task>
+    <task id="LOCAL-00010" summary="单例+dom快照">
+      <option name="closed" value="true" />
+      <created>1778315329755</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1778315329755</updated>
+    </task>
+    <task id="LOCAL-00011" summary="111">
+      <option name="closed" value="true" />
+      <created>1778318976057</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1778318976057</updated>
+    </task>
+    <task id="LOCAL-00012" summary="0.01">
+      <option name="closed" value="true" />
+      <created>1778321333798</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1778321333798</updated>
+    </task>
+    <task id="LOCAL-00013" summary="0.01">
+      <option name="closed" value="true" />
+      <created>1778321340536</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1778321340536</updated>
+    </task>
+    <task id="LOCAL-00014" summary="0.5">
+      <option name="closed" value="true" />
+      <created>1778322063406</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1778322063406</updated>
+    </task>
+    <task id="LOCAL-00015" summary="0.7">
+      <option name="closed" value="true" />
+      <created>1778323256575</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1778323256575</updated>
+    </task>
+    <task id="LOCAL-00016" summary="0.8">
+      <option name="closed" value="true" />
+      <created>1778397989294</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1778397989294</updated>
+    </task>
+    <task id="LOCAL-00017" summary="豆包按钮定位">
+      <option name="closed" value="true" />
+      <created>1778403321485</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1778403321485</updated>
+    </task>
+    <task id="LOCAL-00018" summary="gemini">
+      <option name="closed" value="true" />
+      <created>1778405580937</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1778405580937</updated>
+    </task>
+    <task id="LOCAL-00019" summary="gemini">
+      <option name="closed" value="true" />
+      <created>1778405587015</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1778405587015</updated>
+    </task>
+    <task id="LOCAL-00020" summary="0.8">
+      <option name="closed" value="true" />
+      <created>1778425144327</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1778425144327</updated>
+    </task>
+    <task id="LOCAL-00021" summary="gemini、gpt、claude、grok、ds、元宝">
+      <option name="closed" value="true" />
+      <created>1778430072891</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1778430072891</updated>
+    </task>
+    <task id="LOCAL-00022" summary="轮询复制">
+      <option name="closed" value="true" />
+      <created>1778485252639</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1778485252639</updated>
+    </task>
+    <task id="LOCAL-00023" summary="轮询复制">
+      <option name="closed" value="true" />
+      <created>1778485258711</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1778485258711</updated>
+    </task>
+    <task id="LOCAL-00024" summary="轮询复制">
+      <option name="closed" value="true" />
+      <created>1778485847032</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1778485847032</updated>
+    </task>
+    <task id="LOCAL-00025" summary="plan C">
+      <option name="closed" value="true" />
+      <created>1778488707097</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1778488707097</updated>
+    </task>
+    <task id="LOCAL-00026" summary="更新一下skill~">
+      <option name="closed" value="true" />
+      <created>1778488718981</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1778488718981</updated>
+    </task>
+    <option name="localTasksCounter" value="27" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -202,6 +341,19 @@
     <MESSAGE value="修改下拉列表" />
     <MESSAGE value="1.优化跳转逻辑" />
     <MESSAGE value="微调" />
-    <option name="LAST_COMMIT_MESSAGE" value="微调" />
+    <MESSAGE value="双实例轮播" />
+    <MESSAGE value="单例+dom快照" />
+    <MESSAGE value="111" />
+    <MESSAGE value="0.01" />
+    <MESSAGE value="0.5" />
+    <MESSAGE value="0.7" />
+    <MESSAGE value="豆包按钮定位" />
+    <MESSAGE value="gemini" />
+    <MESSAGE value="0.8" />
+    <MESSAGE value="gemini、gpt、claude、grok、ds、元宝" />
+    <MESSAGE value="轮询复制" />
+    <MESSAGE value="plan C" />
+    <MESSAGE value="更新一下skill~" />
+    <option name="LAST_COMMIT_MESSAGE" value="更新一下skill~" />
   </component>
 </project>

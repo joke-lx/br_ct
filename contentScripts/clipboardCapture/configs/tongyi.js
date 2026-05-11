@@ -2,18 +2,28 @@
  * 通义 (Tongyi/Qwen) 剪贴板捕获配置
  * 通过 chrome.scripting.executeScript 注入，不使用 ES module。
  *
- * 已验证：2026-05-10，已登录状态可正常使用对话。
+ * 已验证：2026-05-11，CDP 验证 DOM 结构 + clipboard API
  *
- * DOM 结构特征：
+ * DOM 结构特征（历史对话页面）：
+ * - URL 模式: /chat/{conversationId}
  * - Turn 容器: div.chat-round（含 data-chat 属性）
  * - 用户消息: .chat-question-wrap > .chat-question-card-wrap > .question-text-card
  *   toolbar: div.qs-bottom-icon (依次为编辑、复制、删除)，复制是第 2 个
  * - AI 回复: .chat-answers-card-wrap > .answer-common-card
- *   markdown: .markdown-pc-special-class
- *   toolbar: div 级 hover:bg-tag 图标（赞/踩/重新生成/更多）
- *   ⚠️ AI 回复区域没有复制按钮！只有用户消息区域有复制按钮
- * - 复制按钮: div（非 button），内嵌 SVG，clipPath id="copy_svg__a"
+ *   markdown: .markdown-pc-special-class > .qk-markdown
+ *   toolbar: div.flex.items-center.gap-2 含多个 hover:bg-tag 图标按钮
+ *     第 1 个是复制按钮（div.hover:bg-tag.cursor-pointer + 下拉箭头按钮）
+ *     后续依次是 赞/踩/重新生成/更多
+ * - 复制按钮: div（非 button），内嵌 SVG，含抄送图标 path d="M832 64..."
+ * - 用户消息的复制按钮使用 clipPath id="copy_svg__a"
+ * - AI 回复的复制按钮使用内联 SVG path（无 clipPath）
  * - 所有工具图标无 aria-label，无 title，textContent 为空（纯 SVG）
+ * - 使用 navigator.clipboard.write() —> 路径 A（prototype 替换）
+ *
+ * 欢迎页/新对话结构（qqianwen.com/#）：
+ * - wrapper-Yv2YGq > chatRoom-rNZG_v > chat-room-outer-wrap > chat-container-wrapper
+ * - AI 欢迎语 "你好，我是千问" 无操作栏（无复制按钮）
+ * - 发送消息后 AI 回复会进入 chat-round 结构（同上）
  */
 (function() {
   if (window.tongyiCaptureConfig) return;
@@ -22,9 +32,12 @@
     name: 'tongyi',
     action: 'tongyiCopyCapture',
 
-    // AI 回复区域没有复制按钮，留空强制走 DOM fallback
-    copyBtnPrimarySelector: '',
-    copyBtnSelectors: [''],
+    // AI 回复工具栏复制按钮：第一个 cursor-pointer 元素（24x24 图标 div）
+    // querySelector 返回 DOM 顺序的第一个匹配
+    copyBtnPrimarySelector: '[class*="cursor-pointer"]',
+    copyBtnSelectors: [
+      '[class*="cursor-pointer"]',
+    ],
 
     // 将复制按钮搜索限定在 AI 回复区域，避免误点用户消息的复制按钮
     getCopyBtnRoot: function(turnRoot) {
@@ -70,15 +83,18 @@
 
     isCopyControl: function(element) {
       if (!(element instanceof Element)) return false;
-      // 检测 clipPath id 含 copy 的 SVG
+      // 1) AI 回复复制按钮：检测 SVG 抄送图标 path（d 以 "M832 64" 开头）
       var svg = element.tagName === 'svg' ? element : element.querySelector('svg');
       if (svg) {
+        var path = svg.querySelector('path[d^="M832 64"]');
+        if (path) return true;
+        // 2) 用户消息复制按钮：clipPath id 含 copy
         var clipPath = svg.querySelector('clipPath[id*="copy"]');
         if (clipPath) return true;
         var use = svg.querySelector('use[href*="copy"]');
         if (use) return true;
       }
-      // 检测是否为第 2 个 qs-bottom-icon（始终是复制按钮）
+      // 3) 检测是否为第 2 个 qs-bottom-icon（用户消息复制按钮的 class 检测）
       if (element.classList && element.classList.contains('qs-bottom-icon')) {
         var parent = element.parentElement;
         if (parent) {
@@ -98,7 +114,7 @@
     },
 
     skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
-    contextWindowMs: 2500,
+    contextWindowMs: 6000,
     debug: true,
   };
 })();
