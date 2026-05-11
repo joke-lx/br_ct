@@ -760,56 +760,94 @@ function renderCurrentPlatform() {
 }
 
 /**
- * 渲染平台消息线程
+ * 渲染平台消息线程 - Notion 风格气泡
  */
 function renderPlatformMessages(convState) {
   if (!responseContent) return;
 
-  // 清除 capture 样式，用 thread 样式
   responseContent.innerHTML = "";
 
   const root = document.createElement("div");
-  root.className = "chatgpt-thread chatgpt-thread--enhanced";
-  root.dataset.platform = activePlatformId;
+  root.className = "notion-chat";
 
   convState.messages.forEach((message, index) => {
-    const el = document.createElement("div");
-    el.className = "chatgpt-msg";
-    el.dataset.messageId = message.messageId;
-    el.dataset.state = message.isComplete ? "completed" : "generating";
-    el.dataset.collapsed = message.collapsed ? "true" : "false";
+    const config = PLATFORM_CONFIG[activePlatformId];
+    const platformName = config?.name || activePlatformId;
+    const platformColor = config?.color || "#666";
+    const platformIcon = config?.shortIcon || config?.icon || activePlatformId[0]?.toUpperCase() || "?";
 
-    el.innerHTML = `
-      <div class="chatgpt-msg-head">
-        <span class="chatgpt-msg-title">Assistant #${index + 1}</span>
-        <span class="chatgpt-msg-time">${formatTime(message.timestamp)}</span>
-        <div class="chatgpt-msg-actions">
-          <button type="button" class="chatgpt-msg-copy" title="复制本条">复制</button>
-          <button type="button" class="chatgpt-msg-toggle" title="折叠/展开">${message.collapsed ? "▸" : "▾"}</button>
-        </div>
-      </div>
-      <div class="chatgpt-msg-body"></div>
-    `;
+    const msgRow = document.createElement("div");
+    msgRow.className = "notion-chat-message notion-chat-message--ai";
 
-    el.querySelector(".chatgpt-msg-body").innerHTML = renderMarkdownSafe(message.content || "");
+    const avatar = document.createElement("div");
+    avatar.className = "notion-chat-avatar";
+    avatar.style.background = platformColor;
+    avatar.textContent = platformIcon;
 
-    el.querySelector(".chatgpt-msg-copy").addEventListener("click", async () => {
+    const bubble = document.createElement("div");
+    bubble.className = "notion-chat-bubble";
+
+    const header = document.createElement("div");
+    header.className = "notion-chat-bubble-header";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "notion-chat-bubble-name";
+    nameEl.style.color = platformColor;
+    nameEl.textContent = platformName;
+
+    const timeEl = document.createElement("span");
+    timeEl.className = "notion-chat-bubble-time";
+    timeEl.textContent = formatTime(message.timestamp);
+
+    const actions = document.createElement("div");
+    actions.className = "notion-chat-bubble-actions";
+
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "notion-chat-btn";
+    copyBtn.title = "复制本条";
+    copyBtn.textContent = "复制";
+    copyBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
       try {
         await navigator.clipboard.writeText(message.content || "");
-        showTempMessage("已复制本条");
+        const orig = copyBtn.textContent;
+        copyBtn.textContent = "✓";
+        setTimeout(() => { copyBtn.textContent = orig; }, 1200);
       } catch (error) {
         console.error("复制失败:", error);
-        showTempMessage("复制失败");
       }
     });
 
-    el.querySelector(".chatgpt-msg-toggle").addEventListener("click", () => {
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "notion-chat-btn";
+    toggleBtn.title = message.collapsed ? "展开" : "折叠";
+    toggleBtn.textContent = message.collapsed ? "▸" : "▾";
+    toggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       message.collapsed = !message.collapsed;
-      el.dataset.collapsed = message.collapsed ? "true" : "false";
-      el.querySelector(".chatgpt-msg-toggle").textContent = message.collapsed ? "▸" : "▾";
+      contentEl.style.display = message.collapsed ? "none" : "block";
+      toggleBtn.textContent = message.collapsed ? "▸" : "▾";
+      toggleBtn.title = message.collapsed ? "展开" : "折叠";
     });
 
-    root.appendChild(el);
+    actions.appendChild(copyBtn);
+    actions.appendChild(toggleBtn);
+
+    header.appendChild(nameEl);
+    header.appendChild(timeEl);
+    header.appendChild(actions);
+
+    const contentEl = document.createElement("div");
+    contentEl.className = "notion-chat-bubble-content";
+    contentEl.style.display = message.collapsed ? "none" : "block";
+    contentEl.innerHTML = renderMarkdownSafe(message.content || "");
+
+    bubble.appendChild(header);
+    bubble.appendChild(contentEl);
+
+    msgRow.appendChild(avatar);
+    msgRow.appendChild(bubble);
+    root.appendChild(msgRow);
   });
 
   responseContent.appendChild(root);
@@ -847,18 +885,49 @@ function renderPlatformCapture(data) {
 
   responseContent.innerHTML = "";
 
+  const config = PLATFORM_CONFIG[activePlatformId];
+  const platformName = config?.name || activePlatformId;
+  const platformColor = config?.color || "#666";
+  const platformIcon = config?.shortIcon || config?.icon || activePlatformId?.[0]?.toUpperCase() || "?";
+
   const root = document.createElement("div");
-  root.className = "chatgpt-rendered-html";
-  root.dataset.source = source;
+  root.className = "notion-chat";
+
+  const msgRow = document.createElement("div");
+  msgRow.className = "notion-chat-message notion-chat-message--ai";
+
+  const avatar = document.createElement("div");
+  avatar.className = "notion-chat-avatar";
+  avatar.style.background = platformColor;
+  avatar.textContent = platformIcon;
+
+  const bubble = document.createElement("div");
+  bubble.className = "notion-chat-bubble";
+
+  const header = document.createElement("div");
+  header.className = "notion-chat-bubble-header";
+
+  const nameEl = document.createElement("span");
+  nameEl.className = "notion-chat-bubble-name";
+  nameEl.style.color = platformColor;
+  nameEl.textContent = platformName;
+
+  header.appendChild(nameEl);
+  bubble.appendChild(header);
+
+  const contentEl = document.createElement("div");
+  contentEl.className = "notion-chat-bubble-content";
 
   if (html && !isBareHtmlContainer(html, text)) {
-    root.innerHTML = html;
+    contentEl.innerHTML = html;
   } else if (text) {
-    root.innerHTML = renderMarkdownText(text);
-  } else {
-    root.innerHTML = "";
+    contentEl.innerHTML = renderMarkdownText(text);
   }
 
+  bubble.appendChild(contentEl);
+  msgRow.appendChild(avatar);
+  msgRow.appendChild(bubble);
+  root.appendChild(msgRow);
   responseContent.appendChild(root);
 
   if (responseCapture) {
