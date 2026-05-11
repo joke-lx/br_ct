@@ -19,6 +19,7 @@
     let lastContext = null;
     let hooksInstalled = false;
     let clickListenerAttached = false;
+    var _capturingIds = new Set(); // dedup: skip duplicate autoCapture for same message
 
     function log(label, data) {
       if (config.debug !== false) {
@@ -220,6 +221,27 @@
     }
 
     function autoCapture(turnRoot) {
+      // Dedup: 防止同一个 turn 被多次 autoCapture
+      // 场景：simulateCopy 触发 DOM 变化 → MutationObserver → handleResponseUpdate → autoCapture 循环
+      var dedupId = null;
+      if (turnRoot instanceof Element) {
+        if (config.getMessageId) {
+          dedupId = config.getMessageId(turnRoot);
+        }
+        if (!dedupId && turnRoot.dataset && turnRoot.dataset.testid) {
+          dedupId = turnRoot.dataset.testid;
+        }
+      }
+      if (dedupId && _capturingIds.has(dedupId)) {
+        log('autoCapture.skip', { reason: 'already capturing', messageId: dedupId });
+        return;
+      }
+      if (dedupId) {
+        _capturingIds.add(dedupId);
+        // 所有重试完成（2600ms）+ 额外安全缓冲后清理 dedup
+        setTimeout(function() { _capturingIds.delete(dedupId); }, 5000);
+      }
+
       openContext(turnRoot, null);
 
       // 限定在当前 turn 内查找复制按钮

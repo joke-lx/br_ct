@@ -58,6 +58,38 @@
     } catch(ex) {}
   }, true);
 
+  // Hook document.execCommand('copy') for platforms (like GLM) that use execCommand + textarea
+  // dispatchEvent 没有 transient activation → execCommand 静默失败 → copy event 不会触发
+  // 但此时 selection（textarea）已经创建，可以直接读取
+  var _origExecCommand = document.execCommand.bind(document);
+  document.execCommand = function(command, showUI, value) {
+    if (command === 'copy' || command === 'cut') {
+      var text = null, html = null;
+      var sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        text = sel.toString() || null;
+        try {
+          var range = sel.getRangeAt(0);
+          var div = document.createElement('div');
+          div.appendChild(range.cloneContents());
+          html = div.innerHTML || null;
+        } catch(ex) {}
+        // textarea 的 cloneContents 不产生 HTML，用 text 兜底
+        if (!html && text) html = text;
+      }
+      if (text || html) {
+        window.postMessage({
+          source: 'cc-capture-hook',
+          type: 'clipboard-data',
+          payload: { html: html || null, text: text || null, source: 'execCommand.hook' }
+        }, '*');
+      }
+      // 尝试原始 execCommand（有 transient activation 时成功，没有则静默失败）
+      try { return _origExecCommand(command, showUI, value); } catch(e) { return false; }
+    }
+    return _origExecCommand(command, showUI, value);
+  };
+
   // Expose simulateCopy for programmatic clicks
   // 用完整鼠标事件序列代替 click()，部分框架（豆包）会检查 isTrusted 忽略纯脚本 click
   window.__ccSimulateCopy = function(btn) {
