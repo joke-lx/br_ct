@@ -662,9 +662,22 @@ async function sendChatMessage(message) {
       await delay(PLATFORM_CONFIG.clickDelay);
     }
 
-    // 8. 点击发送
+    // 8. 点击发送前设置时间戳，通知 response listener 不要触发 autoCapture
+    window.__notionaiLastSendTime = Date.now();
     logInfo("正在点击发送按钮...");
     if (triggerClick(buttonElement)) {
+      // 3.5s 后触发 DOM 突变，唤醒 response listener 检查 isGenerating 是否已变为 false
+      // 用于 3s 缓冲过期后 AI 响应已完成但无新 DOM 变化导致捕获丢失的边界情况
+      setTimeout(function() {
+        var root = document.querySelector('.layout-content, [class*="layout-content"]');
+        if (root) {
+          var marker = document.createElement('div');
+          marker.style.display = 'none';
+          marker.setAttribute('data-cc-wake', Date.now());
+          root.appendChild(marker);
+          root.removeChild(marker);
+        }
+      }, 4000);
       logInfo("消息发送成功");
       return true;
     } else {

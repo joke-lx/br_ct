@@ -21,10 +21,12 @@
     platform: 'notionai',
     hostnames: ['www.notion.so'],
 
-    // 回复内容在 [data-content-editable-leaf] 块中
+    // 整个对话在 .layout-content 中，优先用它作为响应容器
+    // [data-content-editable-leaf] 是 Notion 块属性，可能在 DOM 中不存在
     responseSelectors: [
-      '[data-content-editable-leaf]',
       '.layout-content',
+      '[class*="layout-content"]',
+      '[data-content-editable-leaf]',
     ],
 
     // 整个对话页面作为一个 turn 容器
@@ -36,6 +38,9 @@
     skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
 
     captureConfig: 'notionaiCaptureConfig',
+
+    // 内容稳定后才触发 autoCapture，避免流式输出未完成时捕获不完整内容
+    settleTimeMs: 1500,
 
     getConversationId: function() {
       try {
@@ -62,6 +67,10 @@
     },
 
     isGenerating: function() {
+      // 刚发送消息后的 3 秒内视为生成中，避免用户消息渲染触发 autoCapture
+      if (window.__notionaiLastSendTime && Date.now() - window.__notionaiLastSendTime < 3000) {
+        return true;
+      }
       var stopBtn = document.querySelector('button[aria-label*="Stop"]') ||
                     document.querySelector('button[aria-label*="停止"]');
       if (stopBtn && !stopBtn.disabled) return true;

@@ -47,6 +47,8 @@ let extractTitle;
 let extractUrl;
 let extractContent;
 let closeResult;
+let currentView = "compose";
+let hasUnreadReplies = false;
 
 /**
  * 防抖保存消息内容
@@ -96,6 +98,11 @@ export async function initializePopup() {
     historySelect: document.getElementById("history-select"),
     promptOptimizerSelect: document.getElementById("prompt-optimizer-select"),
     openOptionsButton: document.getElementById("open-options"),
+    composePage: document.getElementById("page-compose"),
+    replyPage: document.getElementById("page-reply"),
+    composeTab: document.getElementById("tab-compose"),
+    replyTab: document.getElementById("tab-reply"),
+    replyBadge: document.getElementById("reply-badge"),
   };
 
   // 提取页面文本相关元素
@@ -117,6 +124,7 @@ export async function initializePopup() {
 
   // 加载并应用平台可见性设置
   await loadPlatformVisibilitySettings();
+  switchMainView("compose");
 }
 
 /**
@@ -176,10 +184,50 @@ function restorePlatformStates(platformStates) {
   updateSelectAllButton();
 }
 
+function switchMainView(view) {
+  currentView = view === "reply" ? "reply" : "compose";
+
+  elements.composePage?.classList.toggle("active", currentView === "compose");
+  elements.replyPage?.classList.toggle("active", currentView === "reply");
+  elements.composeTab?.classList.toggle("active", currentView === "compose");
+  elements.replyTab?.classList.toggle("active", currentView === "reply");
+
+  if (currentView === "reply") {
+    setReplyAttention(false);
+    renderCurrentPlatform();
+  } else {
+    focusInputAndSetCursor(elements.messageInput);
+  }
+}
+
+function setReplyAttention(hasAttention) {
+  hasUnreadReplies = !!hasAttention;
+
+  if (elements.replyBadge) {
+    elements.replyBadge.hidden = !hasUnreadReplies;
+  }
+
+  elements.replyTab?.classList.toggle(
+    "has-attention",
+    hasUnreadReplies && currentView !== "reply"
+  );
+}
+
+function notifyReplyArrival() {
+  if (currentView === "reply") {
+    setReplyAttention(false);
+    return;
+  }
+
+  setReplyAttention(true);
+}
+
 /**
  * 设置所有事件监听器
  */
 export function setupEventListeners() {
+  elements.composeTab?.addEventListener("click", () => switchMainView("compose"));
+  elements.replyTab?.addEventListener("click", () => switchMainView("reply"));
   // 监听来自options页面的平台可见性更新消息
   setupPlatformVisibilityMessageListener((settings) => {
     showTempMessage('平台显示设置已更新');
@@ -284,10 +332,7 @@ export function setupEventListeners() {
       if (cb.checked) {
         const platforms = getCheckedPlatforms();
         activePlatformId = platforms[0];
-        if (responseContainer) {
-          responseContainer.style.display = "flex";
-          renderCurrentPlatform();
-        }
+        renderCurrentPlatform();
       }
     });
   });
@@ -316,7 +361,7 @@ export function setupEventListeners() {
   }
 
   // 打开设置页面按钮
-  elements.openOptionsButton.addEventListener("click", () => {
+  elements.openOptionsButton?.addEventListener("click", () => {
     chrome.runtime.openOptionsPage();
   });
 }
@@ -648,8 +693,26 @@ function switchPlatform(direction) {
  * 渲染当前平台
  */
 function renderCurrentPlatform() {
-  if (!responseContainer || !activePlatformId) {
-    if (responseContainer) responseContainer.style.display = "none";
+  if (!responseContainer) {
+    return;
+  }
+
+  if (!activePlatformId) {
+    if (responseTitle) {
+      responseTitle.textContent = "回复";
+      responseTitle.style.color = "";
+    }
+    if (responseContent) {
+      responseContent.innerHTML = '<div class="response-placeholder">暂无回复内容</div>';
+      responseContent.classList.remove("streaming");
+    }
+    if (responseStatus) {
+      responseStatus.style.display = "flex";
+      updateResponseStatus(true);
+    }
+    if (responseCapture) {
+      responseCapture.style.display = "none";
+    }
     return;
   }
 
@@ -657,8 +720,6 @@ function renderCurrentPlatform() {
   const platformName = config?.name || activePlatformId;
   const platformColor = config?.color || "#666";
   const platformIcon = config?.icon || activePlatformId[0]?.toUpperCase() || "?";
-
-  responseContainer.style.display = "flex";
 
   if (responseTitle) {
     responseTitle.textContent = `${platformIcon} ${platformName}`;
@@ -699,56 +760,94 @@ function renderCurrentPlatform() {
 }
 
 /**
- * 渲染平台消息线程
+ * 渲染平台消息线程 - Notion 风格气泡
  */
 function renderPlatformMessages(convState) {
   if (!responseContent) return;
 
-  // 清除 capture 样式，用 thread 样式
   responseContent.innerHTML = "";
 
   const root = document.createElement("div");
-  root.className = "chatgpt-thread chatgpt-thread--enhanced";
-  root.dataset.platform = activePlatformId;
+  root.className = "notion-chat";
 
   convState.messages.forEach((message, index) => {
-    const el = document.createElement("div");
-    el.className = "chatgpt-msg";
-    el.dataset.messageId = message.messageId;
-    el.dataset.state = message.isComplete ? "completed" : "generating";
-    el.dataset.collapsed = message.collapsed ? "true" : "false";
+    const config = PLATFORM_CONFIG[activePlatformId];
+    const platformName = config?.name || activePlatformId;
+    const platformColor = config?.color || "#666";
+    const platformIcon = config?.shortIcon || config?.icon || activePlatformId[0]?.toUpperCase() || "?";
 
-    el.innerHTML = `
-      <div class="chatgpt-msg-head">
-        <span class="chatgpt-msg-title">Assistant #${index + 1}</span>
-        <span class="chatgpt-msg-time">${formatTime(message.timestamp)}</span>
-        <div class="chatgpt-msg-actions">
-          <button type="button" class="chatgpt-msg-copy" title="复制本条">复制</button>
-          <button type="button" class="chatgpt-msg-toggle" title="折叠/展开">${message.collapsed ? "▸" : "▾"}</button>
-        </div>
-      </div>
-      <div class="chatgpt-msg-body"></div>
-    `;
+    const msgRow = document.createElement("div");
+    msgRow.className = "notion-chat-message notion-chat-message--ai";
 
-    el.querySelector(".chatgpt-msg-body").innerHTML = renderMarkdownSafe(message.content || "");
+    const avatar = document.createElement("div");
+    avatar.className = "notion-chat-avatar";
+    avatar.style.background = platformColor;
+    avatar.textContent = platformIcon;
 
-    el.querySelector(".chatgpt-msg-copy").addEventListener("click", async () => {
+    const bubble = document.createElement("div");
+    bubble.className = "notion-chat-bubble";
+
+    const header = document.createElement("div");
+    header.className = "notion-chat-bubble-header";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "notion-chat-bubble-name";
+    nameEl.style.color = platformColor;
+    nameEl.textContent = platformName;
+
+    const timeEl = document.createElement("span");
+    timeEl.className = "notion-chat-bubble-time";
+    timeEl.textContent = formatTime(message.timestamp);
+
+    const actions = document.createElement("div");
+    actions.className = "notion-chat-bubble-actions";
+
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "notion-chat-btn";
+    copyBtn.title = "复制本条";
+    copyBtn.textContent = "复制";
+    copyBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
       try {
         await navigator.clipboard.writeText(message.content || "");
-        showTempMessage("已复制本条");
+        const orig = copyBtn.textContent;
+        copyBtn.textContent = "✓";
+        setTimeout(() => { copyBtn.textContent = orig; }, 1200);
       } catch (error) {
         console.error("复制失败:", error);
-        showTempMessage("复制失败");
       }
     });
 
-    el.querySelector(".chatgpt-msg-toggle").addEventListener("click", () => {
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "notion-chat-btn";
+    toggleBtn.title = message.collapsed ? "展开" : "折叠";
+    toggleBtn.textContent = message.collapsed ? "▸" : "▾";
+    toggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       message.collapsed = !message.collapsed;
-      el.dataset.collapsed = message.collapsed ? "true" : "false";
-      el.querySelector(".chatgpt-msg-toggle").textContent = message.collapsed ? "▸" : "▾";
+      contentEl.style.display = message.collapsed ? "none" : "block";
+      toggleBtn.textContent = message.collapsed ? "▸" : "▾";
+      toggleBtn.title = message.collapsed ? "展开" : "折叠";
     });
 
-    root.appendChild(el);
+    actions.appendChild(copyBtn);
+    actions.appendChild(toggleBtn);
+
+    header.appendChild(nameEl);
+    header.appendChild(timeEl);
+    header.appendChild(actions);
+
+    const contentEl = document.createElement("div");
+    contentEl.className = "notion-chat-bubble-content";
+    contentEl.style.display = message.collapsed ? "none" : "block";
+    contentEl.innerHTML = renderMarkdownSafe(message.content || "");
+
+    bubble.appendChild(header);
+    bubble.appendChild(contentEl);
+
+    msgRow.appendChild(avatar);
+    msgRow.appendChild(bubble);
+    root.appendChild(msgRow);
   });
 
   responseContent.appendChild(root);
@@ -786,18 +885,49 @@ function renderPlatformCapture(data) {
 
   responseContent.innerHTML = "";
 
+  const config = PLATFORM_CONFIG[activePlatformId];
+  const platformName = config?.name || activePlatformId;
+  const platformColor = config?.color || "#666";
+  const platformIcon = config?.shortIcon || config?.icon || activePlatformId?.[0]?.toUpperCase() || "?";
+
   const root = document.createElement("div");
-  root.className = "chatgpt-rendered-html";
-  root.dataset.source = source;
+  root.className = "notion-chat";
+
+  const msgRow = document.createElement("div");
+  msgRow.className = "notion-chat-message notion-chat-message--ai";
+
+  const avatar = document.createElement("div");
+  avatar.className = "notion-chat-avatar";
+  avatar.style.background = platformColor;
+  avatar.textContent = platformIcon;
+
+  const bubble = document.createElement("div");
+  bubble.className = "notion-chat-bubble";
+
+  const header = document.createElement("div");
+  header.className = "notion-chat-bubble-header";
+
+  const nameEl = document.createElement("span");
+  nameEl.className = "notion-chat-bubble-name";
+  nameEl.style.color = platformColor;
+  nameEl.textContent = platformName;
+
+  header.appendChild(nameEl);
+  bubble.appendChild(header);
+
+  const contentEl = document.createElement("div");
+  contentEl.className = "notion-chat-bubble-content";
 
   if (html && !isBareHtmlContainer(html, text)) {
-    root.innerHTML = html;
+    contentEl.innerHTML = html;
   } else if (text) {
-    root.innerHTML = renderMarkdownText(text);
-  } else {
-    root.innerHTML = "";
+    contentEl.innerHTML = renderMarkdownText(text);
   }
 
+  bubble.appendChild(contentEl);
+  msgRow.appendChild(avatar);
+  msgRow.appendChild(bubble);
+  root.appendChild(msgRow);
   responseContent.appendChild(root);
 
   if (responseCapture) {
@@ -889,8 +1019,16 @@ async function copyResponseContent() {
  * 关闭回复容器
  */
 function closeResponseContainer() {
-  if (responseContainer) responseContainer.style.display = "none";
   platformStates.clear();
+  lastCopyCaptureByConversation.clear();
+  activePlatformId = null;
+  setReplyAttention(false);
+  if (responseCapture) responseCapture.style.display = "none";
+  if (responseStatus) responseStatus.style.display = "flex";
+  if (responseTitle) {
+    responseTitle.textContent = "回复";
+    responseTitle.style.color = "";
+  }
   if (responseContent) {
     responseContent.innerHTML = '<div class="response-placeholder">暂无回复内容</div>';
     responseContent.classList.remove("streaming");
@@ -901,14 +1039,14 @@ function closeResponseContainer() {
  * 显示回复容器
  */
 export function showResponseContainer() {
-  if (responseContainer) responseContainer.style.display = "flex";
+  switchMainView("reply");
 }
 
 /**
  * 隐藏回复容器
  */
 export function hideResponseContainer() {
-  if (responseContainer) responseContainer.style.display = "none";
+  switchMainView("compose");
 }
 
 /**
@@ -971,10 +1109,11 @@ function handlePlatformResponse(platformId, data) {
 
   // 如果是当前活动平台，更新界面
   if (activePlatformId === platformId) {
-    if (responseContainer) responseContainer.style.display = "flex";
     updateResponseStatus(isComplete);
     renderCurrentPlatform();
   }
+
+  notifyReplyArrival();
 }
 
 /**
@@ -992,8 +1131,8 @@ function handlePlatformCapture(platformId, data) {
   // 自动切换到收到捕获的平台
   activePlatformId = platformId;
 
-  if (responseContainer) responseContainer.style.display = "flex";
   renderCurrentPlatform();
+  notifyReplyArrival();
 }
 
 /**
@@ -1055,17 +1194,16 @@ export function initializeResponseDisplay() {
     cb.addEventListener("change", () => {
       const platforms = getCheckedPlatforms();
       if (!platforms.length) {
-        if (responseContainer) responseContainer.style.display = "none";
         activePlatformId = null;
+        renderCurrentPlatform();
       } else if (!activePlatformId || !platforms.includes(activePlatformId)) {
         activePlatformId = platforms[0];
-        if (responseContainer && responseContainer.style.display !== "none") {
-          renderCurrentPlatform();
-        }
+        renderCurrentPlatform();
       }
     });
   });
 
+  renderCurrentPlatform();
   console.log("多平台回复展示模块已初始化");
 }
 
@@ -1086,12 +1224,15 @@ function renderCapturedHtmlToSidebar(data) {
 function renderMarkdownText(markdown) {
   const text = String(markdown || "");
 
+  // 将 tab 分隔的表格数据转换为 pipe 分隔的 markdown 表格
+  const md = convertTableTabsToPipes(text);
+
   if (window.marked?.parse) {
     const renderer = new window.marked.Renderer();
     renderer.html = () => "";
 
     try {
-      return window.marked.parse(text, {
+      return window.marked.parse(md, {
         gfm: true,
         breaks: true,
         renderer,
@@ -1103,7 +1244,39 @@ function renderMarkdownText(markdown) {
     }
   }
 
-  return escapeHtml(text).replace(/\n/g, "<br>");
+  return escapeHtml(md).replace(/\n/g, "<br>");
+}
+
+/**
+ * 检测文本是否包含 tab 分隔的表格数据，如果是则转换为 pipe 分隔的 markdown 表格。
+ * 浏览器对 HTML 表格执行 sel.toString() 时，列之间用 tab 分隔，行之间用换行分隔。
+ * marked 不识别 tab 分隔的表格，需要转为管道格式。
+ */
+function convertTableTabsToPipes(text) {
+  if (!text || text.indexOf("\t") === -1) return text;
+
+  var lines = text.split("\n").filter(function(l) { return l.trim(); });
+  if (lines.length < 2) return text;
+
+  // 检查每行是否有相同数量的 tab 分隔列
+  var tabCounts = lines.map(function(l) {
+    return l.split("\t").length;
+  });
+  var firstCount = tabCounts[0];
+  if (firstCount < 2) return text;
+  var consistent = tabCounts.every(function(c) { return c === firstCount; });
+  if (!consistent) return text;
+
+  // 转换为 pipe 表格：每行用 | 包裹
+  var pipeLines = lines.map(function(l) {
+    return "| " + l.split("\t").map(function(c) { return c.trim(); }).join(" | ") + " |";
+  });
+
+  // 插入分隔行（在表头后）
+  var separator = "| " + Array(firstCount).fill("---").join(" | ") + " |";
+  pipeLines.splice(1, 0, separator);
+
+  return pipeLines.join("\n");
 }
 
 function escapeHtml(input) {
