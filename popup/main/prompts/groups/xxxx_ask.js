@@ -7,7 +7,7 @@ export default [
   {
     "label": "解释",
     "alias": "js",
-    "template": "请深入解释：%s"
+    "template": "请深入解释：%s 技术细节是什么"
   },
   {
     "label": "deeper",
