@@ -27,6 +27,6 @@ export default [
   {
     "label": "temp-step",
     "alias": "step",
-    "template": "我要写代码 具体怎么执行指令 !!!!!! 构建什么 需要什么基础设施]"
+    "template": "我要写代码 具体怎么执行指令 !!!!!! 构建什么 需要什么基础设施]\n%s"
   }
 ];
