@@ -18,7 +18,11 @@
     hostnames: ['claude.ai'],
 
     // div.contents 包裹每一轮对话（用户消息 + 助手回复）
+    // ⚠️ 不能只用 div.contents：Claude.ai 在对话区域外还有一个 div.contents.print:hidden（Share 头部），
+    // querySelectorAll 返回的最后一个 div.contents 会是这个头部而非最新的 AI 回复。
+    // 必须限定为 div.group div.contents（仅对话回合内的内容容器）。
     responseSelectors: [
+      'div.group div.contents',
       'div.contents',
     ],
 
@@ -27,6 +31,19 @@
     ],
 
     skipTags: new Set(['BUTTON', 'SCRIPT', 'STYLE', 'SVG', 'PATH']),
+
+    getRole: function(container) {
+      // Assistant 消息有 .whitespace-pre-wrap 或 font-claude 样式
+      if (container.querySelector('.whitespace-pre-wrap, [class*="font-claude"]')) {
+        return 'assistant';
+      }
+      // User 消息可以从 div.group 内部特征推断
+      if (container.querySelector('textarea, [contenteditable="true"]') ||
+          container.closest('[data-testid="user-message"]')) {
+        return 'user';
+      }
+      return null;
+    },
 
     captureConfig: 'claudeCaptureConfig',
 

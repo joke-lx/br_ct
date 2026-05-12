@@ -27,14 +27,21 @@
       settleTimeMs = 0,
     } = config;
 
+    // ==================== 常量 ====================
+
+    const ConversationMode = { INITIAL: 'initial', LIVE: 'live' };
+    const MessagePhase = { PENDING: 'pending', SETTLING: 'settling', CAPTURED: 'captured' };
+    const MODE_LIVE_DELAY_MS = 1200; // 新对话创建多久后从 INITIAL → LIVE
+
     // ==================== 状态管理 ====================
 
     let observer = null;
     let initialCheckTimeout = null;
     let pendingUpdateTimeout = null;
-    let settleCaptureTimer = null;
     let isMonitoring = false;
     const conversationStateById = new Map();
+    var _lastTrackedConversation = null;
+    var _convSwitchTimers = {}; // conversationId → setTimeout, for SPA flip
 
     // ==================== 工具函数 ====================
 
@@ -93,12 +100,34 @@
       var key = conversationId || '__default__';
       if (!conversationStateById.has(key)) {
         conversationStateById.set(key, {
+          mode: ConversationMode.INITIAL,
+          _firstSeen: Date.now(),
           lastUpdateTime: 0,
           processedMessageKeys: new Set(),
           lastSnapshotByMessageId: new Map(),
+          // Phase state machine per message
+          messages: new Map(), // messageKey → { phase, content, lastSnapshot, role, settleTimer }
         });
       }
       return conversationStateById.get(key);
+    }
+
+    function getMessageTracker(state, messageKey, container) {
+      if (!state.messages.has(messageKey)) {
+        state.messages.set(messageKey, {
+          phase: MessagePhase.PENDING,
+          content: '',
+          lastSnapshot: '',
+          role: container ? getMessageRole(container) : null,
+          settleTimer: null,
+        });
+      }
+      return state.messages.get(messageKey);
+    }
+
+    function getMessageRole(container) {
+      if (typeof config.getRole === 'function') return config.getRole(container);
+      return null;
     }
 
     function getMessageKey(conversationId, messageId) {
@@ -175,6 +204,13 @@
       var state = getConversationState(conversationId);
       var now = Date.now();
 
+      // ── 自动翻转 INITIAL → LIVE（覆盖 SPA 切对话场景） ──
+      if (state.mode === ConversationMode.INITIAL && state._firstSeen) {
+        if (now - state._firstSeen >= MODE_LIVE_DELAY_MS) {
+          state.mode = ConversationMode.LIVE;
+        }
+      }
+
       if (now - state.lastUpdateTime < minUpdateInterval) return;
 
       var container = getLatestResponseContainer();
@@ -184,40 +220,56 @@
       var stableMessageId = msgId || ('unknown-' + conversationId);
       var messageKey = getMessageKey(conversationId, stableMessageId);
 
+      var tracker = getMessageTracker(state, messageKey, container);
+
       var content = normalizeText(readResponseContent(container));
       if (!content) return;
 
       var generating = isGenerating ? isGenerating() : false;
       var snapshot = content + '::' + (generating ? '1' : '0');
-      var lastSnapshot = state.lastSnapshotByMessageId.get(messageKey);
 
-      if (state.processedMessageKeys.has(messageKey) && lastSnapshot === snapshot) return;
-      if (snapshot === lastSnapshot) return;
+      if (tracker.lastSnapshot === snapshot) return;
+      tracker.lastSnapshot = snapshot;
 
       sendResponseToSidebar(content, stableMessageId, !generating, conversationId);
 
-      if (!generating) {
-        if (settleTimeMs > 0) {
-          // 流式平台：等待内容稳定后再触发捕获，避免捕获到不完整内容
-          scheduleSettledCapture(container);
-        } else {
-          var capture = tryGetCapture();
-          if (capture) {
-            var turnRoot = findTurnRootFromContainer(container);
-            if (turnRoot) capture.autoCapture(turnRoot);
+      // ── INITIAL：仅同步侧边栏，不 autoCapture ──
+      if (state.mode === ConversationMode.INITIAL) {
+        tracker.content = content;
+        state.lastUpdateTime = now;
+        return;
+      }
+
+      // ── LIVE：Phase 状态机 ──
+      switch (tracker.phase) {
+        case MessagePhase.PENDING:
+          if (!generating) {
+            enterSettling(state, tracker, container);
           }
-        }
-      } else {
-        // 生成中：清除之前的 settle timer，内容变化时重新计时
-        clearSettleTimer();
+          break;
+
+        case MessagePhase.SETTLING:
+          if (content !== tracker.content) {
+            // 内容在 settle 期间变化 → 重新计时
+            tracker.content = content;
+            enterSettling(state, tracker, container);
+          }
+          break;
+
+        case MessagePhase.CAPTURED:
+          if (content !== tracker.content) {
+            // 内容变化（regenerate/编辑）→ 重新进入 PENDING
+            tracker.phase = MessagePhase.PENDING;
+            tracker.content = content;
+            if (!generating) {
+              enterSettling(state, tracker, container);
+            }
+          }
+          break;
       }
 
+      tracker.content = content;
       state.lastUpdateTime = now;
-      state.lastSnapshotByMessageId.set(messageKey, snapshot);
-
-      if (!generating) {
-        state.processedMessageKeys.add(messageKey);
-      }
     }
 
     function findTurnRootFromContainer(container) {
@@ -246,29 +298,57 @@
       return _captureInstance;
     }
 
-    // ==================== 内容稳定后捕获 ====================
+    // ==================== 内容稳定后捕获（per-tracker） ====================
 
-    function clearSettleTimer() {
-      if (settleCaptureTimer !== null) {
-        clearTimeout(settleCaptureTimer);
-        settleCaptureTimer = null;
+    function clearSettleTimer(tracker) {
+      if (tracker && tracker.settleTimer !== null) {
+        clearTimeout(tracker.settleTimer);
+        tracker.settleTimer = null;
       }
     }
 
-    function scheduleSettledCapture(container) {
-      clearSettleTimer();
-      settleCaptureTimer = setTimeout(function() {
-        settleCaptureTimer = null;
+    function enterSettling(state, tracker, container) {
+      clearSettleTimer(tracker);
+      tracker.phase = MessagePhase.SETTLING;
+      tracker.settleTimer = setTimeout(function() {
+        tracker.settleTimer = null;
+        tracker.phase = MessagePhase.CAPTURED;
+
         var capture = tryGetCapture();
         if (!capture) return;
         var turnRoot = findTurnRootFromContainer(container);
-        if (turnRoot) capture.autoCapture(turnRoot);
-      }, settleTimeMs);
+        if (turnRoot) {
+          capture.autoCapture(turnRoot, { role: tracker.role });
+        }
+      }, settleTimeMs || 0);
     }
 
     // ==================== MutationObserver ====================
 
+    function ensureConversationLive(conversationId) {
+      // 确保新对话在 stabilization 后翻转 to LIVE
+      // 覆盖 SPA 切对话场景（无页面加载，无 startMonitoring 的 500ms 检查）
+      if (_convSwitchTimers[conversationId]) return;
+      var state = getConversationState(conversationId);
+      if (state.mode !== ConversationMode.INITIAL) return;
+      _convSwitchTimers[conversationId] = setTimeout(function() {
+        delete _convSwitchTimers[conversationId];
+        var s = getConversationState(conversationId);
+        if (s && s.mode === ConversationMode.INITIAL) {
+          s.mode = ConversationMode.LIVE;
+          scheduleResponseUpdate();
+        }
+      }, MODE_LIVE_DELAY_MS);
+    }
+
     function handleMutations(mutations) {
+      // 检测 SPA 对话切换
+      var convId = getConversationId();
+      if (convId !== _lastTrackedConversation) {
+        _lastTrackedConversation = convId;
+        ensureConversationLive(convId);
+      }
+
       for (var i = 0; i < mutations.length; i++) {
         var mutation = mutations[i];
         if (mutation.type === 'childList' || mutation.type === 'characterData') {
@@ -310,9 +390,16 @@
 
       isMonitoring = true;
 
+      // 初始 500ms 检查：同步侧边栏，不 autoCapture（mode === INITIAL）
       initialCheckTimeout = window.setTimeout(function() {
         initialCheckTimeout = null;
         scheduleResponseUpdate();
+
+        // 翻转 INITIAL → LIVE：后续 observer 触发的 autoCapture 正常执行
+        var state = getConversationState(getConversationId());
+        if (state.mode === ConversationMode.INITIAL) {
+          state.mode = ConversationMode.LIVE;
+        }
       }, 500);
     }
 
@@ -325,7 +412,20 @@
         window.clearTimeout(pendingUpdateTimeout);
         pendingUpdateTimeout = null;
       }
-      clearSettleTimer();
+      // 清理所有 SPA 对话切换计时器
+      Object.keys(_convSwitchTimers).forEach(function(k) {
+        clearTimeout(_convSwitchTimers[k]);
+      });
+      _convSwitchTimers = {};
+      // 清理所有 message settle 计时器
+      conversationStateById.forEach(function(state) {
+        state.messages.forEach(function(tracker) {
+          if (tracker.settleTimer !== null) {
+            clearTimeout(tracker.settleTimer);
+            tracker.settleTimer = null;
+          }
+        });
+      });
       if (observer) {
         observer.disconnect();
         observer = null;
