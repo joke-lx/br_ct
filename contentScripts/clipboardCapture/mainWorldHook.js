@@ -2,10 +2,17 @@
   if (window.__ccCaptureHook) return;
   window.__ccCaptureHook = true;
 
+  // Capture guard: only intercept when our auto-capture triggers clipboard operations.
+  // User-initiated copies (Ctrl+C, right-click, manual click on copy button) are NEVER intercepted.
+  // Uses DOM dataset (set by content script synchronously) instead of postMessage (async cross-world).
+  function isCaptureActive() { return document.documentElement.dataset.ccCaptureActive === '1'; }
+
   console.log('[CC-Hook] loaded');
 
   // Hook clipboard.write at prototype level
   var proto = Object.getPrototypeOf(navigator.clipboard);
+  var _origWrite = proto.write;
+  var _origWriteText = proto.writeText;
   Object.defineProperty(proto, 'write', {
     value: async function(items) {
       var html = null, text = null;
@@ -13,8 +20,11 @@
         try { if (items[i].types.includes('text/html')) { var b = await items[i].getType('text/html'); html = await b.text(); } } catch(e) {}
         try { if (items[i].types.includes('text/plain')) { var b = await items[i].getType('text/plain'); text = await b.text(); } } catch(e) {}
       }
-      window.postMessage({ source: 'cc-capture-hook', type: 'clipboard-data', payload: { html: html || null, text: text || null, source: 'clipboard.write' } }, '*');
-      return Promise.resolve();
+      if (isCaptureActive()) {
+        window.postMessage({ source: 'cc-capture-hook', type: 'clipboard-data', payload: { html: html || null, text: text || null, source: 'clipboard.write' } }, '*');
+        return Promise.resolve();
+      }
+      return _origWrite.apply(this, arguments);
     },
     configurable: true, writable: true
   });
@@ -22,41 +32,14 @@
   // Hook clipboard.writeText
   Object.defineProperty(proto, 'writeText', {
     value: async function(text) {
-      window.postMessage({ source: 'cc-capture-hook', type: 'clipboard-data', payload: { html: null, text: String(text || ''), source: 'clipboard.writeText' } }, '*');
-      return Promise.resolve();
+      if (isCaptureActive()) {
+        window.postMessage({ source: 'cc-capture-hook', type: 'clipboard-data', payload: { html: null, text: String(text || ''), source: 'clipboard.writeText' } }, '*');
+        return Promise.resolve();
+      }
+      return _origWriteText.apply(this, arguments);
     },
     configurable: true, writable: true
   });
-
-  // Hook copy event（捕获阶段 + Selection fallback，拦截 execCommand('copy')）
-  document.addEventListener('copy', function(e) {
-    try {
-      var text = null, html = null;
-      try { text = e.clipboardData.getData('text/plain'); } catch(ex) {}
-      try { html = e.clipboardData.getData('text/html'); } catch(ex) {}
-
-      // execCommand('copy') 路径：clipboardData.getData 为空，用 Selection fallback
-      if (!text && !html) {
-        var sel = window.getSelection();
-        if (sel && sel.rangeCount > 0) {
-          text = sel.toString() || null;
-          try {
-            var range = sel.getRangeAt(0);
-            var div = document.createElement('div');
-            div.appendChild(range.cloneContents());
-            html = div.innerHTML || null;
-          } catch(ex) {}
-          // textarea 等替换元素的 cloneContents() 不产生 HTML，
-          // 用 text 作为 html 兜底，确保侧边栏能渲染内容
-          if (!html && text) html = text;
-        }
-      }
-
-      if (text || html) {
-        window.postMessage({ source: 'cc-capture-hook', type: 'clipboard-data', payload: { html: html || null, text: text || null, source: 'copy.event' } }, '*');
-      }
-    } catch(ex) {}
-  }, true);
 
   // Hook document.execCommand('copy') for platforms (like GLM) that use execCommand + textarea
   // dispatchEvent 没有 transient activation → execCommand 静默失败 → copy event 不会触发
@@ -78,11 +61,13 @@
         if (!html && text) html = text;
       }
       if (text || html) {
-        window.postMessage({
-          source: 'cc-capture-hook',
-          type: 'clipboard-data',
-          payload: { html: html || null, text: text || null, source: 'execCommand.hook' }
-        }, '*');
+        if (isCaptureActive()) {
+          window.postMessage({
+            source: 'cc-capture-hook',
+            type: 'clipboard-data',
+            payload: { html: html || null, text: text || null, source: 'execCommand.hook' }
+          }, '*');
+        }
       }
       // 尝试原始 execCommand（有 transient activation 时成功，没有则静默失败）
       try { return _origExecCommand(command, showUI, value); } catch(e) { return false; }

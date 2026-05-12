@@ -299,7 +299,6 @@
       var capture = tryGetCapture();
       if (capture) {
         capture.installHooks();
-        capture.setupClickListener();
       }
 
       observer = new MutationObserver(handleMutations);
