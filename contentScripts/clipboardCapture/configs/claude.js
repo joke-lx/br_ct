@@ -17,6 +17,9 @@
       'button[aria-label*="复制"]',
       'button[aria-label*="copy"]',
     ],
+    // Claude 的 div.group 包含用户消息和 assistant 回复各自的 action bar，
+    // 取最后一个匹配按钮（assistant 的复制按钮在 DOM 顺序中靠后）
+    copyBtnFindLast: true,
 
     // ============= 复制按钮搜索根 =============
     getCopyBtnRoot: function(turnRoot) {

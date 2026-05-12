@@ -187,8 +187,16 @@
       return turnRoot;
     }
 
-    function findCopyBtn(turnRoot) {
+    function findCopyBtn(turnRoot, options) {
       if (!(turnRoot instanceof Element)) return null;
+
+      // 角色感知的复制按钮查找（由平台 config 按需实现）
+      var role = options && options.role;
+      if (role && typeof config.getCopyBtnForRole === 'function') {
+        var roleBtn = config.getCopyBtnForRole(turnRoot, role);
+        if (roleBtn) return roleBtn;
+      }
+
       var root = getSearchRoot(turnRoot);
       var selectors = config.copyBtnSelectors;
       for (var i = 0; i < selectors.length; i++) {
@@ -224,9 +232,9 @@
 
     // 事件驱动等待复制按钮出现（MutationObserver），代替固定间隔轮询。
     // 按钮一旦渲染到 DOM 立即触发回调，零延迟、零浪费。
-    function waitForCopyBtn(turnRoot, callback, timeoutMs) {
+    function waitForCopyBtn(turnRoot, callback, timeoutMs, options) {
       // 先同步查一次——可能按钮已经渲染好了
-      var btn = findCopyBtn(turnRoot);
+      var btn = findCopyBtn(turnRoot, options);
       if (btn) { callback(btn); return; }
 
       // 事件驱动：监听 DOM 变化，按钮一出现就触发
@@ -234,7 +242,7 @@
       if (!(root instanceof Element)) return;
 
       var observer = new MutationObserver(function() {
-        var found = findCopyBtn(turnRoot);
+        var found = findCopyBtn(turnRoot, options);
         if (found) {
           observer.disconnect();
           callback(found);
@@ -306,7 +314,10 @@
       }, '*');
     }
 
-    function autoCapture(turnRoot) {
+    function autoCapture(turnRoot, options) {
+      // 规范化 options
+      options = options || {};
+
       // Dedup: 防止同一个 turn 被多次 autoCapture
       // 场景：simulateCopy 触发 DOM 变化 → MutationObserver → handleResponseUpdate → autoCapture 循环
       var dedupId = null;
@@ -349,9 +360,9 @@
 
       // 事件驱动等待复制按钮出现（Observer），不再固定间隔轮询
       waitForCopyBtn(turnRoot, function(btn) {
-        log('autoCopy.triggerSent', { hasBtn: true });
+        log('autoCopy.triggerSent', { hasBtn: true, role: options.role });
         triggerDirectCopy(btn);
-      }, 4500); // 略小于 dedup 超时（5000ms），避免 capture guard 先于检索清理
+      }, 4500, options); // 略小于 dedup 超时（5000ms），避免 capture guard 先于检索清理
 
       // DOM 兜底（Angular 虚拟滚动平台内容不在 DOM 中，通过 skipDomFallback 跳过）
       if (!config.skipDomFallback) {
