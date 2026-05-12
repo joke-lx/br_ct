@@ -18,7 +18,6 @@
     // ---------- state ----------
     let lastContext = null;
     let hooksInstalled = false;
-    let clickListenerAttached = false;
     var _capturingIds = new Set(); // dedup: skip duplicate autoCapture for same message
 
     function log(label, data) {
@@ -60,6 +59,27 @@
         .trim();
     }
 
+    // ==================== capture guard (引用计数) ====================
+    // 支持多个 autoCapture 并发：每个 autoCapture 调用 setCaptureActive(true) 增加计数，
+    // 各自的 cleanup timeout 调用 setCaptureActive(false) 减少计数。
+    // 仅当计数归零时才清除 DOM dataset flag，避免并发 autoCapture 相互覆盖。
+    var _captureActive = false;
+    var _guardCount = 0;
+
+    function setCaptureActive(active) {
+      if (active) {
+        _guardCount++;
+        _captureActive = true;
+        document.documentElement.dataset.ccCaptureActive = '1';
+      } else {
+        _guardCount = Math.max(0, _guardCount - 1);
+        if (_guardCount === 0) {
+          _captureActive = false;
+          delete document.documentElement.dataset.ccCaptureActive;
+        }
+      }
+    }
+
     // ==================== hooks ====================
     function installHooks() {
       if (hooksInstalled) return;
@@ -85,7 +105,7 @@
       var origSetData = window.DataTransfer && window.DataTransfer.prototype && window.DataTransfer.prototype.setData;
       if (typeof origSetData === 'function') {
         window.DataTransfer.prototype.setData = function(type, data) {
-          if (type === 'text/html' || type === 'text/plain') {
+          if ((type === 'text/html' || type === 'text/plain') && _captureActive) {
             _capture({
               html: type === 'text/html' ? String(data || '') : null,
               text: type === 'text/plain' ? String(data || '') : null,
@@ -202,7 +222,31 @@
 
     // ==================== auto capture ====================
 
-    var RETRY_INTERVALS = [100, 300, 700, 1500, 3000];
+    // 事件驱动等待复制按钮出现（MutationObserver），代替固定间隔轮询。
+    // 按钮一旦渲染到 DOM 立即触发回调，零延迟、零浪费。
+    function waitForCopyBtn(turnRoot, callback, timeoutMs) {
+      // 先同步查一次——可能按钮已经渲染好了
+      var btn = findCopyBtn(turnRoot);
+      if (btn) { callback(btn); return; }
+
+      // 事件驱动：监听 DOM 变化，按钮一出现就触发
+      var root = getSearchRoot(turnRoot);
+      if (!(root instanceof Element)) return;
+
+      var observer = new MutationObserver(function() {
+        var found = findCopyBtn(turnRoot);
+        if (found) {
+          observer.disconnect();
+          callback(found);
+        }
+      });
+      observer.observe(root, { childList: true, subtree: true });
+
+      // 安全网：超时后放弃，防止 observer 常驻泄漏
+      if (timeoutMs > 0) {
+        setTimeout(function() { observer.disconnect(); }, timeoutMs);
+      }
+    }
 
     // 直接从 content script 世界 dispatch click，不再依赖主世界脚本重新查找元素。
     // React 事件委托会在 document root 捕获冒泡事件，页面 handler 调用 clipboard.write，
@@ -211,6 +255,13 @@
     function triggerDirectCopy(btn) {
       if (!(btn instanceof Element)) return;
       log('triggerDirectCopy', { tag: btn.tagName, label: btn.getAttribute('aria-label') });
+
+      // Gemini: btn.click() avoids Angular BardChatUi "No ID or name found" error
+      if (window.location.hostname.indexOf('gemini.google.com') !== -1) {
+        btn.focus();
+        btn.click();
+        return;
+      }
 
       var target = btn;
       var child = target;
@@ -255,25 +306,6 @@
       }, '*');
     }
 
-    function tryCopyBtn(turnRoot, btnSelector, retryIndex) {
-      var btn = findCopyBtn(turnRoot);
-      if (btn) {
-        log('autoCopy.triggerSent', { hasBtn: true, selector: btnSelector, retry: retryIndex + 1 });
-        triggerDirectCopy(btn);
-        return true;
-      }
-      if (retryIndex < RETRY_INTERVALS.length) {
-        var delay = RETRY_INTERVALS[retryIndex];
-        log('autoCopy.retry', { retry: retryIndex + 1, delay: delay });
-        setTimeout(function() {
-          tryCopyBtn(turnRoot, btnSelector, retryIndex + 1);
-        }, delay);
-      } else {
-        log('autoCopy.retry.giveUp', { retries: RETRY_INTERVALS.length });
-      }
-      return false;
-    }
-
     function autoCapture(turnRoot) {
       // Dedup: 防止同一个 turn 被多次 autoCapture
       // 场景：simulateCopy 触发 DOM 变化 → MutationObserver → handleResponseUpdate → autoCapture 循环
@@ -292,38 +324,34 @@
       }
       if (dedupId) {
         _capturingIds.add(dedupId);
-        // 所有重试完成（2600ms）+ 额外安全缓冲后清理 dedup
-        setTimeout(function() { _capturingIds.delete(dedupId); }, 5000);
       }
 
       openContext(turnRoot, null);
 
-      // 确保 turn 有 data-testid 用于按钮选择器作用域限定
-      // 某些平台（如豆包）的 turn 容器没有原生 data-testid，导致 btnSelector 无作用域，
-      // mainWorldHook 的 document.querySelector() 取到第一个匹配（上一个 turn）而非当前 turn
+      // Enable capture guard: only our programmatic clicks will be intercepted
+      // 使用引用计数确保即使多个 autoCapture 并发也不互相干扰
+      setCaptureActive(true);
+
+      // Observer 安全网超时（4500ms）+ 缓冲后清理 dedup 和 capture guard
+      // ⚠️ 始终调度清理（无论 dedupId 是否为空），防止 guard 永久锁定
+      setTimeout(function() {
+        if (dedupId) _capturingIds.delete(dedupId);
+        setCaptureActive(false);
+      }, 5000);
+
+      // 确保 turn 有 data-testid（用于调试识别和 triggerMarkerCopy 兜底）
       var turnEl = (turnRoot.closest && turnRoot.closest('[data-testid^="conversation-turn-"]')) || turnRoot;
       var turnTestId = turnEl.getAttribute('data-testid');
       if (!turnTestId) {
         turnTestId = dedupId && typeof dedupId === 'string' ? dedupId : ('cc-turn-' + Date.now());
         turnEl.setAttribute('data-testid', turnTestId);
       }
-      // 对每个逗号分隔的选择器部分分别添加 turn 作用域限定
-      // 避免 [aria-label="A"],[aria-label="B"] → 只有前半段有 scope
-      var rawParts = config.copyBtnPrimarySelector.split(',');
-      var scopedParts = [];
-      for (var si = 0; si < rawParts.length; si++) {
-        scopedParts.push('[data-testid="' + turnTestId + '"] ' + rawParts[si].trim());
-      }
-      var btnSelector = scopedParts.join(',');
 
-      var btn = findCopyBtn(turnRoot);
-      if (btn) {
-        log('autoCopy.triggerSent', { hasBtn: true, retry: 0 });
+      // 事件驱动等待复制按钮出现（Observer），不再固定间隔轮询
+      waitForCopyBtn(turnRoot, function(btn) {
+        log('autoCopy.triggerSent', { hasBtn: true });
         triggerDirectCopy(btn);
-      } else {
-        log('autoCopy.triggerSent', { hasBtn: false, retry: 0 });
-        tryCopyBtn(turnRoot, btnSelector, 0);
-      }
+      }, 4500); // 略小于 dedup 超时（5000ms），避免 capture guard 先于检索清理
 
       // DOM 兜底（Angular 虚拟滚动平台内容不在 DOM 中，通过 skipDomFallback 跳过）
       if (!config.skipDomFallback) {
@@ -342,34 +370,11 @@
       // 确保异步到达的 clipboard write 数据能获取到正确的 messageId
     }
 
-    // ==================== click listener ====================
-    function setupClickListener() {
-      if (clickListenerAttached) return;
-      clickListenerAttached = true;
-
-      document.addEventListener('click', function(e) {
-        // 跳过脚本 dispatchEvent 产生的模拟点击（isTrusted===false），
-        // 避免 autoCapture 的 simulateCopy 触发二次 context.open
-        if (!e.isTrusted) return;
-        var target = e.target;
-        var turn = config.detectTurn ? config.detectTurn(target) : null;
-        if (!turn) return;
-
-        var candidate = (target instanceof Element && target.closest && target.closest('button, [role="button"]')) || target;
-        if (!config.isCopyControl(target) && !config.isCopyControl(candidate)) return;
-
-        openContext(turn, target);
-      }, true);
-
-      log('listener.attached');
-    }
-
     // ==================== public API ====================
     return {
       installHooks: installHooks,
       autoCapture: autoCapture,
       openContext: openContext,
-      setupClickListener: setupClickListener,
       _capture: _capture,
     };
   }
