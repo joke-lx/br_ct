@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// 支持获得wsl当中的内容的
+
 func main() {
 	cmd := exec.Command(
 		"wsl",
