@@ -417,16 +417,11 @@ function renderCentralSkillList(skills, projectSkills) {
       ? (synced ? '<span class="source-tag synced">已同步 ✓</span>' : '<span class="source-tag conflict">冲突</span>')
       : '<span class="source-tag central">仅中心</span>';
 
-    // 获取分组名称
-    const group = currentGroups.find(g => g.id === s.groupId);
-    const groupName = group ? group.name : '未分组';
-    const groupTag = `<span class="source-tag group-tag">${escapeHtml(groupName)}</span>`;
-
     return `
       <div class="skill-card" data-skill-name="${escapeHtml(s.name)}">
         <div class="skill-card-header">
           <span class="skill-card-title">${escapeHtml(s.name)}</span>
-          <div class="skill-card-tags">${status}${groupTag}</div>
+          <div class="skill-card-tags">${status}</div>
         </div>
         <div class="skill-card-desc">${escapeHtml(s.description || '(无描述)')}</div>
         <div class="skill-card-path">${escapeHtml(s.skillDir)}</div>
