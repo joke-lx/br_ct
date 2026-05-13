@@ -152,6 +152,30 @@ const buttonSelectors = [
 
 let isSending = false; // 状态锁
 
+const MANUAL_INPUT_SELECTORS = inputSelectors
+  .filter((selector) => selector.type === "css")
+  .map((selector) => selector.value);
+const MANUAL_BUTTON_SELECTORS = buttonSelectors
+  .filter((selector) => selector.type === "css")
+  .map((selector) => selector.value);
+
+function recycleResponseListener(reason) {
+  const listener = window.__responseListenerInstances && window.__responseListenerInstances.claude;
+  if (!listener || typeof listener.reset !== "function") return;
+  console.log(`Claude 手动发送，回收回复监听: ${reason}`);
+  listener.reset();
+}
+
+function matchesAnySelector(target, selectors) {
+  return selectors.some((selector) => {
+    try {
+      return !!target.closest(selector);
+    } catch (e) {
+      return false;
+    }
+  });
+}
+
 async function sendChatMessage(message) {
   if (isSending) {
     console.warn("正在发送中，请勿重复操作");
@@ -235,6 +259,31 @@ if (!window.location.hostname.includes('claude.ai')) {
   console.warn('当前页面不是 Claude.ai，脚本未激活');
 } else {
   console.log('Claude.ai 内容脚本已加载并激活');
+
+  if (!window.__claudeManualRecycleBound) {
+    window.__claudeManualRecycleBound = true;
+
+    document.addEventListener("click", (event) => {
+      if (isSending) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (matchesAnySelector(target, MANUAL_BUTTON_SELECTORS)) {
+        recycleResponseListener("button-click");
+      }
+    }, true);
+
+    document.addEventListener("keydown", (event) => {
+      if (isSending) return;
+      if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const isInputTarget = target instanceof HTMLTextAreaElement || target.isContentEditable;
+      if (!isInputTarget) return;
+      if (matchesAnySelector(target, MANUAL_INPUT_SELECTORS)) {
+        recycleResponseListener("enter-key");
+      }
+    }, true);
+  }
 
   // 消息监听器
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

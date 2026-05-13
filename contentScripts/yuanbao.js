@@ -158,6 +158,63 @@ function triggerClick(element) {
 
 let isSending = false; // 全局状态锁
 
+const MANUAL_INPUT_SELECTORS = [
+  "#prompt-textarea",
+  ".ql-editor[contenteditable=\"true\"]",
+  "[contenteditable=\"true\"]",
+];
+
+const MANUAL_BUTTON_SELECTORS = [
+  "#yuanbao-send-btn",
+  "#composer-submit-button",
+  "button[type=\"submit\"]",
+  "button[aria-label=\"Send message\"]",
+];
+
+function recycleResponseListener(reason) {
+  const listener = window.__responseListenerInstances && window.__responseListenerInstances.yuanbao;
+  if (!listener || typeof listener.reset !== "function") return;
+  console.log(`元宝 手动发送，回收回复监听: ${reason}`);
+  listener.reset();
+}
+
+function matchesAnySelector(target, selectors) {
+  return selectors.some((selector) => {
+    try {
+      return !!target.closest(selector);
+    } catch (e) {
+      return false;
+    }
+  });
+}
+
+if (!window.__yuanbaoManualRecycleBound) {
+  window.__yuanbaoManualRecycleBound = true;
+
+  document.addEventListener("click", (event) => {
+    if (isSending) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (matchesAnySelector(target, MANUAL_BUTTON_SELECTORS)) {
+      recycleResponseListener("button-click");
+    }
+  }, true);
+
+  document.addEventListener("keydown", (event) => {
+    if (isSending) return;
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const isInputTarget = target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLInputElement ||
+      target.isContentEditable;
+    if (!isInputTarget) return;
+    if (matchesAnySelector(target, MANUAL_INPUT_SELECTORS)) {
+      recycleResponseListener("enter-key");
+    }
+  }, true);
+}
+
 /**
  * 主函数: 异步发送聊天消息
  * @param {string} message - 要发送的消息内容

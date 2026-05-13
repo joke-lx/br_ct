@@ -150,6 +150,13 @@ const buttonSelectors = [
 // ==========================================================
 let isSending = false; // 状态锁
 
+function recycleResponseListener(reason) {
+  const listener = window.__responseListenerInstances && window.__responseListenerInstances.doubao;
+  if (!listener || typeof listener.reset !== "function") return;
+  console.log(`Doubao 手动发送，回收回复监听: ${reason}`);
+  listener.reset();
+}
+
 async function sendChatMessage(message) {
   if (isSending) {
     console.warn("正在发送中，请勿重复操作");
@@ -220,8 +227,34 @@ if (!window.location.hostname.includes("doubao")) {
 } else {
   console.log("Doubao 内容脚本已加载并激活");
 
+  if (!window.__doubaoManualRecycleBound) {
+    window.__doubaoManualRecycleBound = true;
+
+    document.addEventListener("click", (event) => {
+      if (isSending) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("#flow-end-msg-send")) {
+        recycleResponseListener("button-click");
+      }
+    }, true);
+
+    document.addEventListener("keydown", (event) => {
+      if (isSending) return;
+      if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+      const target = event.target;
+      if (!(target instanceof HTMLTextAreaElement)) return;
+      if (target.closest("#chat-route-layout")) {
+        recycleResponseListener("enter-key");
+      }
+    }, true);
+  }
+
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "sendMessage") {
+      if (request.source === "background") {
+        window.__doubaoLastSendTime = Date.now();
+      }
       console.log(`收到消息发送请求: "${request.message}"`);
 
       sendChatMessage(request.message)

@@ -123,6 +123,59 @@ function findSendButton() {
 // 使用状态锁防止重复点击
 let isSending = false;
 
+const MANUAL_INPUT_SELECTORS = [
+  "rich-textarea",
+  "div[role=\"textbox\"][contenteditable=\"true\"]",
+  "div[contenteditable=\"true\"]",
+];
+
+const MANUAL_BUTTON_SELECTORS = [
+  "button[aria-label=\"Send message\"]",
+  "button[type=\"submit\"]",
+];
+
+function recycleResponseListener(reason) {
+  const listener = window.__responseListenerInstances && window.__responseListenerInstances.gemini;
+  if (!listener || typeof listener.reset !== "function") return;
+  console.log(`Gemini 手动发送，回收回复监听: ${reason}`);
+  listener.reset();
+}
+
+function matchesAnySelector(target, selectors) {
+  return selectors.some((selector) => {
+    try {
+      return !!target.closest(selector);
+    } catch (e) {
+      return false;
+    }
+  });
+}
+
+if (!window.__geminiManualRecycleBound) {
+  window.__geminiManualRecycleBound = true;
+
+  document.addEventListener("click", (event) => {
+    if (isSending) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (matchesAnySelector(target, MANUAL_BUTTON_SELECTORS)) {
+      recycleResponseListener("button-click");
+    }
+  }, true);
+
+  document.addEventListener("keydown", (event) => {
+    if (isSending) return;
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const isInputTarget = target instanceof HTMLTextAreaElement || target.isContentEditable;
+    if (!isInputTarget) return;
+    if (matchesAnySelector(target, MANUAL_INPUT_SELECTORS)) {
+      recycleResponseListener("enter-key");
+    }
+  }, true);
+}
+
 /**
  * 主函数：输入文本并发送
  * @param {string} message 要发送的文本

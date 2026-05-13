@@ -30,6 +30,8 @@
 
     captureConfig: 'doubaoCaptureConfig',
 
+    settleTimeMs: 1500,
+
     getConversationId: function() {
       try {
         var url = new URL(window.location.href);
@@ -52,7 +54,14 @@
     },
 
     isGenerating: function() {
-      var stopBtn = document.querySelector('[data-testid="stop-generation-button"], .stop-generation-btn');
+      if (window.__doubaoLastSendTime && Date.now() - window.__doubaoLastSendTime < 3000) {
+        return true;
+      }
+      var stopBtn = document.querySelector('[data-testid="stop-generation-button"]') ||
+                    document.querySelector('.stop-generation-btn') ||
+                    document.querySelector('button[aria-label*="Stop" i]') ||
+                    document.querySelector('button[aria-label*="停止" i]') ||
+                    document.querySelector('button[id*="stop" i]');
       if (stopBtn && !stopBtn.disabled) return true;
       return false;
     },

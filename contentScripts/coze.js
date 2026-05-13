@@ -397,6 +397,25 @@ function logError(message, error) {
 // ==========================================================
 
 let isSending = false;
+const MANUAL_INPUT_SELECTORS = INPUT_SELECTORS.filter((selector) => selector.type === 'css').map((selector) => selector.value);
+const MANUAL_BUTTON_SELECTORS = BUTTON_SELECTORS.filter((selector) => selector.type === 'css').map((selector) => selector.value);
+
+function recycleResponseListener(reason) {
+  const listener = window.__responseListenerInstances && window.__responseListenerInstances.coze;
+  if (!listener || typeof listener.reset !== 'function') return;
+  logInfo(`Coze 手动发送，回收回复监听: ${reason}`);
+  listener.reset();
+}
+
+function matchesAnySelector(target, selectors) {
+  return selectors.some((selector) => {
+    try {
+      return !!target.closest(selector);
+    } catch (e) {
+      return false;
+    }
+  });
+}
 
 async function sendChatMessage(message) {
   if (isSending) {
@@ -494,6 +513,29 @@ if (!window.location.hostname.includes(PLATFORM_CONFIG.hostname)) {
   logWarning(`当前页面不是 ${PLATFORM_CONFIG.hostname}，脚本未激活`);
 } else {
   logInfo(`Coze 内容脚本已加载并激活`);
+
+  if (!window.__cozeManualRecycleBound) {
+    window.__cozeManualRecycleBound = true;
+
+    document.addEventListener('click', (event) => {
+      if (isSending) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (matchesAnySelector(target, MANUAL_BUTTON_SELECTORS)) {
+        recycleResponseListener('button-click');
+      }
+    }, true);
+
+    document.addEventListener('keydown', (event) => {
+      if (isSending) return;
+      if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (matchesAnySelector(target, MANUAL_INPUT_SELECTORS)) {
+        recycleResponseListener('enter-key');
+      }
+    }, true);
+  }
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'sendMessage') {
