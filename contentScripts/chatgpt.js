@@ -66,6 +66,61 @@ function triggerClick(element) {
 
 let isSending = false; // 状态锁
 
+const MANUAL_INPUT_SELECTORS = [
+  "#prompt-textarea",
+  "div[contenteditable=\"true\"]",
+  "rich-textarea",
+];
+
+const MANUAL_BUTTON_SELECTORS = [
+  "#composer-submit-button",
+  "button[aria-label=\"Send message\"]",
+];
+
+function recycleResponseListener(reason) {
+  const listener = window.__responseListenerInstances && window.__responseListenerInstances.chatgpt;
+  if (!listener || typeof listener.reset !== "function") return;
+  console.log(`ChatGPT 手动发送，回收回复监听: ${reason}`);
+  listener.reset();
+}
+
+function matchesAnySelector(target, selectors) {
+  return selectors.some((selector) => {
+    try {
+      return !!target.closest(selector);
+    } catch (e) {
+      return false;
+    }
+  });
+}
+
+if (!window.__chatgptManualRecycleBound) {
+  window.__chatgptManualRecycleBound = true;
+
+  document.addEventListener("click", (event) => {
+    if (isSending) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (matchesAnySelector(target, MANUAL_BUTTON_SELECTORS)) {
+      recycleResponseListener("button-click");
+    }
+  }, true);
+
+  document.addEventListener("keydown", (event) => {
+    if (isSending) return;
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const isInputTarget = target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLInputElement ||
+      target.isContentEditable;
+    if (!isInputTarget) return;
+    if (matchesAnySelector(target, MANUAL_INPUT_SELECTORS)) {
+      recycleResponseListener("enter-key");
+    }
+  }, true);
+}
+
 async function sendChatMessage(message) {
   if (isSending) {
     console.warn("正在发送中，请勿重复操作");

@@ -18,6 +18,7 @@
     // ---------- state ----------
     let lastContext = null;
     let hooksInstalled = false;
+    let onCapture = null;
     var _capturingIds = new Set(); // dedup: skip duplicate autoCapture for same message
 
     function log(label, data) {
@@ -78,6 +79,16 @@
           delete document.documentElement.dataset.ccCaptureActive;
         }
       }
+    }
+
+    function resetState() {
+      lastContext = null;
+      onCapture = null;
+      _capturingIds.clear();
+      _guardCount = 0;
+      _captureActive = false;
+      delete document.documentElement.dataset.ccCaptureActive;
+      log('state.reset');
     }
 
     // ==================== hooks ====================
@@ -171,6 +182,13 @@
       var n = _normalize(payload);
       if (!n) return;
       log('capture', n);
+      if (typeof onCapture === 'function') {
+        try {
+          onCapture(n);
+        } catch (err) {
+          console.error('[' + config.name + ' Copy Capture] onCapture failed:', err);
+        }
+      }
       chrome.runtime.sendMessage({ action: config.action, data: n }).catch(function(err) {
         if (err && err.message && err.message.indexOf('Receiving end does not exist') === -1) {
           console.error('[' + config.name + ' Copy Capture] sendMessage failed:', err);
@@ -386,6 +404,8 @@
       installHooks: installHooks,
       autoCapture: autoCapture,
       openContext: openContext,
+      reset: resetState,
+      setOnCapture: function(handler) { onCapture = typeof handler === 'function' ? handler : null; },
       _capture: _capture,
     };
   }

@@ -1,15 +1,11 @@
 // ai_platform_processor.js
-// 架构：
-// 1. setupTabUpdateListener —— 监听所有 AI 平台 Tab 加载，自动注入脚本
-// 2. processTaskQueueConcurrent —— 任务触发时，复用已注入 Tab 或新建 Tab，再发消息
+// 1. setupTabUpdateListener: 监听页面 AI 平台 Tab 加载并注入基础脚本
+// 2. processTaskQueueConcurrent: 扩展按钮触发发送时，复用或创建平台 Tab 并发送消息
 
 import { getPlatformUrls } from '../config/platformConfig.js';
+import { getPlatformScriptFiles, getResponseListenerFiles } from "./platformScriptFiles.js";
 
 export const platformUrls = getPlatformUrls();
-
-// ==================== Tab 注入记录 ====================
-// platform -> Set<tabId>
-// 以 platform 为 key，查询"该平台已在哪些 Tab 注入"更直接
 
 const injectedTabs = new Map(); // platform -> Set<tabId>
 
@@ -19,7 +15,6 @@ function markInjected(tabId, platform) {
   }
   injectedTabs.get(platform).add(tabId);
 
-  // Tab 关闭时清理记录
   chrome.tabs.onRemoved.addListener(function closedListener(removedTabId) {
     if (removedTabId === tabId) {
       removeTab(tabId);
@@ -38,14 +33,12 @@ function hasInjected(platform) {
   return injectedTabs.has(platform) && injectedTabs.get(platform).size > 0;
 }
 
-// 获得该平台已注入的任意一个有效 Tab
 function getInjectedTab(platform) {
   if (!hasInjected(platform)) return null;
   const tabIds = [...injectedTabs.get(platform)];
   return tabIds[0] || null;
 }
 
-// 从 URL 反查 platform key
 function getPlatformFromUrl(url) {
   for (const [platform, platformUrl] of Object.entries(platformUrls)) {
     if (url.includes(platformUrl)) {
@@ -54,13 +47,6 @@ function getPlatformFromUrl(url) {
   }
   return null;
 }
-
-// ==================== 注入 + 发消息 ====================
-
-/**
- * 注入平台脚本到指定 Tab（幂等）
- */
-import { getPlatformScriptFiles } from "./platformScriptFiles.js";
 
 function injectScript(tabId, platform) {
   return new Promise((resolve, reject) => {
@@ -83,12 +69,40 @@ function injectScript(tabId, platform) {
   });
 }
 
-/**
- * 向 Tab 发消息
- */
+function injectResponseListener(tabId, platform) {
+  return new Promise((resolve, reject) => {
+    const files = getResponseListenerFiles(platform);
+    if (!files || files.length === 0) {
+      resolve();
+      return;
+    }
+
+    console.log(`【回复监听注入】Tab ${tabId} 开始注入 ${platform} 回复监听脚本`);
+
+    chrome.scripting.executeScript(
+      { target: { tabId }, files },
+      () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        console.log(`【回复监听注入】Tab ${tabId} 注入成功，发送启动消息`);
+        chrome.tabs.sendMessage(tabId, { action: "startResponseListener" }, () => {
+          if (chrome.runtime.lastError) {
+            console.warn(`[${platform}] 启动回复监听失败:`, chrome.runtime.lastError.message);
+          } else {
+            console.log(`【回复监听注入】Tab ${tabId} ${platform} 回复监听已启动`);
+          }
+          resolve();
+        });
+      }
+    );
+  });
+}
+
 function sendMessage(tabId, message) {
   return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(tabId, { action: "sendMessage", message }, (response) => {
+    chrome.tabs.sendMessage(tabId, { action: "sendMessage", message, source: "background" }, (response) => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
         return;
@@ -102,12 +116,24 @@ function sendMessage(tabId, message) {
   });
 }
 
-// ==================== 核心：Tab 加载自动注入 ====================
+function cleanupResponseListener(tabId, platform) {
+  return new Promise((resolve) => {
+    console.log(`【回复监听重置】Tab ${tabId} 重置 ${platform} 回复监听状态`);
+    chrome.tabs.sendMessage(tabId, { action: "resetResponseListener" }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn(`[${platform}] 重置回复监听失败:`, chrome.runtime.lastError.message);
+      } else {
+        console.log(`【回复监听重置】Tab ${tabId} ${platform} 回复监听已重置`);
+      }
+      resolve();
+    });
+  });
+}
 
-/**
- * 监听所有 AI 平台 Tab 加载，自动注入
- * 处理用户自己打开 Tab 的场景
- */
+function pageConsoleLog(tabId, platform, message) {
+  chrome.tabs.sendMessage(tabId, { action: "consoleLog", message: `[${platform}] ${message}` }, () => {});
+}
+
 export function setupTabUpdateListener() {
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status !== 'complete' || !tab.url) return;
@@ -126,8 +152,6 @@ export function setupTabUpdateListener() {
       .catch(err => console.error(`[${platform}] 注入失败:`, err.message));
   });
 }
-
-// ==================== 消息发送 ====================
 
 export function setupMessageListener() {
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -148,8 +172,9 @@ export function setupMessageListener() {
           sendResponse({ status: "error", error: error.message });
         });
       return true;
+    }
 
-    } else if (request.action === "closeAllAITabs") {
+    if (request.action === "closeAllAITabs") {
       closeAllAITabs();
       sendResponse({ status: "closing_tabs" });
       return true;
@@ -161,7 +186,6 @@ export async function processTaskQueueConcurrent(queue, options = {}) {
   const { maxConcurrent = 3, batchDelay = 300 } = options;
   const results = [];
 
-  // 记录当前活跃 Tab，判断是否需要跳转
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const selectedPlatforms = queue.map(t => t.platform);
   const activeTabMatches = activeTab && selectedPlatforms.some(p => {
@@ -174,7 +198,7 @@ export async function processTaskQueueConcurrent(queue, options = {}) {
     const batchResults = await Promise.allSettled(
       batch.map((task, index) => processSingleTask(task, {
         isFirst: i === 0 && index === 0,
-        shouldJump: !activeTabMatches, // 活跃页不在已选平台范围内才跳转
+        shouldJump: !activeTabMatches,
       }))
     );
     results.push(...batchResults);
@@ -192,18 +216,26 @@ async function processSingleTask(task, opts = {}) {
   const tab = await findOrCreatePlatformTab(platform, opts.isFirst, opts.shouldJump);
   await waitForTabComplete(tab.id);
 
+  await injectScript(tab.id, platform);
+  await cleanupResponseListener(tab.id, platform);
+
   try {
-    return await trySend(tab.id, platform, message, false);
+    const result = await trySend(tab.id, platform, message, false);
+    await injectResponseListener(tab.id, platform);
+    return result;
   } catch (firstErr) {
     console.warn(`[${platform}] 首次发送失败，尝试重注:`, firstErr.message);
 
     try {
       injectedTabs.get(platform)?.delete(tab.id);
       await injectScript(tab.id, platform);
-      return await trySend(tab.id, platform, message, true);
+      await cleanupResponseListener(tab.id, platform);
+      const result = await trySend(tab.id, platform, message, true);
+      await injectResponseListener(tab.id, platform);
+      return result;
     } catch (finalErr) {
-      console.error(`[${platform}] 最终发送失败:`, finalErr.message);
-      throw finalErr; // ✅ 不再重试
+      console.error(`[${platform}] 最终发送失败`, finalErr.message);
+      throw finalErr;
     }
   }
 }
@@ -213,19 +245,14 @@ async function trySend(tabId, platform, message, isRetry) {
     await sendMessage(tabId, message);
     return { platform, success: true, tabId, retried: isRetry };
   } catch (err) {
-    throw err; // 明确抛出，让上层决定
+    throw err;
   }
 }
 
-/**
- * 查找或创建平台 Tab
- * 优先复用已注入的 Tab，其次查找已有 Tab，最后创建新 Tab
- */
 async function findOrCreatePlatformTab(platform, isFirst = false, shouldJump = true) {
   const targetUrl = platformUrls[platform];
   if (!targetUrl) throw new Error(`未知平台: ${platform}`);
 
-  // 1. 优先复用已注入的 Tab
   const injectedTabId = getInjectedTab(platform);
   if (injectedTabId !== null) {
     try {
@@ -237,7 +264,6 @@ async function findOrCreatePlatformTab(platform, isFirst = false, shouldJump = t
     }
   }
 
-  // 2. 查找已存在的匹配 Tab
   const tabs = await chrome.tabs.query({});
   const existing = tabs.find(tab => tab.url && tab.url.includes(targetUrl));
   if (existing) {
@@ -245,7 +271,6 @@ async function findOrCreatePlatformTab(platform, isFirst = false, shouldJump = t
     return existing;
   }
 
-  // 3. 创建新 Tab（第一个任务激活让用户看到跳转）
   return chrome.tabs.create({ url: targetUrl, active: isFirst });
 }
 
@@ -256,7 +281,7 @@ function waitForTabComplete(tabId, timeout = 20000) {
       if (timer) clearTimeout(timer);
       chrome.tabs.onUpdated.removeListener(listener);
     };
-    const listener = (id, changeInfo, tab) => {
+    const listener = (id, changeInfo) => {
       if (id === tabId && changeInfo.status === 'complete') {
         cleanup();
         setTimeout(resolve, 800);
@@ -265,12 +290,13 @@ function waitForTabComplete(tabId, timeout = 20000) {
     timer = setTimeout(() => { cleanup(); reject(new Error('加载超时')); }, timeout);
     chrome.tabs.onUpdated.addListener(listener);
     chrome.tabs.get(tabId, tab => {
-      if (tab?.status === 'complete') { cleanup(); setTimeout(resolve, 800); }
+      if (tab?.status === 'complete') {
+        cleanup();
+        setTimeout(resolve, 800);
+      }
     });
   });
 }
-
-// ==================== 工具函数 ====================
 
 export function closeAllAITabs() {
   chrome.tabs.query({}, tabs => {

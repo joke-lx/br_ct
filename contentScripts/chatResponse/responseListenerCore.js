@@ -13,6 +13,7 @@
  */
 (function() {
   if (window.ResponseListenerCore) return;
+  window.__responseListenerInstances = window.__responseListenerInstances || {};
 
   function createResponseListener(config) {
     const {
@@ -298,6 +299,17 @@
       return _captureInstance;
     }
 
+    function watchCaptureCompletion(capture, stableMessageId) {
+      if (!capture || typeof capture.setOnCapture !== 'function') return;
+      capture.setOnCapture(function(payload) {
+        if (!payload) return;
+        if (payload.source === 'dom.auto') return;
+        if (payload.messageId !== stableMessageId) return;
+        capture.setOnCapture(null);
+        resetListener();
+      });
+    }
+
     // ==================== 内容稳定后捕获（per-tracker） ====================
 
     function clearSettleTimer(tracker) {
@@ -305,6 +317,22 @@
         clearTimeout(tracker.settleTimer);
         tracker.settleTimer = null;
       }
+    }
+
+    function resetCaptureState() {
+      if (_captureInstance && typeof _captureInstance.reset === 'function') {
+        _captureInstance.reset();
+      }
+    }
+
+    function resetConversationState() {
+      conversationStateById.forEach(function(state) {
+        state.messages.forEach(function(tracker) {
+          clearSettleTimer(tracker);
+        });
+      });
+      conversationStateById.clear();
+      _lastTrackedConversation = null;
     }
 
     function enterSettling(state, tracker, container) {
@@ -318,6 +346,7 @@
         if (!capture) return;
         var turnRoot = findTurnRootFromContainer(container);
         if (turnRoot) {
+          watchCaptureCompletion(capture, getMessageId(turnRoot) || getMessageId(container) || ('unknown-' + getConversationId()));
           capture.autoCapture(turnRoot, { role: tracker.role });
         }
       }, settleTimeMs || 0);
@@ -362,7 +391,7 @@
 
     function startMonitoring() {
       if (isMonitoring) {
-        console.log('[' + platform + ' Response Listener] already running');
+        console.log('【回复监听】' + platform + ' 已在运行中');
         return;
       }
 
@@ -374,7 +403,7 @@
         return;
       }
 
-      console.log('[' + platform + ' Response Listener] starting');
+      console.log('【回复监听】' + platform + ' 启动监听');
 
       var capture = tryGetCapture();
       if (capture) {
@@ -404,6 +433,7 @@
     }
 
     function stopMonitoring() {
+      console.log('【回复监听】' + platform + ' 停止监听');
       if (initialCheckTimeout !== null) {
         window.clearTimeout(initialCheckTimeout);
         initialCheckTimeout = null;
@@ -420,10 +450,7 @@
       // 清理所有 message settle 计时器
       conversationStateById.forEach(function(state) {
         state.messages.forEach(function(tracker) {
-          if (tracker.settleTimer !== null) {
-            clearTimeout(tracker.settleTimer);
-            tracker.settleTimer = null;
-          }
+          clearSettleTimer(tracker);
         });
       });
       if (observer) {
@@ -431,31 +458,48 @@
         observer = null;
       }
       isMonitoring = false;
-      console.log('[' + platform + ' Response Listener] stopped');
+      console.log('【回复监听】' + platform + ' 已停止');
+    }
+
+    function resetListener() {
+      stopMonitoring();
+      resetConversationState();
+      resetCaptureState();
+      console.log('【回复监听】' + platform + ' 已重置');
     }
 
     window.addEventListener('pagehide', stopMonitoring, { once: true });
 
-    // ==================== 自动启动 ====================
-
-    (function autoStart() {
-      var hostnames = config.hostnames || [];
-      var currentHostname = window.location.hostname;
-      var matched = hostnames.length === 0 || hostnames.some(function(h) {
-        return currentHostname.indexOf(h) !== -1;
-      });
-
-      if (matched) {
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', startMonitoring);
-        } else {
-          startMonitoring();
-        }
+    // ==================== 手动启动（等待 background 发消息） ====================
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.action === "startResponseListener") {
+        startMonitoring();
+        sendResponse({ status: "started" });
       }
-    })();
+      if (request.action === "stopResponseListener") {
+        stopMonitoring();
+        sendResponse({ status: "stopped" });
+      }
+      if (request.action === "resetResponseListener") {
+        resetListener();
+        sendResponse({ status: "reset" });
+      }
+    });
 
-    return { startMonitoring: startMonitoring, stopMonitoring: stopMonitoring };
+    return {
+      startMonitoring: startMonitoring,
+      stopMonitoring: stopMonitoring,
+      reset: resetListener
+    };
   }
 
-  window.ResponseListenerCore = { createResponseListener: createResponseListener };
+  window.ResponseListenerCore = {
+    createResponseListener: function(config) {
+      var instance = createResponseListener(config);
+      if (config && config.platform) {
+        window.__responseListenerInstances[config.platform] = instance;
+      }
+      return instance;
+    }
+  };
 })();
