@@ -328,6 +328,23 @@ async function loadSkills() {
     : centralSkills.filter(s => s.groupId === filterGroupId);
 
   renderCentralSkillList(filteredSkills, projectSkills);
+
+  // 检查未分组数量，超过5个则显示提示
+  updateUngroupedWarning();
+}
+
+function updateUngroupedWarning() {
+  const warning = document.getElementById('ungroupedWarning');
+  const warningText = document.getElementById('ungroupedWarningText');
+  if (!warning || !warningText) return;
+
+  const ungroupedCount = currentCentralSkills.filter(s => s.groupId === 'ungrouped').length;
+  if (ungroupedCount > 5) {
+    warningText.textContent = `未分组中有 ${ungroupedCount} 个 skill，建议创建分组进行管理`;
+    warning.style.display = 'flex';
+  } else {
+    warning.style.display = 'none';
+  }
 }
 
 function renderCentralSkillList(skills, projectSkills) {

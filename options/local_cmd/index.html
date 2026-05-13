@@ -748,6 +748,30 @@
       border-color: rgba(107, 74, 49, 0.3);
     }
 
+    /* 未分组提示条 */
+    .ungrouped-warning {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      margin: 0 12px 8px;
+      border-radius: var(--radius-md);
+      background: rgba(184, 138, 74, 0.12);
+      border: 1px solid rgba(184, 138, 74, 0.5);
+      font-size: 13px;
+      color: #7a4a10;
+    }
+
+    .ungrouped-warning span {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .ungrouped-warning .btn {
+      padding: 4px 12px;
+      font-size: 12px;
+    }
+
     /* 批量操作栏 */
     .batch-action-bar {
       display: none;
@@ -873,6 +897,10 @@
             <select id="targetGroupSelect" class="target-group-select"></select>
             <button class="btn btn-primary" onclick="batchMoveSkills()">确认</button>
             <button class="btn btn-secondary" onclick="cancelSelection()">取消选择</button>
+          </div>
+          <div id="ungroupedWarning" class="ungrouped-warning" style="display:none;">
+            <span id="ungroupedWarningText"></span>
+            <button class="btn btn-warning" onclick="openSkillGroupModal()">+ 创建分组</button>
           </div>
           <div class="skill-panel-body" id="centralSkillList">
             <div class="skill-loading"><div class="spinner"></div></div>
