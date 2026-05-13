@@ -127,6 +127,104 @@ function updateRemoveBtnVisibility() {
   }
 }
 
+// 当前选中的 skill 列表（用于批量操作）
+let selectedSkills = new Set();
+let currentGroups = [];
+let currentCentralSkills = [];
+
+function toggleSkillSelection(skillName) {
+  if (selectedSkills.has(skillName)) {
+    selectedSkills.delete(skillName);
+  } else {
+    selectedSkills.add(skillName);
+  }
+  updateBatchBar();
+  updateSkillCardSelection();
+}
+
+function updateBatchBar() {
+  const batchBar = document.getElementById('batchActionBar');
+  const batchCount = document.getElementById('batchSelectedCount');
+  const targetGroupSelect = document.getElementById('targetGroupSelect');
+
+  if (selectedSkills.size > 0) {
+    batchBar.style.display = 'flex';
+    batchCount.textContent = `已选择 ${selectedSkills.size} 个 Skill`;
+    // 更新目标分组下拉（排除 'all' 筛选选项）
+    if (targetGroupSelect) {
+      targetGroupSelect.innerHTML = currentGroups.filter(g => g.id !== 'all').map(g =>
+        `<option value="${g.id}">${escapeHtml(g.name)}</option>`
+      ).join('');
+    }
+  } else {
+    batchBar.style.display = 'none';
+  }
+}
+
+function updateSkillCardSelection() {
+  document.querySelectorAll('.skill-card').forEach(card => {
+    const name = card.dataset.skillName;
+    const checkbox = card.querySelector('.skill-checkbox');
+    if (checkbox) {
+      checkbox.checked = selectedSkills.has(name);
+    }
+  });
+}
+
+function cancelSelection() {
+  selectedSkills.clear();
+  updateBatchBar();
+  updateSkillCardSelection();
+}
+
+async function batchMoveSkills() {
+  const targetGroupId = document.getElementById('targetGroupSelect')?.value;
+  if (!targetGroupId || selectedSkills.size === 0) return;
+
+  const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
+  if (!centralPath) { toast('中心仓库路径未设置', 'error'); return; }
+
+  // 读取当前 setting.json 配置
+  let resp;
+  try {
+    resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
+    if (!resp.data) throw new Error('配置为空');
+    const cfg = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data;
+    // 构建新的分组配置（深拷贝，只包含真实分组，排除 'all' 筛选选项）
+    const groups = cfg.groups ? JSON.parse(JSON.stringify(cfg.groups)) : [];
+
+    // 确保 ungrouped 存在
+    if (!groups.find(g => g.id === 'ungrouped')) {
+      groups.unshift({ id: 'ungrouped', name: '未分组' });
+    }
+
+    // 从所有分组中移除选中的 skills
+    for (const g of groups) {
+      g.skills = (g.skills || []).filter(s => !selectedSkills.has(s));
+    }
+
+    // 将选中的 skills 添加到目标分组
+    const targetGroup = groups.find(g => g.id === targetGroupId);
+    if (targetGroup) {
+      if (!targetGroup.skills) targetGroup.skills = [];
+      for (const skillName of selectedSkills) {
+        if (!targetGroup.skills.includes(skillName)) {
+          targetGroup.skills.push(skillName);
+        }
+      }
+    }
+
+    // 保存
+    await sendNativeMessage({ command: 'saveSkillGroups', path: centralPath, groups });
+    toast(`已移动 ${selectedSkills.size} 个 Skill`);
+    selectedSkills.clear();
+    updateBatchBar();
+    loadSkills();
+  } catch (e) {
+    toast('移动失败: ' + e.message, 'error');
+  }
+}
+
 async function loadSkills() {
   const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
   const centralInput = document.getElementById('skillCentralPath');
@@ -143,6 +241,28 @@ async function loadSkills() {
       centralSkills = resp.data || [];
     } catch (e) {}
   }
+  currentCentralSkills = centralSkills;
+
+  // 提取分组信息（从 setting.json 读取）
+  currentGroups = [{ id: 'all', name: '全部' }, { id: 'ungrouped', name: '未分组' }];
+  try {
+    const resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
+    if (resp.data) {
+      const cfg = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data;
+      if (cfg.groups) {
+        currentGroups = [{ id: 'all', name: '全部' }, ...cfg.groups.filter(g => g.id !== 'ungrouped'), { id: 'ungrouped', name: '未分组' }];
+      }
+    }
+  } catch (e) {}
+
+  // 更新分组筛选下拉
+  const groupFilter = document.getElementById('groupFilter');
+  if (groupFilter) {
+    groupFilter.innerHTML = currentGroups.map(g =>
+      `<option value="${g.id}">${escapeHtml(g.name)}</option>`
+    ).join('');
+  }
+
   if (centralCount) centralCount.textContent = `${centralSkills.length} 个 Skill`;
 
   const projectList = document.getElementById('projectSkillList');
@@ -162,7 +282,13 @@ async function loadSkills() {
     renderProjectSkillList(projectSkills, selected, centralSkills);
   }
 
-  renderCentralSkillList(centralSkills, projectSkills);
+  // 根据筛选器过滤
+  const filterGroupId = groupFilter?.value || 'all';
+  const filteredSkills = filterGroupId === 'all'
+    ? centralSkills
+    : centralSkills.filter(s => s.groupId === filterGroupId);
+
+  renderCentralSkillList(filteredSkills, projectSkills);
 }
 
 function renderCentralSkillList(skills, projectSkills) {
@@ -179,11 +305,17 @@ function renderCentralSkillList(skills, projectSkills) {
       ? (synced ? '<span class="source-tag synced">已同步 ✓</span>' : '<span class="source-tag conflict">冲突</span>')
       : '<span class="source-tag central">仅中心</span>';
 
+    // 获取分组名称
+    const group = currentGroups.find(g => g.id === s.groupId);
+    const groupName = group ? group.name : '未分组';
+    const groupTag = `<span class="source-tag group-tag">${escapeHtml(groupName)}</span>`;
+
     return `
-      <div class="skill-card">
+      <div class="skill-card" data-skill-name="${escapeHtml(s.name)}">
         <div class="skill-card-header">
+          <input type="checkbox" class="skill-checkbox" onclick="event.stopPropagation(); toggleSkillSelection('${escapeHtml(s.name)}')" ${selectedSkills.has(s.name) ? 'checked' : ''}>
           <span class="skill-card-title">${escapeHtml(s.name)}</span>
-          <div class="skill-card-tags">${status}</div>
+          <div class="skill-card-tags">${status}${groupTag}</div>
         </div>
         <div class="skill-card-desc">${escapeHtml(s.description || '(无描述)')}</div>
         <div class="skill-card-path">${escapeHtml(s.skillDir)}</div>

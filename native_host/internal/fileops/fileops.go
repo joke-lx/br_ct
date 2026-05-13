@@ -72,6 +72,22 @@ func ensureSkillConfig(centralPath string) (*SkillGroupConfig, error) {
 	return defaultConfig, nil
 }
 
+// ReadSetting 读取 {centralPath}/.browser_chat/setting.json
+func ReadSetting(req protocol.Request) protocol.Response {
+	centralPath := req.Path
+	if centralPath == "" {
+		return protocol.Response{Status: "error", Message: "path 不能为空"}
+	}
+
+	configPath := filepath.Join(centralPath, ".browser_chat", "setting.json")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return protocol.Response{Status: "error", Message: "读取配置文件失败: " + err.Error()}
+	}
+
+	return protocol.Response{Status: "ok", Data: string(data)}
+}
+
 // SaveSkillGroups 保存 skill 分组配置到 {centralPath}/.browser_chat/setting.json
 func SaveSkillGroups(req protocol.Request) protocol.Response {
 	centralPath := req.Path
