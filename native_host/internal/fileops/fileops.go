@@ -29,16 +29,9 @@ type SkillInfo struct {
 	GroupId      string `json:"groupId"`
 }
 
-// SkillGroup 对应 setting.json 中单个分组配置
-type SkillGroup struct {
-	ID     string   `json:"id"`
-	Name   string   `json:"name"`
-	Skills []string `json:"skills,omitempty"`
-}
-
 // SkillGroupConfig 对应 .browser_chat/setting.json 整体配置
 type SkillGroupConfig struct {
-	Groups []SkillGroup `json:"groups"`
+	Groups []protocol.SkillGroup `json:"groups"`
 }
 
 // ensureSkillConfig 检测并初始化 skill 分组配置文件
@@ -63,7 +56,7 @@ func ensureSkillConfig(centralPath string) (*SkillGroupConfig, error) {
 
 	// 不存在或解析失败，创建默认配置（保证 ungrouped 始终存在）
 	defaultConfig := &SkillGroupConfig{
-		Groups: []SkillGroup{
+		Groups: []protocol.SkillGroup{
 			{ID: "ungrouped", Name: "未分组"},
 		},
 	}
@@ -77,6 +70,51 @@ func ensureSkillConfig(centralPath string) (*SkillGroupConfig, error) {
 	}
 
 	return defaultConfig, nil
+}
+
+// SaveSkillGroups 保存 skill 分组配置到 {centralPath}/.browser_chat/setting.json
+func SaveSkillGroups(req protocol.Request) protocol.Response {
+	centralPath := req.Path
+	if centralPath == "" {
+		return protocol.Response{Status: "error", Message: "path 不能为空"}
+	}
+
+	groups := req.Groups
+	if groups == nil {
+		groups = []protocol.SkillGroup{}
+	}
+
+	// 校验 ungrouped 分组必须存在
+	hasUngrouped := false
+	for _, g := range groups {
+		if g.ID == "ungrouped" {
+			hasUngrouped = true
+			break
+		}
+	}
+	if !hasUngrouped {
+		return protocol.Response{Status: "error", Message: "ungrouped 分组必须存在"}
+	}
+
+	// 确保 .browser_chat 目录存在
+	configDir := filepath.Join(centralPath, ".browser_chat")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return protocol.Response{Status: "error", Message: "创建配置目录失败: " + err.Error()}
+	}
+
+	// 写入配置文件
+	cfg := SkillGroupConfig{Groups: groups}
+	out, err := json.MarshalIndent(&cfg, "", "  ")
+	if err != nil {
+		return protocol.Response{Status: "error", Message: "序列化配置失败: " + err.Error()}
+	}
+
+	configPath := filepath.Join(configDir, "setting.json")
+	if err := os.WriteFile(configPath, out, 0644); err != nil {
+		return protocol.Response{Status: "error", Message: "写入配置文件失败: " + err.Error()}
+	}
+
+	return protocol.Response{Status: "ok", Message: "分组配置已保存"}
 }
 
 type SyncResult struct {
