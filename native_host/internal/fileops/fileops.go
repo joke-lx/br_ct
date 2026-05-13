@@ -21,11 +21,62 @@ type FileEntry struct {
 }
 
 type SkillInfo struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	SkillDir   string `json:"skillDir"`
-	SkillMd5   string `json:"skillMd5"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	SkillDir     string `json:"skillDir"`
+	SkillMd5     string `json:"skillMd5"`
 	LastModified string `json:"lastModified"`
+	GroupId      string `json:"groupId"`
+}
+
+// SkillGroup 对应 setting.json 中单个分组配置
+type SkillGroup struct {
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	Skills []string `json:"skills,omitempty"`
+}
+
+// SkillGroupConfig 对应 .browser_chat/setting.json 整体配置
+type SkillGroupConfig struct {
+	Groups []SkillGroup `json:"groups"`
+}
+
+// ensureSkillConfig 检测并初始化 skill 分组配置文件
+// 如果 {centralPath}/.browser_chat/setting.json 不存在，自动创建含 ungrouped 的默认配置
+func ensureSkillConfig(centralPath string) (*SkillGroupConfig, error) {
+	configDir := filepath.Join(centralPath, ".browser_chat")
+	configPath := filepath.Join(configDir, "setting.json")
+
+	// 确保 .browser_chat 目录存在
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return nil, err
+	}
+
+	// 尝试读取现有配置
+	data, err := os.ReadFile(configPath)
+	if err == nil && len(data) > 0 {
+		var cfg SkillGroupConfig
+		if err := json.Unmarshal(data, &cfg); err == nil {
+			return &cfg, nil
+		}
+	}
+
+	// 不存在或解析失败，创建默认配置（保证 ungrouped 始终存在）
+	defaultConfig := &SkillGroupConfig{
+		Groups: []SkillGroup{
+			{ID: "ungrouped", Name: "未分组"},
+		},
+	}
+
+	out, err := json.MarshalIndent(defaultConfig, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(configPath, out, 0644); err != nil {
+		return nil, err
+	}
+
+	return defaultConfig, nil
 }
 
 type SyncResult struct {
@@ -82,8 +133,26 @@ func ListDir(req protocol.Request) protocol.Response {
 // 支持两种路径格式：
 //   - 中心仓库：{root}/skills/{skillName}/SKILL.md
 //   - 项目本地：{root}/.claude/skills/{skillName}/SKILL.md
+//
+// 根据 {root}/.browser_chat/setting.json 构建 groupId → skillName 映射，
+// 返回的 SkillInfo 包含 GroupId 字段，未被任何分组收录的 skill → "ungrouped"
 func ScanSkills(req protocol.Request) protocol.Response {
 	root := req.Path
+
+	// 读取/初始化分组配置
+	cfg, err := ensureSkillConfig(root)
+	if err != nil {
+		return protocol.Response{Status: "error", Message: "初始化 skill 配置失败: " + err.Error()}
+	}
+
+	// 构建 skillName → groupId 映射（白名单方式）
+	skillToGroup := make(map[string]string)
+	for _, group := range cfg.Groups {
+		for _, skillName := range group.Skills {
+			skillToGroup[skillName] = group.ID
+		}
+	}
+
 	var skills []SkillInfo
 
 	// 尝试两种路径格式
@@ -125,12 +194,19 @@ func ScanSkills(req protocol.Request) protocol.Response {
 				desc = "(无描述)"
 			}
 
+			// 根据配置确定分组，未收录则归属 ungrouped
+			groupId, ok := skillToGroup[skillName]
+			if !ok {
+				groupId = "ungrouped"
+			}
+
 			skills = append(skills, SkillInfo{
 				Name:         name,
 				Description:  desc,
-				SkillDir:    skillDir,
-				SkillMd5:    skillMd5,
+				SkillDir:     skillDir,
+				SkillMd5:     skillMd5,
 				LastModified: modTime,
+				GroupId:      groupId,
 			})
 		}
 	}
