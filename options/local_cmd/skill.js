@@ -223,9 +223,9 @@ async function openSkillGroupManageModal() {
   const groupList = document.getElementById('manageGroupList');
   groupList.innerHTML = groups.map(g => `
     <div class="manage-group-item"
+         data-action="skill-select-group"
          data-group-id="${g.id}"
-         style="padding: 10px 8px; cursor: pointer; border-radius: 6px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;"
-         onclick="selectManageTargetGroup('${g.id}')">
+         style="padding: 10px 8px; cursor: pointer; border-radius: 6px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
       <span>${escapeHtml(g.name)}</span>
       <span class="muted" style="font-size: 12px;">${g.skills?.length || 0}</span>
     </div>
