@@ -4,8 +4,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/chatgpt.js",
       "contentScripts/chatgpt.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/chatgptResponseListener.js",
     ];
   }
 
@@ -14,8 +12,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/doubao.js",
       "contentScripts/doubao.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/doubaoResponseListener.js",
     ];
   }
 
@@ -24,8 +20,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/claude.js",
       "contentScripts/claude.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/claudeResponseListener.js",
     ];
   }
 
@@ -34,8 +28,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/gemini.js",
       "contentScripts/gemini.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/geminiResponseListener.js",
     ];
   }
 
@@ -44,8 +36,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/deepseek.js",
       "contentScripts/deepseek.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/deepseekResponseListener.js",
     ];
   }
 
@@ -54,8 +44,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/grok.js",
       "contentScripts/grok.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/grokResponseListener.js",
     ];
   }
 
@@ -64,8 +52,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/glm.js",
       "contentScripts/glm.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/glmResponseListener.js",
     ];
   }
 
@@ -74,8 +60,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/kimi.js",
       "contentScripts/kimi.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/kimiResponseListener.js",
     ];
   }
 
@@ -84,8 +68,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/yuanbao.js",
       "contentScripts/yuanbao.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/yuanbaoResponseListener.js",
     ];
   }
 
@@ -94,8 +76,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/tongyi.js",
       "contentScripts/tongyi.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/tongyiResponseListener.js",
     ];
   }
 
@@ -104,8 +84,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/googlestudio.js",
       "contentScripts/googlestudio.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/googlestudioResponseListener.js",
     ];
   }
 
@@ -114,8 +92,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/notionai.js",
       "contentScripts/notionai.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/notionaiResponseListener.js",
     ];
   }
 
@@ -124,8 +100,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/coze.js",
       "contentScripts/coze.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/cozeResponseListener.js",
     ];
   }
 
@@ -134,8 +108,6 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/coderqwen.js",
       "contentScripts/coderqwen.js",
-      "contentScripts/chatResponse/responseListenerCore.js",
-      "contentScripts/chatResponse/coderqwenResponseListener.js",
     ];
   }
 
@@ -144,10 +116,118 @@ export function getPlatformScriptFiles(platform) {
       "contentScripts/clipboardCapture/core.js",
       "contentScripts/clipboardCapture/configs/zai.js",
       "contentScripts/zai.js",
+    ];
+  }
+
+  return [`contentScripts/${platform}.js`];
+}
+
+// 获取回复监听脚本（用于发送消息成功后再注入）
+export function getResponseListenerFiles(platform) {
+  if (platform === "chatgpt") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/chatgptResponseListener.js",
+    ];
+  }
+
+  if (platform === "doubao") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/doubaoResponseListener.js",
+    ];
+  }
+
+  if (platform === "claude") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/claudeResponseListener.js",
+    ];
+  }
+
+  if (platform === "gemini") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/geminiResponseListener.js",
+    ];
+  }
+
+  if (platform === "deepseek") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/deepseekResponseListener.js",
+    ];
+  }
+
+  if (platform === "grok") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/grokResponseListener.js",
+    ];
+  }
+
+  if (platform === "glm") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/glmResponseListener.js",
+    ];
+  }
+
+  if (platform === "kimi") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/kimiResponseListener.js",
+    ];
+  }
+
+  if (platform === "yuanbao") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/yuanbaoResponseListener.js",
+    ];
+  }
+
+  if (platform === "tongyi") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/tongyiResponseListener.js",
+    ];
+  }
+
+  if (platform === "googlestudio") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/googlestudioResponseListener.js",
+    ];
+  }
+
+  if (platform === "notionai") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/notionaiResponseListener.js",
+    ];
+  }
+
+  if (platform === "coze") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/cozeResponseListener.js",
+    ];
+  }
+
+  if (platform === "coderqwen") {
+    return [
+      "contentScripts/chatResponse/responseListenerCore.js",
+      "contentScripts/chatResponse/coderqwenResponseListener.js",
+    ];
+  }
+
+  if (platform === "zai") {
+    return [
       "contentScripts/chatResponse/responseListenerCore.js",
       "contentScripts/chatResponse/zaiResponseListener.js",
     ];
   }
 
-  return [`contentScripts/${platform}.js`];
+  return [];
 }

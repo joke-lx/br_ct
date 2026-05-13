@@ -436,23 +436,17 @@
 
     window.addEventListener('pagehide', stopMonitoring, { once: true });
 
-    // ==================== 自动启动 ====================
-
-    (function autoStart() {
-      var hostnames = config.hostnames || [];
-      var currentHostname = window.location.hostname;
-      var matched = hostnames.length === 0 || hostnames.some(function(h) {
-        return currentHostname.indexOf(h) !== -1;
-      });
-
-      if (matched) {
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', startMonitoring);
-        } else {
-          startMonitoring();
-        }
+    // ==================== 手动启动（等待 background 发消息） ====================
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.action === "startResponseListener") {
+        startMonitoring();
+        sendResponse({ status: "started" });
       }
-    })();
+      if (request.action === "stopResponseListener") {
+        stopMonitoring();
+        sendResponse({ status: "stopped" });
+      }
+    });
 
     return { startMonitoring: startMonitoring, stopMonitoring: stopMonitoring };
   }

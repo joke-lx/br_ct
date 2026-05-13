@@ -60,7 +60,7 @@ function getPlatformFromUrl(url) {
 /**
  * 注入平台脚本到指定 Tab（幂等）
  */
-import { getPlatformScriptFiles } from "./platformScriptFiles.js";
+import { getPlatformScriptFiles, getResponseListenerFiles } from "./platformScriptFiles.js";
 
 function injectScript(tabId, platform) {
   return new Promise((resolve, reject) => {
@@ -78,6 +78,36 @@ function injectScript(tabId, platform) {
         }
         markInjected(tabId, platform);
         resolve();
+      }
+    );
+  });
+}
+
+/**
+ * 注入回复监听脚本（发送消息成功后再注入）
+ */
+function injectResponseListener(tabId, platform) {
+  return new Promise((resolve, reject) => {
+    const files = getResponseListenerFiles(platform);
+    if (!files || files.length === 0) {
+      resolve();
+      return;
+    }
+
+    chrome.scripting.executeScript(
+      { target: { tabId }, files },
+      () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        // 注入成功后发送消息启动监听
+        chrome.tabs.sendMessage(tabId, { action: "startResponseListener" }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.warn(`[${platform}] 启动回复监听失败:`, chrome.runtime.lastError.message);
+          }
+          resolve();
+        });
       }
     );
   });
@@ -192,18 +222,27 @@ async function processSingleTask(task, opts = {}) {
   const tab = await findOrCreatePlatformTab(platform, opts.isFirst, opts.shouldJump);
   await waitForTabComplete(tab.id);
 
+  // 注入平台脚本（不含 responseListener）
+  await injectScript(tab.id, platform);
+
   try {
-    return await trySend(tab.id, platform, message, false);
+    const result = await trySend(tab.id, platform, message, false);
+    // 发送成功后注入回复监听脚本
+    await injectResponseListener(tab.id, platform);
+    return result;
   } catch (firstErr) {
     console.warn(`[${platform}] 首次发送失败，尝试重注:`, firstErr.message);
 
     try {
       injectedTabs.get(platform)?.delete(tab.id);
       await injectScript(tab.id, platform);
-      return await trySend(tab.id, platform, message, true);
+      const result = await trySend(tab.id, platform, message, true);
+      // 重注发送成功后注入回复监听脚本
+      await injectResponseListener(tab.id, platform);
+      return result;
     } catch (finalErr) {
       console.error(`[${platform}] 最终发送失败:`, finalErr.message);
-      throw finalErr; // ✅ 不再重试
+      throw finalErr;
     }
   }
 }
