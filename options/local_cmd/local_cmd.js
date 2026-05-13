@@ -11,6 +11,10 @@ function init() {
   loadCommandList();
   loadGitDirList();
   startGitAutoRefresh();
+
+  document.getElementById('manageGroupsBtn')?.addEventListener('click', () => {
+    window.open('groups.html', '_blank');
+  });
 }
 
 /**
