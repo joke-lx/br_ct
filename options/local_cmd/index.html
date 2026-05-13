@@ -890,7 +890,6 @@
               </select>
             </div>
             <span class="muted" id="centralCount">0 个 Skill</span>
-            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" data-action="skill-create-group">+ 创建分组</button>
             <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" data-action="skill-manage-groups">管理分组</button>
           </div>
           <div class="skill-panel-body" id="centralSkillList">
@@ -1035,7 +1034,10 @@
         </div>
         <!-- 右侧：分组列表 -->
         <div style="width: 180px; display: flex; flex-direction: column;">
-          <div style="margin-bottom: 8px; font-weight: 600; font-size: 14px;">选择目标分组</div>
+          <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-weight: 600; font-size: 14px;">选择目标分组</span>
+            <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" data-action="skill-create-group-in-manage">+ 创建</button>
+          </div>
           <div id="manageGroupList" style="flex: 1; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: rgba(255,255,255,0.5);">
           </div>
         </div>

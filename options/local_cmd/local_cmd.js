@@ -94,6 +94,7 @@ function setupDelegation() {
       case 'skill-create-group': openSkillGroupModal(); break;
       case 'skill-manage-cancel': closeSkillGroupManageModal(); break;
       case 'skill-manage-confirm': batchMoveSkillsFromModal(); break;
+      case 'skill-create-group-in-manage': closeSkillGroupManageModal(); openSkillGroupModal(); break;
 
       // 弹窗
       case 'cmd-cancel': closeCmdModal(); break;
