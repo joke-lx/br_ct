@@ -177,62 +177,91 @@ function toggleSkillSelection(skillName) {
   } else {
     selectedSkills.add(skillName);
   }
-  updateBatchBar();
-  updateSkillCardSelection();
+  updateManageModalSelectedCount();
 }
 
-function updateBatchBar() {
-  const batchBar = document.getElementById('batchActionBar');
-  const batchCount = document.getElementById('batchSelectedCount');
-  const targetGroupSelect = document.getElementById('targetGroupSelect');
-
-  if (selectedSkills.size > 0) {
-    batchBar.style.display = 'flex';
-    batchCount.textContent = `已选择 ${selectedSkills.size} 个 Skill`;
-    // 更新目标分组下拉（排除 'all' 筛选选项）
-    if (targetGroupSelect) {
-      targetGroupSelect.innerHTML = currentGroups.filter(g => g.id !== 'all').map(g =>
-        `<option value="${g.id}">${escapeHtml(g.name)}</option>`
-      ).join('');
-    }
-  } else {
-    batchBar.style.display = 'none';
+function updateManageModalSelectedCount() {
+  const count = selectedSkills.size;
+  const list = document.getElementById('manageSkillList');
+  if (list) {
+    list.querySelectorAll('.manage-skill-item input[type="checkbox"]').forEach(cb => {
+      cb.checked = selectedSkills.has(cb.dataset.name);
+    });
   }
 }
 
-function updateSkillCardSelection() {
-  document.querySelectorAll('.skill-card').forEach(card => {
-    const name = card.dataset.skillName;
-    const checkbox = card.querySelector('.skill-checkbox');
-    if (checkbox) {
-      checkbox.checked = selectedSkills.has(name);
-    }
-  });
-}
-
-function cancelSelection() {
+async function openSkillGroupManageModal() {
+  document.getElementById('skillGroupManageModal').classList.add('show');
   selectedSkills.clear();
-  updateBatchBar();
-  updateSkillCardSelection();
-}
-
-async function batchMoveSkills() {
-  const targetGroupId = document.getElementById('targetGroupSelect')?.value;
-  if (!targetGroupId || selectedSkills.size === 0) return;
 
   const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
   if (!centralPath) { toast('中心仓库路径未设置', 'error'); return; }
 
-  // 读取当前 setting.json 配置
-  let resp;
+  let skills = [];
   try {
-    resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
+    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath });
+    skills = resp.data || [];
+  } catch (e) { toast('加载失败', 'error'); return; }
+
+  // 加载分组配置
+  let groups = [];
+  try {
+    const resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
+    if (resp.data) {
+      const cfg = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data;
+      groups = cfg.groups || [];
+    }
+  } catch (e) {}
+
+  // 填充目标分组下拉（排除 ungrouped 和 all）
+  const targetSelect = document.getElementById('manageTargetGroup');
+  targetSelect.innerHTML = groups.filter(g => g.id !== 'ungrouped').map(g =>
+    `<option value="${g.id}">${escapeHtml(g.name)}</option>`
+  ).join('');
+
+  if (groups.filter(g => g.id !== 'ungrouped').length === 0) {
+    toast('请先创建分组', 'warning');
+    closeSkillGroupManageModal();
+    return;
+  }
+
+  // 渲染 skill 列表
+  const list = document.getElementById('manageSkillList');
+  list.innerHTML = skills.map(s => `
+    <label class="manage-skill-item" style="display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-bottom: 1px solid var(--line);">
+      <input type="checkbox" class="manage-skill-checkbox" data-name="${escapeHtml(s.name)}">
+      <span style="flex: 1;">${escapeHtml(s.name)}</span>
+      <span class="source-tag" style="font-size: 11px;">${escapeHtml(s.groupId === 'ungrouped' ? '未分组' : (groups.find(g => g.id === s.groupId)?.name || s.groupId))}</span>
+    </label>
+  `).join('');
+}
+
+// 委托处理 manage modal 的 checkbox 变化
+document.getElementById('manageSkillList')?.addEventListener('change', (e) => {
+  if (e.target.classList.contains('manage-skill-checkbox')) {
+    toggleSkillSelection(e.target.dataset.name);
+  }
+});
+
+function closeSkillGroupManageModal() {
+  document.getElementById('skillGroupManageModal').classList.remove('show');
+}
+
+async function batchMoveSkillsFromModal() {
+  if (selectedSkills.size === 0) { toast('请先选择 Skill', 'warning'); return; }
+
+  const targetGroupId = document.getElementById('manageTargetGroup')?.value;
+  if (!targetGroupId) { toast('请选择目标分组', 'warning'); return; }
+
+  const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
+  if (!centralPath) { toast('中心仓库路径未设置', 'error'); return; }
+
+  try {
+    const resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
     if (!resp.data) throw new Error('配置为空');
     const cfg = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data;
-    // 构建新的分组配置（深拷贝，只包含真实分组，排除 'all' 筛选选项）
     const groups = cfg.groups ? JSON.parse(JSON.stringify(cfg.groups)) : [];
 
-    // 确保 ungrouped 存在
     if (!groups.find(g => g.id === 'ungrouped')) {
       groups.unshift({ id: 'ungrouped', name: '未分组' });
     }
@@ -253,11 +282,10 @@ async function batchMoveSkills() {
       }
     }
 
-    // 保存
     await sendNativeMessage({ command: 'saveSkillGroups', path: centralPath, groups });
     toast(`已移动 ${selectedSkills.size} 个 Skill`);
     selectedSkills.clear();
-    updateBatchBar();
+    closeSkillGroupManageModal();
     loadSkills();
   } catch (e) {
     toast('移动失败: ' + e.message, 'error');
@@ -369,7 +397,6 @@ function renderCentralSkillList(skills, projectSkills) {
     return `
       <div class="skill-card" data-skill-name="${escapeHtml(s.name)}">
         <div class="skill-card-header">
-          <input type="checkbox" class="skill-checkbox" onclick="event.stopPropagation(); toggleSkillSelection('${escapeHtml(s.name)}')" ${selectedSkills.has(s.name) ? 'checked' : ''}>
           <span class="skill-card-title">${escapeHtml(s.name)}</span>
           <div class="skill-card-tags">${status}${groupTag}</div>
         </div>

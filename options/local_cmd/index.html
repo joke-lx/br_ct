@@ -885,22 +885,16 @@
           <div class="skill-panel-header">
             <span class="panel-title">中心仓库</span>
             <div class="group-filter-wrapper">
-              <select id="groupFilter" onchange="loadSkills()">
+              <select id="groupFilter" data-action="skill-filter-change">
                 <option value="all">全部</option>
               </select>
             </div>
             <span class="muted" id="centralCount">0 个 Skill</span>
-          </div>
-          <div id="batchActionBar" class="batch-action-bar">
-            <span class="batch-info" id="batchSelectedCount">已选择 0 个 Skill</span>
-            <span>→ 移动到</span>
-            <select id="targetGroupSelect" class="target-group-select"></select>
-            <button class="btn btn-primary" onclick="batchMoveSkills()">确认</button>
-            <button class="btn btn-secondary" onclick="cancelSelection()">取消选择</button>
+            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" data-action="skill-manage-groups">管理分组</button>
           </div>
           <div id="ungroupedWarning" class="ungrouped-warning" style="display:none;">
             <span id="ungroupedWarningText"></span>
-            <button class="btn btn-warning" onclick="openSkillGroupModal()">+ 创建分组</button>
+            <button class="btn btn-warning" data-action="skill-create-group">+ 创建分组</button>
           </div>
           <div class="skill-panel-body" id="centralSkillList">
             <div class="skill-loading"><div class="spinner"></div></div>
@@ -1022,6 +1016,24 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" data-action="skill-group-cancel">取消</button>
         <button class="btn btn-primary" data-action="skill-group-create">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分组管理弹窗 -->
+  <div class="modal-overlay" id="skillGroupManageModal">
+    <div class="modal" style="min-width: 600px; max-width: 800px;">
+      <h3 class="modal-title">管理分组</h3>
+      <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+        <span>移动选中 Skill 到：</span>
+        <select id="manageTargetGroup" class="target-group-select" style="flex: 1;"></select>
+      </div>
+      <div id="manageSkillList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 8px;">
+        <!-- Skills will be loaded here -->
+      </div>
+      <div class="modal-actions" style="margin-top: 16px;">
+        <button class="btn btn-secondary" data-action="skill-manage-cancel">取消</button>
+        <button class="btn btn-primary" data-action="skill-manage-confirm">确认移动</button>
       </div>
     </div>
   </div>

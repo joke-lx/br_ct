@@ -25,6 +25,9 @@ async function refreshAll() {
 }
 
 function setupDelegation() {
+  // 分组筛选器 change 事件
+  document.getElementById('groupFilter')?.addEventListener('change', () => loadSkills());
+
   document.addEventListener('click', (e) => {
     // Tab 切换
     const tabBtn = e.target.closest('.tab-btn');
@@ -86,6 +89,11 @@ function setupDelegation() {
       case 'skill-pull': skillPullFromCentral(btn.dataset.name); break;
       case 'skill-delete-project': deleteSkillProject(btn.dataset.id); break;
       case 'skill-delete-skill': deleteSkillFromProject(btn.dataset.name, btn.dataset.projectId); break;
+      case 'skill-filter-change': loadSkills(); break;
+      case 'skill-manage-groups': openSkillGroupManageModal(); break;
+      case 'skill-create-group': openSkillGroupModal(); break;
+      case 'skill-manage-cancel': closeSkillGroupManageModal(); break;
+      case 'skill-manage-confirm': batchMoveSkillsFromModal(); break;
 
       // 弹窗
       case 'cmd-cancel': closeCmdModal(); break;
