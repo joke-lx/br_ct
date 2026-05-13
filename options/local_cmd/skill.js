@@ -170,6 +170,7 @@ function updateRemoveBtnVisibility() {
 let selectedSkills = new Set();
 let currentGroups = [];
 let currentCentralSkills = [];
+let manageTargetGroupId = null;
 
 function toggleSkillSelection(skillName) {
   if (selectedSkills.has(skillName)) {
@@ -177,14 +178,18 @@ function toggleSkillSelection(skillName) {
   } else {
     selectedSkills.add(skillName);
   }
-  updateManageModalSelectedCount();
+  updateManageSelectedCount();
+  updateManageSkillCheckboxes();
 }
 
-function updateManageModalSelectedCount() {
-  const count = selectedSkills.size;
+function updateManageSelectedCount() {
+  document.getElementById('manageSelectedCount').textContent = `已选 ${selectedSkills.size} 个`;
+}
+
+function updateManageSkillCheckboxes() {
   const list = document.getElementById('manageSkillList');
   if (list) {
-    list.querySelectorAll('.manage-skill-item input[type="checkbox"]').forEach(cb => {
+    list.querySelectorAll('.manage-skill-checkbox').forEach(cb => {
       cb.checked = selectedSkills.has(cb.dataset.name);
     });
   }
@@ -193,6 +198,7 @@ function updateManageModalSelectedCount() {
 async function openSkillGroupManageModal() {
   document.getElementById('skillGroupManageModal').classList.add('show');
   selectedSkills.clear();
+  manageTargetGroupId = null;
 
   const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
   if (!centralPath) { toast('中心仓库路径未设置', 'error'); return; }
@@ -213,33 +219,69 @@ async function openSkillGroupManageModal() {
     }
   } catch (e) {}
 
-  // 填充目标分组下拉（排除 ungrouped 和 all）
-  const targetSelect = document.getElementById('manageTargetGroup');
-  targetSelect.innerHTML = groups.filter(g => g.id !== 'ungrouped').map(g =>
-    `<option value="${g.id}">${escapeHtml(g.name)}</option>`
-  ).join('');
-
-  if (groups.filter(g => g.id !== 'ungrouped').length === 0) {
-    toast('请先创建分组', 'warning');
-    closeSkillGroupManageModal();
-    return;
-  }
+  // 渲染分组列表
+  const groupList = document.getElementById('manageGroupList');
+  groupList.innerHTML = groups.map(g => `
+    <div class="manage-group-item"
+         data-group-id="${g.id}"
+         style="padding: 10px 8px; cursor: pointer; border-radius: 6px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;"
+         onclick="selectManageTargetGroup('${g.id}')">
+      <span>${escapeHtml(g.name)}</span>
+      <span class="muted" style="font-size: 12px;">${g.skills?.length || 0}</span>
+    </div>
+  `).join('');
 
   // 渲染 skill 列表
-  const list = document.getElementById('manageSkillList');
-  list.innerHTML = skills.map(s => `
-    <label class="manage-skill-item" style="display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-bottom: 1px solid var(--line);">
-      <input type="checkbox" class="manage-skill-checkbox" data-name="${escapeHtml(s.name)}">
-      <span style="flex: 1;">${escapeHtml(s.name)}</span>
-      <span class="source-tag" style="font-size: 11px;">${escapeHtml(s.groupId === 'ungrouped' ? '未分组' : (groups.find(g => g.id === s.groupId)?.name || s.groupId))}</span>
-    </label>
-  `).join('');
+  const skillList = document.getElementById('manageSkillList');
+  skillList.innerHTML = skills.map(s => {
+    const groupName = s.groupId === 'ungrouped' ? '未分组' : (groups.find(g => g.id === s.groupId)?.name || s.groupId);
+    return `
+      <label class="manage-skill-item" style="display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-bottom: 1px solid var(--line);">
+        <input type="checkbox" class="manage-skill-checkbox" data-name="${escapeHtml(s.name)}">
+        <span style="flex: 1;">${escapeHtml(s.name)}</span>
+        <span class="source-tag" style="font-size: 11px;">${escapeHtml(groupName)}</span>
+      </label>
+    `;
+  }).join('');
+
+  // 全选
+  document.getElementById('manageSelectAll').onchange = function() {
+    const checked = this.checked;
+    skillList.querySelectorAll('.manage-skill-checkbox').forEach(cb => cb.checked = checked);
+    if (checked) {
+      skills.forEach(s => selectedSkills.add(s.name));
+    } else {
+      selectedSkills.clear();
+    }
+    updateManageSelectedCount();
+  };
+
+  updateManageSelectedCount();
+}
+
+function selectManageTargetGroup(groupId) {
+  manageTargetGroupId = groupId;
+  document.querySelectorAll('.manage-group-item').forEach(item => {
+    if (item.dataset.groupId === groupId) {
+      item.style.background = 'rgba(107,74,49,0.15)';
+      item.style.border = '1px solid rgba(107,74,49,0.3)';
+    } else {
+      item.style.background = 'transparent';
+      item.style.border = '1px solid transparent';
+    }
+  });
 }
 
 // 委托处理 manage modal 的 checkbox 变化
 document.getElementById('manageSkillList')?.addEventListener('change', (e) => {
   if (e.target.classList.contains('manage-skill-checkbox')) {
-    toggleSkillSelection(e.target.dataset.name);
+    const name = e.target.dataset.name;
+    if (e.target.checked) {
+      selectedSkills.add(name);
+    } else {
+      selectedSkills.delete(name);
+    }
+    updateManageSelectedCount();
   }
 });
 
@@ -249,9 +291,7 @@ function closeSkillGroupManageModal() {
 
 async function batchMoveSkillsFromModal() {
   if (selectedSkills.size === 0) { toast('请先选择 Skill', 'warning'); return; }
-
-  const targetGroupId = document.getElementById('manageTargetGroup')?.value;
-  if (!targetGroupId) { toast('请选择目标分组', 'warning'); return; }
+  if (!manageTargetGroupId) { toast('请先选择目标分组', 'warning'); return; }
 
   const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
   if (!centralPath) { toast('中心仓库路径未设置', 'error'); return; }
@@ -272,7 +312,7 @@ async function batchMoveSkillsFromModal() {
     }
 
     // 将选中的 skills 添加到目标分组
-    const targetGroup = groups.find(g => g.id === targetGroupId);
+    const targetGroup = groups.find(g => g.id === manageTargetGroupId);
     if (targetGroup) {
       if (!targetGroup.skills) targetGroup.skills = [];
       for (const skillName of selectedSkills) {
@@ -361,23 +401,6 @@ async function loadSkills() {
     : centralSkills.filter(s => s.groupId === filterGroupId);
 
   renderCentralSkillList(filteredSkills, projectSkills);
-
-  // 检查未分组数量，超过5个则显示提示
-  updateUngroupedWarning();
-}
-
-function updateUngroupedWarning() {
-  const warning = document.getElementById('ungroupedWarning');
-  const warningText = document.getElementById('ungroupedWarningText');
-  if (!warning || !warningText) return;
-
-  const ungroupedCount = currentCentralSkills.filter(s => s.groupId === 'ungrouped').length;
-  if (ungroupedCount > 5) {
-    warningText.textContent = `未分组中有 ${ungroupedCount} 个 skill，建议创建分组进行管理`;
-    warning.style.display = 'flex';
-  } else {
-    warning.style.display = 'none';
-  }
 }
 
 function renderCentralSkillList(skills, projectSkills) {
