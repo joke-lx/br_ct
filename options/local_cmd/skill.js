@@ -325,9 +325,14 @@ async function loadSkills() {
   // 更新分组筛选下拉
   const groupFilter = document.getElementById('groupFilter');
   if (groupFilter) {
+    const prevValue = groupFilter.value; // 保存当前选中值
     groupFilter.innerHTML = currentGroups.map(g =>
       `<option value="${g.id}">${escapeHtml(g.name)}</option>`
     ).join('');
+    // 恢复选中值（如果还存在）
+    if (prevValue && [...groupFilter.options].some(o => o.value === prevValue)) {
+      groupFilter.value = prevValue;
+    }
   }
 
   if (centralCount) centralCount.textContent = `${centralSkills.length} 个 Skill`;
