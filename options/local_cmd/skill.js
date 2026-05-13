@@ -22,6 +22,45 @@ function closeSkillProjectModal() {
   document.getElementById('skillProjectModal').classList.remove('show');
 }
 
+function openSkillGroupModal() {
+  document.getElementById('skillGroupModal').classList.add('show');
+  document.getElementById('skillGroupName').value = '';
+  document.getElementById('skillGroupName').focus();
+}
+
+function closeSkillGroupModal() {
+  document.getElementById('skillGroupModal').classList.remove('show');
+}
+
+async function createSkillGroup() {
+  const name = document.getElementById('skillGroupName').value.trim();
+  if (!name) { toast('请输入分组名称', 'error'); return; }
+
+  const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
+  if (!centralPath) { toast('中心仓库路径未设置', 'error'); return; }
+
+  try {
+    const resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
+    const cfg = resp.data ? (typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data) : { groups: [] };
+    const groups = cfg.groups || [];
+
+    const newGroup = {
+      id: Date.now().toString(36),
+      name,
+      skills: []
+    };
+
+    groups.push(newGroup);
+
+    await sendNativeMessage({ command: 'saveSkillGroups', path: centralPath, groups });
+    closeSkillGroupModal();
+    toast(`已创建分组：${name}`);
+    loadSkills();
+  } catch (e) {
+    toast('创建分组失败: ' + e.message, 'error');
+  }
+}
+
 async function saveSkillProject() {
   const name = document.getElementById('skillProjectName').value.trim();
   const path = document.getElementById('skillProjectPath').value.trim();
@@ -127,6 +166,356 @@ function updateRemoveBtnVisibility() {
   }
 }
 
+// 当前选中的 skill 列表（用于批量操作）
+let selectedSkills = new Set();
+let currentGroups = [];
+let currentCentralSkills = [];
+let manageTargetGroupId = null;
+
+function toggleSkillSelection(skillName) {
+  if (selectedSkills.has(skillName)) {
+    selectedSkills.delete(skillName);
+  } else {
+    selectedSkills.add(skillName);
+  }
+  updateManageSelectedCount();
+  updateManageSkillCheckboxes();
+}
+
+function updateManageSelectedCount() {
+  document.getElementById('manageSelectedCount').textContent = `已选 ${selectedSkills.size} 个`;
+}
+
+function updateManageSkillCheckboxes() {
+  const list = document.getElementById('manageSkillList');
+  if (list) {
+    list.querySelectorAll('.manage-skill-checkbox').forEach(cb => {
+      cb.checked = selectedSkills.has(cb.dataset.name);
+    });
+  }
+}
+
+async function openSkillGroupManageModal() {
+  document.getElementById('skillGroupManageModal').classList.add('show');
+  selectedSkills.clear();
+  manageTargetGroupId = null;
+
+  const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
+  if (!centralPath) { toast('中心仓库路径未设置', 'error'); return; }
+
+  let skills = [];
+  try {
+    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath, isCentral: true });
+    skills = resp.data || [];
+  } catch (e) { toast('加载失败', 'error'); return; }
+
+  // 加载分组配置
+  let groups = [];
+  try {
+    const resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
+    if (resp.data) {
+      const cfg = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data;
+      groups = cfg.groups || [];
+    }
+  } catch (e) {}
+
+  // 渲染分组列表（带删除按钮）
+  const groupList = document.getElementById('manageGroupList');
+  groupList.innerHTML = groups.map(g => `
+    <div class="manage-group-item"
+         data-action="skill-select-group"
+         data-group-id="${g.id}"
+         style="padding: 8px; cursor: pointer; border-radius: 6px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+      <span>${escapeHtml(g.name)}</span>
+      <span style="display: flex; align-items: center; gap: 6px;">
+        <span class="muted" style="font-size: 11px;">${g.skills?.length || 0}</span>
+        ${g.id !== 'ungrouped' ? `<button class="btn btn-secondary" style="padding: 1px 5px; font-size: 10px; line-height: 1;" data-action="skill-delete-group" data-group-id="${g.id}" title="删除分组">×</button>` : ''}
+      </span>
+    </div>
+  `).join('');
+
+  // 按分组渲染可折叠的 skill 列表
+  renderManageSkillListByGroups(skills, groups);
+
+  // 搜索功能
+  document.getElementById('manageSkillSearch').oninput = function() {
+    filterManageSkills(this.value);
+  };
+
+  // 全选
+  document.getElementById('manageSelectAll').onchange = function() {
+    const checked = this.checked;
+    skillList.querySelectorAll('.manage-skill-checkbox').forEach(cb => cb.checked = checked);
+    if (checked) {
+      skills.forEach(s => selectedSkills.add(s.name));
+    } else {
+      selectedSkills.clear();
+    }
+    updateManageSelectedCount();
+  };
+
+  updateManageSelectedCount();
+}
+
+// 按分组渲染可折叠的 skill 列表
+function renderManageSkillListByGroups(skills, groups) {
+  const skillList = document.getElementById('manageSkillList');
+  const collapsedGroups = window._manageCollapsedGroups || new Set();
+
+  // 构建分组及未分组技能
+  const groupedSkills = {};
+  groups.forEach(g => { groupedSkills[g.id] = []; });
+  groupedSkills['ungrouped'] = [];
+
+  skills.forEach(s => {
+    const gid = s.groupId || 'ungrouped';
+    if (!groupedSkills[gid]) groupedSkills[gid] = [];
+    groupedSkills[gid].push(s);
+  });
+
+  let html = '';
+  // 排除 ungrouped，单独渲染
+  groups.filter(g => g.id !== 'ungrouped').forEach(g => {
+    const gSkills = groupedSkills[g.id] || [];
+    const isCollapsed = collapsedGroups.has(g.id);
+    html += `
+      <div class="manage-skill-group" data-group-id="${g.id}">
+        <div class="manage-skill-group-header" data-action="skill-toggle-group" data-group-id="${g.id}" style="display: flex; align-items: center; gap: 6px; padding: 6px 8px; cursor: pointer; user-select: none; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--line); background: rgba(0,0,0,0.03);">
+          <span style="transform: rotate(${isCollapsed ? '-90deg' : '0deg'}); transition: transform 0.2s; font-size: 10px;">▼</span>
+          <span style="flex: 1;">${escapeHtml(g.name)}</span>
+          <span class="muted" style="font-size: 11px; font-weight: normal;">(${gSkills.length})</span>
+        </div>
+        <div class="manage-skill-group-items" style="${isCollapsed ? 'display: none;' : ''}">
+          ${gSkills.map(s => `
+            <label class="manage-skill-item" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; border-bottom: 1px solid var(--line);">
+              <input type="checkbox" class="manage-skill-checkbox" data-name="${escapeHtml(s.name)}">
+              <span style="flex: 1;">${escapeHtml(s.name)}</span>
+            </label>
+          `).join('')}
+          ${gSkills.length === 0 ? '<div style="padding: 6px 8px; color: var(--muted); font-size: 12px;">无 Skill</div>' : ''}
+        </div>
+      </div>
+    `;
+  });
+
+  // 未分组
+  const ungroupedSkills = groupedSkills['ungrouped'] || [];
+  const isUngroupedCollapsed = collapsedGroups.has('ungrouped');
+  html += `
+    <div class="manage-skill-group" data-group-id="ungrouped">
+      <div class="manage-skill-group-header" data-action="skill-toggle-group" data-group-id="ungrouped" style="display: flex; align-items: center; gap: 6px; padding: 6px 8px; cursor: pointer; user-select: none; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--line); background: rgba(0,0,0,0.03);">
+        <span style="transform: rotate(${isUngroupedCollapsed ? '-90deg' : '0deg'}); transition: transform 0.2s; font-size: 10px;">▼</span>
+        <span style="flex: 1;">未分组</span>
+        <span class="muted" style="font-size: 11px; font-weight: normal;">(${ungroupedSkills.length})</span>
+      </div>
+      <div class="manage-skill-group-items" style="${isUngroupedCollapsed ? 'display: none;' : ''}">
+        ${ungroupedSkills.map(s => `
+          <label class="manage-skill-item" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; border-bottom: 1px solid var(--line);">
+            <input type="checkbox" class="manage-skill-checkbox" data-name="${escapeHtml(s.name)}">
+            <span style="flex: 1;">${escapeHtml(s.name)}</span>
+          </label>
+        `).join('')}
+        ${ungroupedSkills.length === 0 ? '<div style="padding: 6px 8px; color: var(--muted); font-size: 12px;">无未分组 Skill</div>' : ''}
+      </div>
+    </div>
+  `;
+
+  skillList.innerHTML = html;
+}
+
+// 折叠/展开分组
+function toggleManageGroupCollapse(groupId) {
+  if (!window._manageCollapsedGroups) window._manageCollapsedGroups = new Set();
+  const collapsed = window._manageCollapsedGroups;
+
+  if (collapsed.has(groupId)) {
+    collapsed.delete(groupId);
+  } else {
+    collapsed.add(groupId);
+  }
+
+  const header = document.querySelector(`.manage-skill-group-header[data-group-id="${groupId}"]`);
+  const items = header?.closest('.manage-skill-group')?.querySelector('.manage-skill-group-items');
+  if (header && items) {
+    header.querySelector('span').style.transform = collapsed.has(groupId) ? 'rotate(-90deg)' : 'rotate(0deg)';
+    items.style.display = collapsed.has(groupId) ? 'none' : '';
+  }
+}
+
+// 搜索过滤
+function filterManageSkills(query) {
+  const skillList = document.getElementById('manageSkillList');
+  query = query.trim().toLowerCase();
+
+  if (!query) {
+    // 显示所有，恢复折叠状态
+    skillList.querySelectorAll('.manage-skill-group').forEach(g => g.style.display = '');
+    skillList.querySelectorAll('.manage-skill-item').forEach(item => item.style.display = '');
+    // 恢复折叠状态
+    const collapsed = window._manageCollapsedGroups || new Set();
+    skillList.querySelectorAll('.manage-skill-group').forEach(g => {
+      const gid = g.dataset.groupId;
+      const items = g.querySelector('.manage-skill-group-items');
+      const arrow = g.querySelector('.manage-skill-group-header span');
+      if (items) items.style.display = collapsed.has(gid) ? 'none' : '';
+      if (arrow) arrow.style.transform = collapsed.has(gid) ? 'rotate(-90deg)' : 'rotate(0deg)';
+    });
+    return;
+  }
+
+  // 展开所有分组
+  if (!window._manageCollapsedGroups) window._manageCollapsedGroups = new Set();
+  window._manageCollapsedGroups.clear();
+
+  skillList.querySelectorAll('.manage-skill-group').forEach(g => g.style.display = '');
+  skillList.querySelectorAll('.manage-skill-group-items').forEach(items => items.style.display = '');
+  skillList.querySelectorAll('.manage-skill-group-header span').forEach(arrow => arrow.style.transform = 'rotate(0deg)');
+
+  // 过滤
+  skillList.querySelectorAll('.manage-skill-item').forEach(item => {
+    const name = item.querySelector('span:last-child').textContent.toLowerCase();
+    item.style.display = name.includes(query) ? '' : 'none';
+  });
+
+  // 隐藏空分组
+  skillList.querySelectorAll('.manage-skill-group').forEach(g => {
+    const visibleItems = [...g.querySelectorAll('.manage-skill-item')].filter(i => i.style.display !== 'none');
+    g.style.display = visibleItems.length > 0 ? '' : 'none';
+  });
+}
+
+function selectManageTargetGroup(groupId) {
+  manageTargetGroupId = groupId;
+  document.querySelectorAll('.manage-group-item').forEach(item => {
+    if (item.dataset.groupId === groupId) {
+      item.style.background = 'rgba(107,74,49,0.15)';
+      item.style.border = '1px solid rgba(107,74,49,0.3)';
+    } else {
+      item.style.background = 'transparent';
+      item.style.border = '1px solid transparent';
+    }
+  });
+}
+
+// 删除分组（从管理弹窗）
+async function deleteGroupFromManage(groupId) {
+  if (!confirm('确定删除该分组？该分组下的 Skills 将移至「未分组」。')) return;
+
+  const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
+  if (!centralPath) { toast('中心仓库路径未设置', 'error'); return; }
+
+  try {
+    const resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
+    if (!resp.data) throw new Error('配置为空');
+    const cfg = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data;
+    const groups = cfg.groups ? JSON.parse(JSON.stringify(cfg.groups)) : [];
+
+    const groupIdx = groups.findIndex(g => g.id === groupId);
+    if (groupIdx < 0) { toast('分组不存在', 'error'); return; }
+
+    const deletedGroup = groups[groupIdx];
+    groups.splice(groupIdx, 1);
+
+    // 确保有未分组
+    if (!groups.find(g => g.id === 'ungrouped')) {
+      groups.unshift({ id: 'ungrouped', name: '未分组' });
+    }
+
+    await sendNativeMessage({ command: 'saveSkillGroups', path: centralPath, groups });
+    toast(`已删除分组「${deletedGroup.name}」`);
+
+    // 重新打开弹窗
+    closeSkillGroupManageModal();
+    openSkillGroupManageModal();
+    loadSkills();
+  } catch (e) {
+    toast('删除失败: ' + e.message, 'error');
+  }
+}
+
+// 委托处理 manage modal 的事件
+document.getElementById('manageSkillList')?.addEventListener('change', (e) => {
+  if (e.target.classList.contains('manage-skill-checkbox')) {
+    const name = e.target.dataset.name;
+    if (e.target.checked) {
+      selectedSkills.add(name);
+    } else {
+      selectedSkills.delete(name);
+    }
+    updateManageSelectedCount();
+  }
+});
+
+document.getElementById('manageSkillList')?.addEventListener('click', (e) => {
+  // 折叠/展开分组
+  if (e.target.closest('[data-action="skill-toggle-group"]')) {
+    const header = e.target.closest('[data-action="skill-toggle-group"]');
+    toggleManageGroupCollapse(header.dataset.groupId);
+  }
+});
+
+document.getElementById('manageGroupList')?.addEventListener('click', (e) => {
+  // 删除分组
+  if (e.target.closest('[data-action="skill-delete-group"]')) {
+    e.stopPropagation();
+    const btn = e.target.closest('[data-action="skill-delete-group"]');
+    deleteGroupFromManage(btn.dataset.groupId);
+    return;
+  }
+  // 选择分组
+  const item = e.target.closest('[data-action="skill-select-group"]');
+  if (item) {
+    selectManageTargetGroup(item.dataset.groupId);
+  }
+});
+
+function closeSkillGroupManageModal() {
+  document.getElementById('skillGroupManageModal').classList.remove('show');
+}
+
+async function batchMoveSkillsFromModal() {
+  if (selectedSkills.size === 0) { toast('请先选择 Skill', 'warning'); return; }
+  if (!manageTargetGroupId) { toast('请先选择目标分组', 'warning'); return; }
+
+  const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
+  if (!centralPath) { toast('中心仓库路径未设置', 'error'); return; }
+
+  try {
+    const resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
+    if (!resp.data) throw new Error('配置为空');
+    const cfg = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data;
+    const groups = cfg.groups ? JSON.parse(JSON.stringify(cfg.groups)) : [];
+
+    if (!groups.find(g => g.id === 'ungrouped')) {
+      groups.unshift({ id: 'ungrouped', name: '未分组' });
+    }
+
+    // 从所有分组中移除选中的 skills
+    for (const g of groups) {
+      g.skills = (g.skills || []).filter(s => !selectedSkills.has(s));
+    }
+
+    // 将选中的 skills 添加到目标分组
+    const targetGroup = groups.find(g => g.id === manageTargetGroupId);
+    if (targetGroup) {
+      if (!targetGroup.skills) targetGroup.skills = [];
+      for (const skillName of selectedSkills) {
+        if (!targetGroup.skills.includes(skillName)) {
+          targetGroup.skills.push(skillName);
+        }
+      }
+    }
+
+    await sendNativeMessage({ command: 'saveSkillGroups', path: centralPath, groups });
+    toast(`已移动 ${selectedSkills.size} 个 Skill`);
+    selectedSkills.clear();
+    closeSkillGroupManageModal();
+    loadSkills();
+  } catch (e) {
+    toast('移动失败: ' + e.message, 'error');
+  }
+}
+
 async function loadSkills() {
   const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
   const centralInput = document.getElementById('skillCentralPath');
@@ -139,10 +528,37 @@ async function loadSkills() {
   let centralSkills = [];
   if (centralPath) {
     try {
-      const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath });
+      const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath, isCentral: true });
       centralSkills = resp.data || [];
     } catch (e) {}
   }
+  currentCentralSkills = centralSkills;
+
+  // 提取分组信息（从 setting.json 读取）
+  currentGroups = [{ id: 'all', name: '全部' }, { id: 'ungrouped', name: '未分组' }];
+  try {
+    const resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
+    if (resp.data) {
+      const cfg = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data;
+      if (cfg.groups) {
+        currentGroups = [{ id: 'all', name: '全部' }, ...cfg.groups.filter(g => g.id !== 'ungrouped'), { id: 'ungrouped', name: '未分组' }];
+      }
+    }
+  } catch (e) {}
+
+  // 更新分组筛选下拉
+  const groupFilter = document.getElementById('groupFilter');
+  if (groupFilter) {
+    const prevValue = groupFilter.value; // 保存当前选中值
+    groupFilter.innerHTML = currentGroups.map(g =>
+      `<option value="${g.id}">${escapeHtml(g.name)}</option>`
+    ).join('');
+    // 恢复选中值（如果还存在）
+    if (prevValue && [...groupFilter.options].some(o => o.value === prevValue)) {
+      groupFilter.value = prevValue;
+    }
+  }
+
   if (centralCount) centralCount.textContent = `${centralSkills.length} 个 Skill`;
 
   const projectList = document.getElementById('projectSkillList');
@@ -162,7 +578,13 @@ async function loadSkills() {
     renderProjectSkillList(projectSkills, selected, centralSkills);
   }
 
-  renderCentralSkillList(centralSkills, projectSkills);
+  // 根据筛选器过滤
+  const filterGroupId = groupFilter?.value || 'all';
+  const filteredSkills = filterGroupId === 'all'
+    ? centralSkills
+    : centralSkills.filter(s => s.groupId === filterGroupId);
+
+  renderCentralSkillList(filteredSkills, projectSkills);
 }
 
 function renderCentralSkillList(skills, projectSkills) {
@@ -180,7 +602,7 @@ function renderCentralSkillList(skills, projectSkills) {
       : '<span class="source-tag central">仅中心</span>';
 
     return `
-      <div class="skill-card">
+      <div class="skill-card" data-skill-name="${escapeHtml(s.name)}">
         <div class="skill-card-header">
           <span class="skill-card-title">${escapeHtml(s.name)}</span>
           <div class="skill-card-tags">${status}</div>
@@ -279,7 +701,7 @@ async function skillPullFromCentral(skillName) {
 
   let srcPath = null;
   try {
-    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath });
+    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath, isCentral: true });
     const found = (resp.data || []).find(s => s.name === skillName);
     if (found) srcPath = found.skillDir;
   } catch (e) {}
@@ -318,7 +740,7 @@ async function skillPushToProject(skillName) {
 
   let srcPath = null;
   try {
-    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath });
+    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath, isCentral: true });
     const found = (resp.data || []).find(s => s.name === skillName);
     if (found) srcPath = found.skillDir;
   } catch (e) {}

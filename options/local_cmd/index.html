@@ -719,6 +719,138 @@
     .project-remove-btn:hover {
       opacity: 0.8;
     }
+
+    /* 分组筛选器 */
+    .group-filter-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      max-width: 200px;
+    }
+
+    .group-filter-wrapper select {
+      flex: 1;
+      min-width: 0;
+      padding: 6px 28px 6px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 251, 245, 0.85)),
+        linear-gradient(135deg, var(--paper) 0%, var(--paper-deep) 100%);
+      color: var(--ink);
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a6858' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+
+    .group-filter-wrapper select:hover {
+      border-color: rgba(107, 74, 49, 0.3);
+    }
+
+    .group-filter-wrapper select:focus {
+      border-color: rgba(107, 74, 49, 0.4);
+      box-shadow: 0 0 0 3px rgba(153, 103, 63, 0.1);
+    }
+
+    .group-filter-wrapper select option {
+      background: var(--paper);
+      color: var(--ink);
+      padding: 8px;
+    }
+
+    /* 未分组提示条 */
+    .ungrouped-warning {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      margin: 0 12px 8px;
+      border-radius: var(--radius-md);
+      background: rgba(184, 138, 74, 0.12);
+      border: 1px solid rgba(184, 138, 74, 0.5);
+      font-size: 13px;
+      color: #7a4a10;
+    }
+
+    .ungrouped-warning span {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .ungrouped-warning .btn {
+      padding: 4px 12px;
+      font-size: 12px;
+    }
+
+    /* 批量操作栏 */
+    .batch-action-bar {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      margin-bottom: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 252, 247, 0.9);
+    }
+
+    .batch-action-bar .batch-info {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    .batch-action-bar .target-group-select {
+      padding: 4px 24px 4px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a6858' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+    }
+
+    /* Skill checkbox */
+    .skill-checkbox {
+      width: 18px;
+      height: 18px;
+      margin-right: 8px;
+      cursor: pointer;
+      accent-color: #6a8758;
+      flex-shrink: 0;
+    }
+
+    .skill-card-header {
+      display: flex;
+      justify-content: flex-start;
+      align-items: flex-start;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+
+    .skill-card-header .skill-card-title {
+      flex: 1;
+    }
+
+    /* 分组标签 */
+    .source-tag.group-tag {
+      background: rgba(90, 126, 160, 0.15);
+      color: #3a5f7a;
+    }
   </style>
 </head>
 <body>
@@ -769,7 +901,13 @@
         <div class="skill-panel">
           <div class="skill-panel-header">
             <span class="panel-title">中心仓库</span>
+            <div class="group-filter-wrapper">
+              <select id="groupFilter" data-action="skill-filter-change">
+                <option value="all">全部</option>
+              </select>
+            </div>
             <span class="muted" id="centralCount">0 个 Skill</span>
+            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" data-action="skill-manage-groups">管理分组</button>
           </div>
           <div class="skill-panel-body" id="centralSkillList">
             <div class="skill-loading"><div class="spinner"></div></div>
@@ -877,6 +1015,55 @@
         <button class="btn btn-secondary" data-action="skill-project-cancel">取消</button>
         <button class="btn btn-primary" data-action="skill-project-save">保存</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 创建分组弹窗 -->
+  <div class="modal-overlay" id="skillGroupModal">
+    <div class="modal">
+      <h3 class="modal-title">创建新分组</h3>
+      <div class="form-group">
+        <label>分组名称</label>
+        <input type="text" id="skillGroupName" placeholder="例如：前端">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-action="skill-group-cancel">取消</button>
+        <button class="btn btn-primary" data-action="skill-group-create">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分组管理弹窗 -->
+  <div class="modal-overlay" id="skillGroupManageModal">
+    <div class="modal" style="min-width: 700px; max-width: 900px;">
+      <h3 class="modal-title">管理分组</h3>
+      <div style="display: flex; gap: 20px; height: 450px;">
+        <!-- 左侧：Skill 列表 -->
+        <div style="flex: 1; display: flex; flex-direction: column;">
+          <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <input type="text" id="manageSkillSearch" placeholder="搜索 Skill..." style="flex: 1; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; font-size: 12px;">
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="checkbox" id="manageSelectAll"> 全选
+            </label>
+            <span class="muted" id="manageSelectedCount" style="font-size: 12px;">已选 0 个</span>
+          </div>
+          <div id="manageSkillList" style="flex: 1; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: rgba(255,255,255,0.5);">
+          </div>
+        </div>
+        <!-- 右侧：分组列表 -->
+        <div style="width: 180px; display: flex; flex-direction: column;">
+          <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-weight: 600; font-size: 14px;">选择目标分组</span>
+            <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" data-action="skill-create-group-in-manage">+ 创建</button>
+          </div>
+          <div id="manageGroupList" style="flex: 1; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: rgba(255,255,255,0.5);">
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top: 16px;">
+        <button class="btn btn-secondary" data-action="skill-manage-cancel">取消</button>
+        <button class="btn btn-primary" data-action="skill-manage-confirm">确认移动</button>
+      </div>`
     </div>
   </div>
 

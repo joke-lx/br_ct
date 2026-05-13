@@ -26,6 +26,8 @@ func main() {
 	registry.Register("scanSkills", fileops.ScanSkills)
 	registry.Register("syncSkillDir", fileops.SyncSkillDir)
 	registry.Register("deleteSkill", fileops.DeleteSkill)
+	registry.Register("saveSkillGroups", fileops.SaveSkillGroups)
+	registry.Register("readSetting", fileops.ReadSetting)
 
 	// 提示词
 	registry.Register("parsePrompts", prompts.ParsePromptsFile)

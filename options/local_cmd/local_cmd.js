@@ -25,6 +25,9 @@ async function refreshAll() {
 }
 
 function setupDelegation() {
+  // 分组筛选器 change 事件
+  document.getElementById('groupFilter')?.addEventListener('change', () => loadSkills());
+
   document.addEventListener('click', (e) => {
     // Tab 切换
     const tabBtn = e.target.closest('.tab-btn');
@@ -78,12 +81,21 @@ function setupDelegation() {
       case 'skill-import-from-git': importProjectFromGit(); break;
       case 'skill-project-cancel': closeSkillProjectModal(); break;
       case 'skill-project-save': saveSkillProject(); break;
+      case 'skill-group-cancel': closeSkillGroupModal(); break;
+      case 'skill-group-create': createSkillGroup(); break;
       case 'skill-refresh': loadSkills(); break;
       case 'skill-push': skillPushToCentral(btn.dataset.name); break;
       case 'skill-push-central-to-project': skillPushToProject(btn.dataset.name); break;
       case 'skill-pull': skillPullFromCentral(btn.dataset.name); break;
       case 'skill-delete-project': deleteSkillProject(btn.dataset.id); break;
       case 'skill-delete-skill': deleteSkillFromProject(btn.dataset.name, btn.dataset.projectId); break;
+      case 'skill-filter-change': loadSkills(); break;
+      case 'skill-manage-groups': openSkillGroupManageModal(); break;
+      case 'skill-create-group': openSkillGroupModal(); break;
+      case 'skill-manage-cancel': closeSkillGroupManageModal(); break;
+      case 'skill-manage-confirm': batchMoveSkillsFromModal(); break;
+      case 'skill-create-group-in-manage': closeSkillGroupManageModal(); openSkillGroupModal(); break;
+      case 'skill-select-group': selectManageTargetGroup(btn.dataset.groupId); break;
 
       // 弹窗
       case 'cmd-cancel': closeCmdModal(); break;

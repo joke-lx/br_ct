@@ -8,6 +8,13 @@ import (
 	"io"
 )
 
+// SkillGroup 对应 setting.json 中单个分组配置
+type SkillGroup struct {
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	Skills []string `json:"skills,omitempty"`
+}
+
 type Request struct {
 	Command   string   `json:"command"`
 	Path      string   `json:"path,omitempty"`
@@ -22,6 +29,8 @@ type Request struct {
 	Src       string   `json:"src,omitempty"`
 	DstParent string   `json:"dstParent,omitempty"`
 	Message   string   `json:"message,omitempty"`
+	Groups    []SkillGroup `json:"groups,omitempty"`
+	IsCentral bool     `json:"isCentral,omitempty"`
 }
 
 type Response struct {
