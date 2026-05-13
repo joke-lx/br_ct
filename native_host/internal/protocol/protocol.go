@@ -30,6 +30,7 @@ type Request struct {
 	DstParent string   `json:"dstParent,omitempty"`
 	Message   string   `json:"message,omitempty"`
 	Groups    []SkillGroup `json:"groups,omitempty"`
+	IsCentral bool     `json:"isCentral,omitempty"`
 }
 
 type Response struct {

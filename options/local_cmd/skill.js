@@ -205,7 +205,7 @@ async function openSkillGroupManageModal() {
 
   let skills = [];
   try {
-    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath });
+    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath, isCentral: true });
     skills = resp.data || [];
   } catch (e) { toast('加载失败', 'error'); return; }
 
@@ -528,7 +528,7 @@ async function loadSkills() {
   let centralSkills = [];
   if (centralPath) {
     try {
-      const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath });
+      const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath, isCentral: true });
       centralSkills = resp.data || [];
     } catch (e) {}
   }
@@ -701,7 +701,7 @@ async function skillPullFromCentral(skillName) {
 
   let srcPath = null;
   try {
-    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath });
+    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath, isCentral: true });
     const found = (resp.data || []).find(s => s.name === skillName);
     if (found) srcPath = found.skillDir;
   } catch (e) {}
@@ -740,7 +740,7 @@ async function skillPushToProject(skillName) {
 
   let srcPath = null;
   try {
-    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath });
+    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath, isCentral: true });
     const found = (resp.data || []).find(s => s.name === skillName);
     if (found) srcPath = found.skillDir;
   } catch (e) {}

@@ -188,22 +188,24 @@ func ListDir(req protocol.Request) protocol.Response {
 //   - 中心仓库：{root}/skills/{skillName}/SKILL.md
 //   - 项目本地：{root}/.claude/skills/{skillName}/SKILL.md
 //
-// 根据 {root}/.browser_chat/setting.json 构建 groupId → skillName 映射，
+// 只有 IsCentral=true 时才读取 {root}/.browser_chat/setting.json 构建 groupId 映射
 // 返回的 SkillInfo 包含 GroupId 字段，未被任何分组收录的 skill → "ungrouped"
 func ScanSkills(req protocol.Request) protocol.Response {
 	root := req.Path
 
-	// 读取/初始化分组配置
-	cfg, err := ensureSkillConfig(root)
-	if err != nil {
-		return protocol.Response{Status: "error", Message: "初始化 skill 配置失败: " + err.Error()}
-	}
+	var skillToGroup map[string]string
 
-	// 构建 skillName → groupId 映射（白名单方式）
-	skillToGroup := make(map[string]string)
-	for _, group := range cfg.Groups {
-		for _, skillName := range group.Skills {
-			skillToGroup[skillName] = group.ID
+	// 只有中心仓库才读取分组配置
+	if req.IsCentral {
+		cfg, err := ensureSkillConfig(root)
+		if err != nil {
+			return protocol.Response{Status: "error", Message: "初始化 skill 配置失败: " + err.Error()}
+		}
+		skillToGroup = make(map[string]string)
+		for _, group := range cfg.Groups {
+			for _, skillName := range group.Skills {
+				skillToGroup[skillName] = group.ID
+			}
 		}
 	}
 
@@ -249,9 +251,11 @@ func ScanSkills(req protocol.Request) protocol.Response {
 			}
 
 			// 根据配置确定分组，未收录则归属 ungrouped
-			groupId, ok := skillToGroup[skillName]
-			if !ok {
-				groupId = "ungrouped"
+			groupId := "ungrouped"
+			if skillToGroup != nil {
+				if gid, ok := skillToGroup[skillName]; ok {
+					groupId = gid
+				}
 			}
 
 			skills = append(skills, SkillInfo{
