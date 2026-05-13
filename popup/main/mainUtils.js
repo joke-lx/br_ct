@@ -442,6 +442,7 @@ async function startSending() {
             chrome.runtime.sendMessage(
                 {
                     action: "processTaskQueue",
+                    source: "popup",
                     queue: actionsQueue,
                     config: {
                         maxConcurrent: 3,      // 最多同时处理3个平台
