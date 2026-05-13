@@ -22,6 +22,45 @@ function closeSkillProjectModal() {
   document.getElementById('skillProjectModal').classList.remove('show');
 }
 
+function openSkillGroupModal() {
+  document.getElementById('skillGroupModal').classList.add('show');
+  document.getElementById('skillGroupName').value = '';
+  document.getElementById('skillGroupName').focus();
+}
+
+function closeSkillGroupModal() {
+  document.getElementById('skillGroupModal').classList.remove('show');
+}
+
+async function createSkillGroup() {
+  const name = document.getElementById('skillGroupName').value.trim();
+  if (!name) { toast('请输入分组名称', 'error'); return; }
+
+  const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
+  if (!centralPath) { toast('中心仓库路径未设置', 'error'); return; }
+
+  try {
+    const resp = await sendNativeMessage({ command: 'readSetting', path: centralPath });
+    const cfg = resp.data ? (typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data) : { groups: [] };
+    const groups = cfg.groups || [];
+
+    const newGroup = {
+      id: Date.now().toString(36),
+      name,
+      skills: []
+    };
+
+    groups.push(newGroup);
+
+    await sendNativeMessage({ command: 'saveSkillGroups', path: centralPath, groups });
+    closeSkillGroupModal();
+    toast(`已创建分组：${name}`);
+    loadSkills();
+  } catch (e) {
+    toast('创建分组失败: ' + e.message, 'error');
+  }
+}
+
 async function saveSkillProject() {
   const name = document.getElementById('skillProjectName').value.trim();
   const path = document.getElementById('skillProjectPath').value.trim();

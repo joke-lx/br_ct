@@ -78,6 +78,8 @@ function setupDelegation() {
       case 'skill-import-from-git': importProjectFromGit(); break;
       case 'skill-project-cancel': closeSkillProjectModal(); break;
       case 'skill-project-save': saveSkillProject(); break;
+      case 'skill-group-cancel': closeSkillGroupModal(); break;
+      case 'skill-group-create': createSkillGroup(); break;
       case 'skill-refresh': loadSkills(); break;
       case 'skill-push': skillPushToCentral(btn.dataset.name); break;
       case 'skill-push-central-to-project': skillPushToProject(btn.dataset.name); break;
