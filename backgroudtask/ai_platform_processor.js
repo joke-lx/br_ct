@@ -100,9 +100,9 @@ function injectResponseListener(tabId, platform) {
   });
 }
 
-function sendMessage(tabId, message) {
+function sendMessage(tabId, message, source = "popup") {
   return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(tabId, { action: "sendMessage", message, source: "background" }, (response) => {
+    chrome.tabs.sendMessage(tabId, { action: "sendMessage", message, source }, (response) => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
         return;
@@ -161,8 +161,9 @@ export function setupMessageListener() {
         batchDelay: 300,
         tabLoadTimeout: 8000,
       };
+      const source = request.source || "popup";
 
-      processTaskQueueConcurrent(request.queue, config)
+      processTaskQueueConcurrent(request.queue, config, source)
         .then(results => {
           const success = results.filter(r => r.status === 'fulfilled').length;
           const failed = results.filter(r => r.status === 'rejected').length;
@@ -182,9 +183,10 @@ export function setupMessageListener() {
   });
 }
 
-export async function processTaskQueueConcurrent(queue, options = {}) {
+export async function processTaskQueueConcurrent(queue, options = {}, source = "popup") {
   const { maxConcurrent = 3, batchDelay = 300 } = options;
   const results = [];
+  const shouldListenResponses = source === "sidebar";
 
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const selectedPlatforms = queue.map(t => t.platform);
@@ -199,6 +201,8 @@ export async function processTaskQueueConcurrent(queue, options = {}) {
       batch.map((task, index) => processSingleTask(task, {
         isFirst: i === 0 && index === 0,
         shouldJump: !activeTabMatches,
+        source,
+        shouldListenResponses,
       }))
     );
     results.push(...batchResults);
@@ -217,11 +221,15 @@ async function processSingleTask(task, opts = {}) {
   await waitForTabComplete(tab.id);
 
   await injectScript(tab.id, platform);
-  await cleanupResponseListener(tab.id, platform);
+  if (opts.shouldListenResponses) {
+    await cleanupResponseListener(tab.id, platform);
+  }
 
   try {
-    const result = await trySend(tab.id, platform, message, false);
-    await injectResponseListener(tab.id, platform);
+    const result = await trySend(tab.id, platform, message, opts.source, false);
+    if (opts.shouldListenResponses) {
+      await injectResponseListener(tab.id, platform);
+    }
     return result;
   } catch (firstErr) {
     console.warn(`[${platform}] 首次发送失败，尝试重注:`, firstErr.message);
@@ -229,9 +237,13 @@ async function processSingleTask(task, opts = {}) {
     try {
       injectedTabs.get(platform)?.delete(tab.id);
       await injectScript(tab.id, platform);
-      await cleanupResponseListener(tab.id, platform);
-      const result = await trySend(tab.id, platform, message, true);
-      await injectResponseListener(tab.id, platform);
+      if (opts.shouldListenResponses) {
+        await cleanupResponseListener(tab.id, platform);
+      }
+      const result = await trySend(tab.id, platform, message, opts.source, true);
+      if (opts.shouldListenResponses) {
+        await injectResponseListener(tab.id, platform);
+      }
       return result;
     } catch (finalErr) {
       console.error(`[${platform}] 最终发送失败`, finalErr.message);
@@ -240,9 +252,9 @@ async function processSingleTask(task, opts = {}) {
   }
 }
 
-async function trySend(tabId, platform, message, isRetry) {
+async function trySend(tabId, platform, message, source, isRetry) {
   try {
-    await sendMessage(tabId, message);
+    await sendMessage(tabId, message, source);
     return { platform, success: true, tabId, retried: isRetry };
   } catch (err) {
     throw err;
