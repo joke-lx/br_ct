@@ -340,6 +340,9 @@ function autoResizeInput(el) {
 function updateSendButton() {
   if (!elements.sendButton || !elements.messageInput) return;
   const hasText = elements.messageInput.value.trim().length > 0;
+  elements.sendButton.classList.remove("is-busy", "is-done");
+  const labelEl = elements.sendButton.querySelector(".chat-btn-send-label");
+  if (labelEl) labelEl.textContent = "";
   elements.sendButton.disabled = !hasText;
 }
 
@@ -406,7 +409,7 @@ async function startSending() {
 
   // 长文本复制到剪贴板
   if (finalMessage.length > 400) {
-    setButtonLoadingState(elements.sendButton, "复制中...");
+    setSidebarSendButtonState("busy", "复制");
     const copySuccess = await copyToClipboard(finalMessage);
     if (copySuccess) {
       showTempMessage(`内容已复制到剪切板（${finalMessage.length}字符）`);
@@ -416,7 +419,7 @@ async function startSending() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  setButtonLoadingState(elements.sendButton, `处理中 (0/${selectedPlatforms.length})`);
+  setSidebarSendButtonState("busy", "处理中");
 
   try {
     await Promise.all([
@@ -456,7 +459,7 @@ async function startSending() {
 
     if (response && response.status === "completed") {
       const successMsg = `处理完成: 成功 ${response.success}/${response.total}`;
-      setButtonLoadingState(elements.sendButton, successMsg);
+      setSidebarSendButtonState("done", "✓");
       showTempMessage(successMsg, 2000);
 
       if (response.failed > 0) {
@@ -482,12 +485,12 @@ async function startSending() {
     updateSendButton();
 
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    resetButtonState(elements.sendButton, "发送消息");
+    updateSendButton();
 
   } catch (error) {
     console.error("发送消息失败:", error);
     showTempMessage("发送失败，请重试");
-    resetButtonState(elements.sendButton, "发送消息");
+    updateSendButton();
   }
 }
 
@@ -507,6 +510,30 @@ const DEFAULT_CONVERSATION_ID = "__default__";
 const lastCopyCaptureByConversation = new Map();
 const platformStates = new Map();
 let activePlatformId = null;
+
+function setSidebarSendButtonState(state, label = "") {
+  const button = elements.sendButton;
+  if (!button) return;
+
+  const labelEl = button.querySelector(".chat-btn-send-label");
+  if (labelEl) labelEl.textContent = label;
+
+  button.classList.remove("is-busy", "is-done");
+
+  if (state === "busy") {
+    button.disabled = true;
+    button.classList.add("is-busy");
+    return;
+  }
+
+  if (state === "done") {
+    button.disabled = true;
+    button.classList.add("is-done");
+    return;
+  }
+
+  button.disabled = !elements.messageInput || elements.messageInput.value.trim().length === 0;
+}
 
 function getPlatformState(platformId) {
   if (!platformStates.has(platformId)) {
