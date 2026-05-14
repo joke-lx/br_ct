@@ -611,7 +611,13 @@ function renderCentralSkillList(skills, projectSkills) {
         <div class="skill-card-path">${escapeHtml(s.skillDir)}</div>
         <div class="skill-card-actions">
           ${!projectSkill ? `<button class="btn btn-success btn-pull" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">→ 推送到项目</button>` : ''}
-          ${projectSkill && !synced ? `<button class="btn btn-warning" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">↻ 同步到项目</button>` : ''}
+          ${projectSkill && !synced ? `<button class="btn btn-warning" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">↻ 同步</button>` : ''}
+          <div style="position: relative; display: inline-block;">
+            <button class="btn btn-secondary" data-action="skill-more" data-name="${escapeHtml(s.name)}" title="更多操作">+</button>
+            <div class="skill-more-dropdown" id="dropdown-${escapeHtml(s.name)}" style="display:none; position:absolute; right:0; bottom:100%; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:4px; min-width:160px; z-index:100; box-shadow:var(--shadow);">
+              <button class="btn" style="width:100%; text-align:left; padding:8px 12px; background:none; border:none; cursor:pointer;" data-action="skill-sync-to-all" data-name="${escapeHtml(s.name)}">↻ 同步到所有项目</button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -765,4 +771,82 @@ async function skillPushToProject(skillName) {
   } catch (err) {
     toast('推送失败: ' + err.message, 'error');
   }
+}
+
+// 切换更多操作下拉菜单
+function toggleSkillMoreDropdown(btn) {
+  const name = btn.dataset.name;
+  const dropdown = document.getElementById('dropdown-' + name);
+  if (!dropdown) return;
+
+  // 关闭其他所有下拉
+  document.querySelectorAll('.skill-more-dropdown').forEach(d => {
+    if (d !== dropdown) d.style.display = 'none';
+  });
+
+  dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+// 点击其他地方关闭下拉
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.skill-card-actions')) {
+    document.querySelectorAll('.skill-more-dropdown').forEach(d => {
+      d.style.display = 'none';
+    });
+  }
+});
+
+// 中心仓库 → 所有已存在该项目中的 skill（进度同步，只覆盖已有）
+async function syncSkillToAllProjects(skillName) {
+  const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
+  const projects = await loadStorage(STORAGE_KEYS.skillMonitoredProjects);
+
+  if (!centralPath) { toast('请先配置中心仓库路径', 'error'); return; }
+  if (projects.length === 0) { toast('没有可同步的项目', 'warning'); return; }
+
+  let srcPath = null;
+  try {
+    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath, isCentral: true });
+    const found = (resp.data || []).find(s => s.name === skillName);
+    if (found) srcPath = found.skillDir;
+  } catch (e) {}
+
+  if (!srcPath) { toast('中心仓库中未找到: ' + skillName, 'error'); return; }
+
+  toast('正在同步...', 'info');
+  let syncCount = 0;
+  let skipCount = 0;
+  const skipProjects = [];
+
+  for (const project of projects) {
+    try {
+      // 先检查项目是否有这个 skill
+      const resp = await sendNativeMessage({ command: 'scanSkills', path: project.path });
+      const projectSkills = resp.data || [];
+      const hasSkill = projectSkills.some(s => s.name === skillName);
+
+      if (!hasSkill) {
+        skipCount++;
+        skipProjects.push(project.name);
+        continue;
+      }
+
+      // 只同步已存在的
+      await sendNativeMessage({
+        command: 'syncSkillDir',
+        src: srcPath,
+        dstParent: project.path + '/.claude/skills',
+      });
+      syncCount++;
+    } catch (e) {
+      skipCount++;
+      skipProjects.push(project.name);
+    }
+  }
+
+  let msg = '同步完成';
+  if (syncCount > 0) msg += '，更新了 ' + syncCount + ' 个项目';
+  if (skipCount > 0) msg += '，跳过 ' + skipCount + ' 个（项目无此 Skill）';
+  toast(msg);
+  loadSkills();
 }

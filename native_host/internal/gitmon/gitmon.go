@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"sync"
+	"time"
 
 	"brochat_native_host/internal/protocol"
 )
@@ -75,49 +77,157 @@ func GitPush(req protocol.Request) protocol.Response {
 }
 
 func GitBatchStatus(req protocol.Request) protocol.Response {
-	var results []GitStatusInfo
-	for _, dir := range req.Dirs {
-		results = append(results, gitStatusForDir(dir))
+	results := make([]GitStatusInfo, len(req.Dirs))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	for i, dir := range req.Dirs {
+		wg.Add(1)
+		go func(idx int, d string) {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					mu.Lock()
+					results[idx] = GitStatusInfo{Dir: d, Error: fmt.Sprintf("panic: %v", r)}
+					mu.Unlock()
+				}
+			}()
+			status := gitStatusForDir(d)
+			mu.Lock()
+			results[idx] = status
+			mu.Unlock()
+		}(i, dir)
+	}
+
+	// 超时保护
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		// 超时后返回已收集的结果
 	}
 	return protocol.Response{Status: "ok", Data: results}
 }
 
 func GitBatchPull(req protocol.Request) protocol.Response {
-	var results []GitOperationResult
-	for _, dir := range req.Dirs {
-		out, err := runGitCombined(dir, "pull")
-		result := GitOperationResult{Dir: dir, Output: out}
-		if err != nil {
-			result.Error = err.Error()
-		} else {
-			result.Success = true
-		}
-		results = append(results, result)
+	results := make([]GitOperationResult, len(req.Dirs))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	for i, dir := range req.Dirs {
+		wg.Add(1)
+		go func(idx int, d string) {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					mu.Lock()
+					results[idx] = GitOperationResult{Dir: d, Error: fmt.Sprintf("panic: %v", r)}
+					mu.Unlock()
+				}
+			}()
+			out, err := runGitCombined(d, "pull")
+			result := GitOperationResult{Dir: d, Output: out}
+			if err != nil {
+				result.Error = err.Error()
+			} else {
+				result.Success = true
+			}
+			mu.Lock()
+			results[idx] = result
+			mu.Unlock()
+		}(i, dir)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(60 * time.Second):
 	}
 	return protocol.Response{Status: "ok", Data: results}
 }
 
 func GitBatchPush(req protocol.Request) protocol.Response {
-	var results []GitOperationResult
-	for _, dir := range req.Dirs {
-		out, err := runGitCombined(dir, "push")
-		result := GitOperationResult{Dir: dir, Output: out}
-		if err != nil {
-			result.Error = err.Error()
-		} else {
-			result.Success = true
-		}
-		results = append(results, result)
+	results := make([]GitOperationResult, len(req.Dirs))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	for i, dir := range req.Dirs {
+		wg.Add(1)
+		go func(idx int, d string) {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					mu.Lock()
+					results[idx] = GitOperationResult{Dir: d, Error: fmt.Sprintf("panic: %v", r)}
+					mu.Unlock()
+				}
+			}()
+			out, err := runGitCombined(d, "push")
+			result := GitOperationResult{Dir: d, Output: out}
+			if err != nil {
+				result.Error = err.Error()
+			} else {
+				result.Success = true
+			}
+			mu.Lock()
+			results[idx] = result
+			mu.Unlock()
+		}(i, dir)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(60 * time.Second):
 	}
 	return protocol.Response{Status: "ok", Data: results}
 }
 
 // GitBatchFetch fetch 所有目录后返回最新 status
 func GitBatchFetch(req protocol.Request) protocol.Response {
-	var results []GitStatusInfo
-	for _, dir := range req.Dirs {
-		runGit(dir, "fetch")
-		results = append(results, gitStatusForDir(dir))
+	results := make([]GitStatusInfo, len(req.Dirs))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	for i, dir := range req.Dirs {
+		wg.Add(1)
+		go func(idx int, d string) {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					mu.Lock()
+					results[idx] = GitStatusInfo{Dir: d, Error: fmt.Sprintf("panic: %v", r)}
+					mu.Unlock()
+				}
+			}()
+			runGit(d, "fetch")
+			status := gitStatusForDir(d)
+			mu.Lock()
+			results[idx] = status
+			mu.Unlock()
+		}(i, dir)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
 	}
 	return protocol.Response{Status: "ok", Data: results}
 }
