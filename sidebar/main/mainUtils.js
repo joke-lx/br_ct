@@ -29,7 +29,6 @@ import {
   validatePlatformSelection
 } from "../../popup/main/modules/uiHelpers.js";
 
-import { renderMarkdownSafe } from "./markdownRender.js";
 import { PLATFORM_CONFIG } from "../../config/platformConfig.js";
 
 // DOM 元素缓存
@@ -407,6 +406,20 @@ async function startSending() {
 
   if (!validatePlatformSelection(selectedPlatforms)) return;
 
+  const sendTimestamp = Date.now();
+  selectedPlatforms.forEach((platformId) => {
+    const ps = getPlatformState(platformId);
+    const conversationId = ps.activeConvId || DEFAULT_CONVERSATION_ID;
+    appendUserMessage(platformId, conversationId, originalMessage, sendTimestamp);
+  });
+
+  if (!activePlatformId || !selectedPlatforms.includes(activePlatformId)) {
+    activePlatformId = selectedPlatforms[0];
+  }
+  renderCurrentPlatform();
+  renderPlatformTabs();
+  scrollToBottom(true);
+
   // 长文本复制到剪贴板
   if (finalMessage.length > 400) {
     setSidebarSendButtonState("busy", "复制");
@@ -501,13 +514,10 @@ let responseStatus;
 let statusIndicator;
 let statusText;
 
-// copy capture preview
-let responseCapture;
-let responseCaptureValue;
+let shouldAutoScroll = true;
 
 const DEFAULT_CONVERSATION_ID = "__default__";
 
-const lastCopyCaptureByConversation = new Map();
 const platformStates = new Map();
 let activePlatformId = null;
 
@@ -554,6 +564,108 @@ function getConvState(platformId, conversationId) {
   return ps.conversationStates.get(key);
 }
 
+function rebuildMessageIndex(convState) {
+  convState.messageIndex.clear();
+  convState.messages.forEach((message, index) => {
+    const role = message.role || "assistant";
+    convState.messageIndex.set(buildMessageKey(role, message.messageId), index);
+  });
+}
+
+function moveDefaultConversationTo(platformId, targetConversationId) {
+  const targetKey = targetConversationId || DEFAULT_CONVERSATION_ID;
+  if (targetKey === DEFAULT_CONVERSATION_ID) return;
+
+  const ps = getPlatformState(platformId);
+  const defaultState = ps.conversationStates.get(DEFAULT_CONVERSATION_ID);
+  if (!defaultState || defaultState.messages.length === 0) return;
+
+  const targetState = getConvState(platformId, targetKey);
+  if (targetState.messages.length > 0) return;
+
+  targetState.messages = defaultState.messages;
+  rebuildMessageIndex(targetState);
+  ps.conversationStates.delete(DEFAULT_CONVERSATION_ID);
+}
+
+function buildMessageKey(role, id) {
+  return `${role}::${id}`;
+}
+
+function appendUserMessage(platformId, conversationId, content, timestamp = Date.now()) {
+  const convState = getConvState(platformId, conversationId);
+  const messageId = `user-${timestamp}-${Math.random().toString(36).slice(2, 8)}`;
+  const messageKey = buildMessageKey("user", messageId);
+
+  convState.messages.push({
+    role: "user",
+    messageId,
+    content: String(content || ""),
+    timestamp,
+    collapsed: false,
+  });
+  convState.messageIndex.set(messageKey, convState.messages.length - 1);
+  return messageId;
+}
+
+function upsertAssistantMessage(platformId, conversationId, payload) {
+  const convState = getConvState(platformId, conversationId);
+  const messageId = payload.messageId || `assistant-${Date.now()}`;
+  const messageKey = buildMessageKey("assistant", messageId);
+  const normalizedText = typeof payload.content === "string"
+    ? payload.content
+    : String(payload.content ?? payload.text ?? "");
+  const normalizedHtml = typeof payload.html === "string" ? payload.html : null;
+  const existingIndex = convState.messageIndex.get(messageKey);
+
+  if (existingIndex == null) {
+    convState.messages.push({
+      role: "assistant",
+      messageId,
+      content: normalizedText,
+      html: normalizedHtml,
+      htmlMissing: !!payload.htmlMissing,
+      isComplete: !!payload.isComplete,
+      timestamp: payload.timestamp || Date.now(),
+      collapsed: false,
+    });
+    convState.messageIndex.set(messageKey, convState.messages.length - 1);
+    return convState.messages[convState.messages.length - 1];
+  }
+
+  const msg = convState.messages[existingIndex];
+  msg.content = normalizedText;
+  if (normalizedHtml != null) {
+    msg.html = normalizedHtml;
+  }
+  if (payload.htmlMissing != null) {
+    msg.htmlMissing = !!payload.htmlMissing;
+  }
+  if (payload.isComplete != null) {
+    msg.isComplete = !!payload.isComplete;
+  }
+  msg.timestamp = payload.timestamp || msg.timestamp || Date.now();
+  return msg;
+}
+
+function renderMessageBody(message) {
+  if (message.role === "user") {
+    return renderMarkdownText(message.content || "");
+  }
+
+  const html = typeof message.html === "string" ? message.html : "";
+  const text = typeof message.content === "string" ? message.content : "";
+  if (html && !isBareHtmlContainer(html, text)) {
+    return html;
+  }
+  return renderMarkdownText(text);
+}
+
+function isNearBottom(el, threshold = 72) {
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+}
+
 function getCheckedPlatforms() {
   return Array.from(document.querySelectorAll('.platform-icon-option input[type="checkbox"]:checked'))
     .map(cb => cb.dataset.platform);
@@ -570,21 +682,8 @@ function renderCurrentPlatform() {
     return;
   }
 
-  const config = PLATFORM_CONFIG[activePlatformId];
-  const platformName = config?.name || activePlatformId;
-  const platformColor = config?.color || "#666";
-  const platformIcon = config?.icon || activePlatformId[0]?.toUpperCase() || "?";
-
   const ps = getPlatformState(activePlatformId);
   const convState = ps.conversationStates.get(ps.activeConvId);
-  const captureKey = `${activePlatformId}::${ps.activeConvId}`;
-  const captureData = lastCopyCaptureByConversation.get(captureKey);
-
-  if (captureData && (captureData.html || captureData.text)) {
-    renderPlatformCapture(captureData);
-    if (responseStatus) responseStatus.style.display = "none";
-    return;
-  }
 
   const hasMessages = convState && convState.messages.length > 0;
 
@@ -613,25 +712,29 @@ function renderPlatformMessages(convState) {
     const platformName = config?.name || activePlatformId;
     const platformColor = config?.color || "#666";
     const platformIcon = config?.shortIcon || config?.icon || activePlatformId[0]?.toUpperCase() || "?";
+    const isUser = message.role === "user";
 
     const msgRow = document.createElement("div");
-    msgRow.className = "notion-chat-message notion-chat-message--ai";
+    msgRow.className = `notion-chat-message ${isUser ? "notion-chat-message--user" : "notion-chat-message--ai"}`;
 
-    const avatar = document.createElement("div");
-    avatar.className = "notion-chat-avatar";
-    avatar.style.background = platformColor;
-    avatar.textContent = platformIcon;
+    let avatar = null;
+    if (!isUser) {
+      avatar = document.createElement("div");
+      avatar.className = "notion-chat-avatar";
+      avatar.style.background = platformColor;
+      avatar.textContent = platformIcon;
+    }
 
     const bubble = document.createElement("div");
-    bubble.className = "notion-chat-bubble";
+    bubble.className = `notion-chat-bubble ${isUser ? "notion-chat-bubble--user" : "notion-chat-bubble--ai"}`;
 
     const header = document.createElement("div");
     header.className = "notion-chat-bubble-header";
 
     const nameEl = document.createElement("span");
     nameEl.className = "notion-chat-bubble-name";
-    nameEl.style.color = platformColor;
-    nameEl.textContent = platformName;
+    nameEl.style.color = isUser ? "#475569" : platformColor;
+    nameEl.textContent = isUser ? "You" : platformName;
 
     const timeEl = document.createElement("span");
     timeEl.className = "notion-chat-bubble-time";
@@ -678,12 +781,12 @@ function renderPlatformMessages(convState) {
     const contentEl = document.createElement("div");
     contentEl.className = "notion-chat-bubble-content";
     contentEl.style.display = message.collapsed ? "none" : "block";
-    contentEl.innerHTML = renderMarkdownSafe(message.content || "");
+    contentEl.innerHTML = renderMessageBody(message);
 
     bubble.appendChild(header);
     bubble.appendChild(contentEl);
 
-    msgRow.appendChild(avatar);
+    if (avatar) msgRow.appendChild(avatar);
     msgRow.appendChild(bubble);
     root.appendChild(msgRow);
   });
@@ -691,6 +794,9 @@ function renderPlatformMessages(convState) {
   responseContent.appendChild(root);
 }
 
+/**
+ * 更新回复状态
+ */
 function isBareHtmlContainer(html, text) {
   if (!html) return true;
   const stripped = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
@@ -700,65 +806,6 @@ function isBareHtmlContainer(html, text) {
   return true;
 }
 
-function renderPlatformCapture(data) {
-  if (!responseContent) return;
-
-  const html = typeof data?.html === "string" ? data.html : "";
-  const text = typeof data?.text === "string" ? data.text : "";
-  const htmlMissing = !!data?.htmlMissing || !html;
-  // const source = data?.source || "unknown";
-
-  responseContent.innerHTML = "";
-
-  const config = PLATFORM_CONFIG[activePlatformId];
-  const platformName = config?.name || activePlatformId;
-  const platformColor = config?.color || "#666";
-  const platformIcon = config?.shortIcon || config?.icon || activePlatformId?.[0]?.toUpperCase() || "?";
-
-  const root = document.createElement("div");
-  root.className = "notion-chat";
-
-  const msgRow = document.createElement("div");
-  msgRow.className = "notion-chat-message notion-chat-message--ai";
-
-  const avatar = document.createElement("div");
-  avatar.className = "notion-chat-avatar";
-  avatar.style.background = platformColor;
-  avatar.textContent = platformIcon;
-
-  const bubble = document.createElement("div");
-  bubble.className = "notion-chat-bubble";
-
-  const header = document.createElement("div");
-  header.className = "notion-chat-bubble-header";
-
-  const nameEl = document.createElement("span");
-  nameEl.className = "notion-chat-bubble-name";
-  nameEl.style.color = platformColor;
-  nameEl.textContent = platformName;
-
-  header.appendChild(nameEl);
-  bubble.appendChild(header);
-
-  const contentEl = document.createElement("div");
-  contentEl.className = "notion-chat-bubble-content";
-
-  if (html && !isBareHtmlContainer(html, text)) {
-    contentEl.innerHTML = html;
-  } else if (text) {
-    contentEl.innerHTML = renderMarkdownText(text);
-  }
-
-  bubble.appendChild(contentEl);
-  msgRow.appendChild(avatar);
-  msgRow.appendChild(bubble);
-  root.appendChild(msgRow);
-  responseContent.appendChild(root);
-}
-
-/**
- * 更新回复状态
- */
 function updateResponseStatus(isComplete) {
   if (!statusIndicator || !statusText) return;
 
@@ -791,32 +838,14 @@ function handlePlatformResponse(platformId, data) {
     activePlatformId = platformId;
   }
 
+  moveDefaultConversationTo(platformId, key);
   ps.activeConvId = key;
-  const convState = getConvState(platformId, key);
-  const existingIndex = convState.messageIndex.get(messageId);
-
-  const normalizedContent = typeof content === "string" ? content : String(content ?? "");
-
-  if (existingIndex == null) {
-    const captureKey = `${platformId}::${key}`;
-    lastCopyCaptureByConversation.delete(captureKey);
-
-    convState.messages.length = 0;
-    convState.messageIndex.clear();
-    convState.messageIndex.set(messageId, 0);
-    convState.messages.push({
-      messageId,
-      content: normalizedContent,
-      isComplete: !!isComplete,
-      timestamp: timestamp || Date.now(),
-      collapsed: false,
-    });
-  } else {
-    const msg = convState.messages[existingIndex];
-    msg.content = normalizedContent;
-    msg.isComplete = !!isComplete;
-    msg.timestamp = timestamp || msg.timestamp || Date.now();
-  }
+  upsertAssistantMessage(platformId, key, {
+    messageId,
+    content,
+    isComplete,
+    timestamp,
+  });
 
   if (activePlatformId === platformId) {
     updateResponseStatus(isComplete);
@@ -835,13 +864,21 @@ function handlePlatformCapture(platformId, data) {
 
   const ps = getPlatformState(platformId);
   const key = data.conversationId || DEFAULT_CONVERSATION_ID;
+  moveDefaultConversationTo(platformId, key);
   ps.activeConvId = key;
-  const captureKey = `${platformId}::${key}`;
-  lastCopyCaptureByConversation.set(captureKey, data);
+  upsertAssistantMessage(platformId, key, {
+    messageId: data.messageId,
+    content: data.text || "",
+    html: data.html || null,
+    htmlMissing: data.htmlMissing,
+    isComplete: true,
+    timestamp: data.timestamp || Date.now(),
+  });
 
   activePlatformId = platformId;
 
   renderCurrentPlatform();
+  scrollToBottom();
   renderPlatformTabs();
 }
 
@@ -858,6 +895,10 @@ export function initializeResponseDisplay() {
     console.warn("回复展示区元素未找到");
     return;
   }
+
+  responseContent.addEventListener("scroll", () => {
+    shouldAutoScroll = isNearBottom(responseContent);
+  });
 
   chrome.runtime.onMessage.addListener((request) => {
     const responseMatch = request.action?.match(/^(\w+)Response$/);
@@ -1003,7 +1044,6 @@ export function hideResponseContainer() {}
 /** 重置回复展示 */
 export function resetResponseDisplay() {
   platformStates.clear();
-  lastCopyCaptureByConversation.clear();
   activePlatformId = null;
   if (responseContent) {
     responseContent.innerHTML = '<div class="response-placeholder">暂无回复内容</div>';
@@ -1066,8 +1106,9 @@ function formatTime(ts) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function scrollToBottom() {
-  if (responseContent) {
+function scrollToBottom(force = false) {
+  if (responseContent && (force || shouldAutoScroll)) {
     responseContent.scrollTop = responseContent.scrollHeight;
+    shouldAutoScroll = true;
   }
 }

@@ -214,6 +214,10 @@ body {
   max-width: 100%;
 }
 
+.notion-chat-message--user {
+  justify-content: flex-end;
+}
+
 .notion-chat-avatar {
   width: 26px;
   height: 26px;
@@ -233,6 +237,7 @@ body {
 .notion-chat-bubble {
   flex: 1;
   min-width: 0;
+  max-width: min(100%, 680px);
   border-radius: 6px 14px 14px 14px;
   padding: 11px 14px 12px;
   font-size: 14px;
@@ -244,6 +249,30 @@ body {
   position: relative;
   border: 1px solid rgba(15, 23, 42, 0.05);
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.045);
+}
+
+.notion-chat-bubble--user {
+  flex: 0 1 auto;
+  max-width: min(88%, 680px);
+  border-radius: 14px 6px 14px 14px;
+  background: #0071da;
+  color: #ffffff;
+  border-color: rgba(37, 99, 235, 0.08);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
+}
+
+.notion-chat-bubble--user .notion-chat-bubble-header {
+  border-bottom-color: rgba(255, 255, 255, 0.75);
+}
+
+.notion-chat-bubble--user .notion-chat-bubble-name,
+.notion-chat-bubble--user .notion-chat-bubble-time,
+.notion-chat-bubble--user .notion-chat-bubble-content,
+.notion-chat-bubble--user .notion-chat-bubble-content p,
+.notion-chat-bubble--user .notion-chat-bubble-content li,
+.notion-chat-bubble--user .notion-chat-bubble-content strong,
+.notion-chat-bubble--user .notion-chat-bubble-content em {
+  color: #ffffff !important;
 }
 
 .notion-chat-bubble-header {
