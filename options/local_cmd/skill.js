@@ -810,7 +810,7 @@ async function skillPushToAllProjects(skillName) {
   if (failCount === 0) {
     toast(`已推送到全部 ${successCount} 个项目`);
   } else {
-    toast(`推送完成：成功 ${successCount}，失败 ${failCount}（${failNames.join(', '}））`, 'warning');
+    toast('推送完成：成功 ' + successCount + '，失败 ' + failCount + '（' + failNames.join(', ') + '）', 'warning');
   }
   loadSkills();
 }
