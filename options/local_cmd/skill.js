@@ -614,7 +614,7 @@ function renderCentralSkillList(skills, projectSkills) {
           ${projectSkill && !synced ? `<button class="btn btn-warning" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">↻ 同步</button>` : ''}
           <div style="position: relative; display: inline-block;">
             <button class="btn btn-secondary" data-action="skill-more" data-name="${escapeHtml(s.name)}" title="更多操作">+</button>
-            <div class="skill-more-dropdown" id="dropdown-${escapeHtml(s.name)}" style="display:none; position:absolute; right:0; top:100%; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:4px; min-width:160px; z-index:100; box-shadow:var(--shadow);">
+            <div class="skill-more-dropdown" id="dropdown-${escapeHtml(s.name)}" style="display:none; position:absolute; right:0; bottom:100%; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:4px; min-width:160px; z-index:100; box-shadow:var(--shadow);">
               <button class="btn" style="width:100%; text-align:left; padding:8px 12px; background:none; border:none; cursor:pointer;" data-action="skill-sync-to-all" data-name="${escapeHtml(s.name)}">↻ 同步到所有项目</button>
             </div>
           </div>
