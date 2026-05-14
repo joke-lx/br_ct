@@ -86,6 +86,7 @@ function setupDelegation() {
       case 'skill-refresh': loadSkills(); break;
       case 'skill-push': skillPushToCentral(btn.dataset.name); break;
       case 'skill-push-central-to-project': skillPushToProject(btn.dataset.name); break;
+      case 'skill-push-to-all': skillPushToAllProjects(btn.dataset.name); break;
       case 'skill-pull': skillPullFromCentral(btn.dataset.name); break;
       case 'skill-delete-project': deleteSkillProject(btn.dataset.id); break;
       case 'skill-delete-skill': deleteSkillFromProject(btn.dataset.name, btn.dataset.projectId); break;

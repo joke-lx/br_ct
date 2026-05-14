@@ -610,8 +610,9 @@ function renderCentralSkillList(skills, projectSkills) {
         <div class="skill-card-desc">${escapeHtml(s.description || '(无描述)')}</div>
         <div class="skill-card-path">${escapeHtml(s.skillDir)}</div>
         <div class="skill-card-actions">
-          ${!projectSkill ? `<button class="btn btn-success btn-pull" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">→ 推送到项目</button>` : ''}
-          ${projectSkill && !synced ? `<button class="btn btn-warning" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">↻ 同步到项目</button>` : ''}
+          <button class="btn btn-secondary" data-action="skill-push-to-all" data-name="${escapeHtml(s.name)}" title="推送到所有项目">⋙ 全部推送</button>
+          ${!projectSkill ? `<button class="btn btn-success btn-pull" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">→ 推送</button>` : ''}
+          ${projectSkill && !synced ? `<button class="btn btn-warning" data-action="skill-push-central-to-project" data-name="${escapeHtml(s.name)}">↻ 同步</button>` : ''}
         </div>
       </div>
     `;
@@ -765,4 +766,51 @@ async function skillPushToProject(skillName) {
   } catch (err) {
     toast('推送失败: ' + err.message, 'error');
   }
+}
+
+// 中心仓库 → 所有项目（扇出同步）
+async function skillPushToAllProjects(skillName) {
+  const centralPath = await loadStorage(STORAGE_KEYS.skillCentralPath);
+  const projects = await loadStorage(STORAGE_KEYS.skillMonitoredProjects);
+
+  if (!centralPath) { toast('请先配置中心仓库路径', 'error'); return; }
+  if (projects.length === 0) { toast('没有可推送的项目', 'warning'); return; }
+
+  let srcPath = null;
+  try {
+    const resp = await sendNativeMessage({ command: 'scanSkills', path: centralPath, isCentral: true });
+    const found = (resp.data || []).find(s => s.name === skillName);
+    if (found) srcPath = found.skillDir;
+  } catch (e) {}
+
+  if (!srcPath) { toast('中心仓库中未找到: ' + skillName, 'error'); return; }
+
+  toast(`正在推送到 ${projects.length} 个项目...`, 'info');
+  let successCount = 0;
+  let failCount = 0;
+  let failNames = [];
+
+  for (const project of projects) {
+    try {
+      const resp = await sendNativeMessage({
+        command: 'syncSkillDir',
+        src: srcPath,
+        dstParent: project.path + '/.claude/skills',
+      });
+      const result = resp.data;
+      if (result.copied && result.copied.length > 0) {
+        successCount++;
+      }
+    } catch (e) {
+      failCount++;
+      failNames.push(project.name);
+    }
+  }
+
+  if (failCount === 0) {
+    toast(`已推送到全部 ${successCount} 个项目`);
+  } else {
+    toast(`推送完成：成功 ${successCount}，失败 ${failCount}（${failNames.join(', '}））`, 'warning');
+  }
+  loadSkills();
 }
